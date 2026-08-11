@@ -12,14 +12,31 @@ from psycopg.rows import dict_row
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+
+def get_database_url():
+    """
+    Use Streamlit Cloud secrets when deployed.
+    Fall back to local .env during development.
+    """
+
+    try:
+        if "DATABASE_URL" in st.secrets:
+            return st.secrets["DATABASE_URL"]
+    except Exception:
+        pass
+
+    return os.getenv("DATABASE_URL")
+
+
+DATABASE_URL = get_database_url()
+
 
 if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL is missing. "
-        "Add it to your .env file."
+        "Configure it in Streamlit Secrets "
+        "or in the local .env file."
     )
-
 
 def get_connection():
     """

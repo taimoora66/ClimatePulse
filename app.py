@@ -28,7 +28,20 @@ from src.services.climate_service import ensure_city_history
 
 load_dotenv()
 
-MAPTILER_KEY = os.getenv("MAPTILER_KEY")
+def get_maptiler_key():
+
+    try:
+        if "MAPTILER_KEY" in st.secrets:
+            return st.secrets["MAPTILER_KEY"]
+    except Exception:
+        pass
+
+    return os.getenv(
+        "MAPTILER_KEY"
+    )
+
+
+MAPTILER_KEY = get_maptiler_key()
 
 
 # =========================================================
