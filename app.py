@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,7 +13,22 @@ from streamlit_searchbox import st_searchbox
 
 from src.api.air_quality import get_current_air_quality
 from src.api.current_weather import get_current_weather
+from src.api.today_forecast import get_today_forecast
+from src.api.future_climate import (
+    CLIMATE_MODELS,
+    get_midcentury_ensemble,
+)
 from src.api.maptiler_search import search_maptiler_places
+from src.queries.insights import get_today_climate_context
+from src.profile import (
+    BUILDER_BIO,
+    BUILDER_HEADLINE,
+    BUILDER_NAME,
+    GITHUB_URL,
+    LINKEDIN_URL,
+    PORTFOLIO_URL,
+    PROJECT_MOTIVATION,
+)
 from src.queries.climate import (
     get_annual_climate_summary,
     get_city_details,
@@ -186,6 +202,567 @@ html, body, [class*="css"] {
 
 .st-key-main_navigation label:has(input:checked) p {
     color: #79c9ff !important;
+}
+
+
+.cp-intel {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(16, 38, 56, .98),
+            rgba(7, 22, 35, .98)
+        );
+    border: 1px solid rgba(54, 212, 230, .20);
+    border-radius: 14px;
+    padding: 17px;
+    margin: 12px 0 14px 0;
+}
+
+.cp-intel-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 12px;
+}
+
+.cp-intel-title {
+    font-size: 1.12rem;
+    color: #ffffff;
+    font-weight: 780;
+}
+
+.cp-intel-sub {
+    color: #8fa7b9;
+    font-size: .78rem;
+    margin-top: 3px;
+}
+
+.cp-intel-status {
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: .74rem;
+    font-weight: 700;
+    border: 1px solid rgba(139,179,208,.16);
+    white-space: nowrap;
+}
+
+.cp-intel-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    gap: 9px;
+    margin-top: 13px;
+}
+
+.cp-intel-card {
+    background: #0b1b2a;
+    border: 1px solid rgba(139,179,208,.11);
+    border-radius: 10px;
+    padding: 11px;
+    min-width: 0;
+}
+
+.cp-intel-label {
+    color: #8fa6b7;
+    font-size: .70rem;
+}
+
+.cp-intel-value {
+    color: #f7fbfd;
+    font-size: 1.05rem;
+    font-weight: 750;
+    margin-top: 4px;
+}
+
+.cp-intel-note {
+    color: #71899b;
+    font-size: .68rem;
+    margin-top: 4px;
+    line-height: 1.35;
+}
+
+.cp-intel-story {
+    margin-top: 11px;
+    color: #c8d6e0;
+    font-size: .86rem;
+    line-height: 1.55;
+}
+
+.cp-about-hero {
+    background:
+        linear-gradient(
+            135deg,
+            #0e2234,
+            #081724
+        );
+    border: 1px solid rgba(57,169,255,.18);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 10px 0 16px 0;
+}
+
+.cp-about-name {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: white;
+}
+
+.cp-about-headline {
+    color: #62c4ff;
+    font-size: .95rem;
+    margin-top: 4px;
+}
+
+.cp-about-copy {
+    color: #b7c8d4;
+    line-height: 1.65;
+    margin-top: 13px;
+    max-width: 900px;
+}
+
+.cp-stack-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 9px;
+    margin: 12px 0;
+}
+
+.cp-stack-card {
+    background: #0b1a29;
+    border: 1px solid rgba(139,179,208,.12);
+    border-radius: 11px;
+    padding: 13px;
+}
+
+.cp-stack-title {
+    color: #ffffff;
+    font-size: .83rem;
+    font-weight: 700;
+}
+
+.cp-stack-copy {
+    color: #859bad;
+    font-size: .73rem;
+    line-height: 1.45;
+    margin-top: 4px;
+}
+
+@media (max-width: 1000px) {
+    .cp-intel-grid {
+        grid-template-columns: repeat(3, minmax(0,1fr));
+    }
+
+    .cp-stack-grid {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .cp-intel-grid {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+
+    .cp-stack-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cp-intel-top {
+        display: block;
+    }
+
+    .cp-intel-status {
+        display: inline-block;
+        margin-top: 8px;
+    }
+}
+
+
+/* =========================================================
+   CLIMATE FINGERPRINT + PASSPORT
+   ========================================================= */
+
+.cp-fingerprint-wrap {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(10, 30, 46, .98),
+            rgba(6, 18, 30, .98)
+        );
+    border: 1px solid rgba(72, 197, 255, .18);
+    border-radius: 16px;
+    padding: 18px;
+    margin: 14px 0 16px 0;
+}
+
+.cp-fingerprint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.cp-fingerprint-title {
+    font-size: 1.08rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.cp-fingerprint-sub {
+    color: #86a2b5;
+    font-size: .76rem;
+    line-height: 1.45;
+    margin-top: 3px;
+}
+
+.cp-fingerprint-badge {
+    border: 1px solid rgba(75, 194, 255, .28);
+    background: rgba(17, 64, 92, .42);
+    color: #74cfff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cp-fingerprint-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 11px;
+}
+
+.cp-fingerprint-metric {
+    background: rgba(12, 31, 47, .92);
+    border: 1px solid rgba(135, 179, 207, .10);
+    border-radius: 11px;
+    padding: 11px;
+}
+
+.cp-fingerprint-label {
+    color: #88a2b4;
+    font-size: .67rem;
+    line-height: 1.3;
+}
+
+.cp-fingerprint-score {
+    color: #ffffff;
+    font-size: 1.18rem;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+.cp-fingerprint-desc {
+    color: #69869a;
+    font-size: .66rem;
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+.cp-passport {
+    background:
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(47, 166, 255, .14),
+            transparent 28%
+        ),
+        linear-gradient(
+            145deg,
+            #10283c,
+            #081725 72%
+        );
+    border: 1px solid rgba(81, 187, 255, .22);
+    border-radius: 19px;
+    padding: 22px;
+    margin: 10px 0 15px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.cp-passport::after {
+    content: "";
+    position: absolute;
+    width: 190px;
+    height: 190px;
+    right: -65px;
+    bottom: -70px;
+    border: 1px solid rgba(84, 197, 255, .09);
+    border-radius: 50%;
+    box-shadow:
+        0 0 0 28px rgba(84, 197, 255, .025),
+        0 0 0 56px rgba(84, 197, 255, .018);
+}
+
+.cp-passport-eyebrow {
+    color: #58bdf8;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: .65rem;
+    font-weight: 800;
+}
+
+.cp-passport-location {
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 850;
+    line-height: 1.1;
+    margin-top: 6px;
+}
+
+.cp-passport-meta {
+    color: #91a9ba;
+    font-size: .78rem;
+    margin-top: 8px;
+}
+
+.cp-passport-signature {
+    display: inline-block;
+    margin-top: 13px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(52, 183, 255, .10);
+    border: 1px solid rgba(52, 183, 255, .18);
+    color: #8ad5ff;
+    font-size: .75rem;
+    font-weight: 720;
+}
+
+.cp-passport-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.cp-passport-card {
+    background: #0b1d2c;
+    border: 1px solid rgba(136, 181, 211, .11);
+    border-radius: 11px;
+    padding: 12px;
+}
+
+.cp-passport-label {
+    color: #7893a6;
+    font-size: .68rem;
+}
+
+.cp-passport-value {
+    color: #ffffff;
+    font-size: 1.13rem;
+    font-weight: 780;
+    margin-top: 4px;
+}
+
+.cp-passport-note {
+    color: #648195;
+    font-size: .65rem;
+    margin-top: 3px;
+}
+
+.cp-product-note {
+    background: rgba(15, 36, 52, .75);
+    border-left: 3px solid #43b9f5;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #9db2c1;
+    font-size: .73rem;
+    line-height: 1.5;
+    margin-top: 10px;
+}
+
+@media (max-width: 1000px) {
+    .cp-fingerprint-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .cp-passport-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .cp-fingerprint-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cp-passport-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .cp-fingerprint-header {
+        display: block;
+    }
+
+    .cp-fingerprint-badge {
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .cp-passport-location {
+        font-size: 1.55rem;
+    }
+}
+
+
+/* =========================================================
+   COMPARE PLACES
+   ========================================================= */
+
+.cp-compare-hero {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(14, 36, 54, .98),
+            rgba(6, 19, 31, .98)
+        );
+    border: 1px solid rgba(62, 187, 255, .18);
+    border-radius: 16px;
+    padding: 19px;
+    margin: 10px 0 14px 0;
+}
+
+.cp-compare-title {
+    color: #ffffff;
+    font-size: 1.35rem;
+    font-weight: 820;
+}
+
+.cp-compare-sub {
+    color: #8fa8ba;
+    font-size: .79rem;
+    line-height: 1.55;
+    margin-top: 5px;
+}
+
+.cp-compare-place {
+    background: #0a1927;
+    border: 1px solid rgba(139,179,208,.13);
+    border-radius: 13px;
+    padding: 14px;
+    min-height: 190px;
+}
+
+.cp-compare-name {
+    color: #ffffff;
+    font-size: 1.02rem;
+    font-weight: 760;
+    line-height: 1.3;
+}
+
+.cp-compare-type {
+    color: #5fc3ff;
+    font-size: .67rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-top: 4px;
+}
+
+.cp-compare-big {
+    color: #ffffff;
+    font-size: 1.65rem;
+    font-weight: 820;
+    margin-top: 12px;
+}
+
+.cp-compare-caption {
+    color: #7893a6;
+    font-size: .69rem;
+    margin-top: 2px;
+}
+
+.cp-compare-mini {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 7px;
+    margin-top: 11px;
+}
+
+.cp-compare-mini-card {
+    background: #102235;
+    border: 1px solid rgba(139,179,208,.08);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.cp-compare-mini-label {
+    color: #809aae;
+    font-size: .64rem;
+}
+
+.cp-compare-mini-value {
+    color: #eff8fe;
+    font-size: .82rem;
+    font-weight: 680;
+    margin-top: 2px;
+}
+
+.cp-verdict {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(13, 38, 55, .95),
+            rgba(8, 26, 40, .95)
+        );
+    border: 1px solid rgba(67, 209, 123, .18);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 13px 0;
+}
+
+.cp-verdict-title {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 780;
+}
+
+.cp-verdict-grid {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.cp-verdict-card {
+    background: rgba(8, 25, 38, .8);
+    border: 1px solid rgba(139,179,208,.10);
+    border-radius: 9px;
+    padding: 10px;
+}
+
+.cp-verdict-label {
+    color: #7891a4;
+    font-size: .64rem;
+}
+
+.cp-verdict-value {
+    color: #ffffff;
+    font-size: .86rem;
+    font-weight: 700;
+    margin-top: 3px;
+    line-height: 1.35;
+}
+
+.cp-compare-warning {
+    border-left: 3px solid #ffb35c;
+    background: rgba(255,179,92,.06);
+    border-radius: 7px;
+    padding: 9px 11px;
+    color: #aebfcb;
+    font-size: .72rem;
+    line-height: 1.5;
+    margin: 10px 0;
+}
+
+@media (max-width: 850px) {
+    .cp-verdict-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .cp-verdict-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 </style>
@@ -695,6 +1272,892 @@ def add_recent(label):
     st.session_state.recent_searches = recent[:5]
 
 
+
+def clamp_score(
+    value,
+    low,
+    high,
+):
+    """
+    Convert a climate characteristic to a 0–100 descriptive scale.
+
+    These are product-level descriptive indices, NOT hazard/risk
+    probabilities and NOT a comparison against a global city database.
+    """
+    value = safe_float(
+        value
+    )
+
+    if value is None:
+        return None
+
+    if high <= low:
+        return 0.0
+
+    score = (
+        (value - low)
+        / (high - low)
+        * 100.0
+    )
+
+    return max(
+        0.0,
+        min(
+            100.0,
+            score,
+        ),
+    )
+
+
+def fingerprint_level(
+    score,
+    labels=(
+        "Low",
+        "Moderate",
+        "High",
+    ),
+):
+    if score is None:
+        return "N/A"
+
+    if score < 34:
+        return labels[0]
+
+    if score < 67:
+        return labels[1]
+
+    return labels[2]
+
+
+def build_climate_fingerprint(
+    summary,
+    warming_rate,
+):
+    """
+    Build a five-axis descriptive Climate Fingerprint.
+
+    Axes
+    ----
+    Thermal Level:
+        1991–2020 mean annual temperature.
+
+    Hot Extremes:
+        Baseline average number of >=30°C and >=35°C days.
+
+    Rainfall Amount:
+        Baseline mean annual precipitation.
+
+    Rainfall Variability:
+        Coefficient of variation of annual precipitation.
+
+    Warming Signal:
+        Linear temperature trend in °C/decade.
+
+    The 0–100 scales are intentionally descriptive and use fixed
+    engineering anchors. They are not a risk score and do not imply
+    that a higher number is universally worse.
+    """
+    if (
+        summary is None
+        or summary.empty
+    ):
+        return None
+
+    baseline = summary[
+        (
+            summary["year"] >= 1991
+        )
+        &
+        (
+            summary["year"] <= 2020
+        )
+    ].copy()
+
+    if baseline.empty:
+        return None
+
+    mean_temp = safe_float(
+        baseline[
+            "avg_temperature_c"
+        ].mean()
+    )
+
+    hot30 = safe_float(
+        baseline[
+            "hot_days_30c"
+        ].mean()
+    )
+
+    hot35 = safe_float(
+        baseline[
+            "extreme_hot_days_35c"
+        ].mean()
+    )
+
+    precip_mean = safe_float(
+        baseline[
+            "annual_precipitation_mm"
+        ].mean()
+    )
+
+    precip_std = safe_float(
+        baseline[
+            "annual_precipitation_mm"
+        ].std()
+    )
+
+    precip_cv = None
+
+    if (
+        precip_mean is not None
+        and precip_mean > 0
+        and precip_std is not None
+    ):
+        precip_cv = (
+            precip_std
+            / precip_mean
+        )
+
+    thermal_score = clamp_score(
+        mean_temp,
+        -5.0,
+        30.0,
+    )
+
+    hot_score_30 = clamp_score(
+        hot30,
+        0.0,
+        180.0,
+    )
+
+    hot_score_35 = clamp_score(
+        hot35,
+        0.0,
+        90.0,
+    )
+
+    if (
+        hot_score_30 is not None
+        and hot_score_35 is not None
+    ):
+        hot_extreme_score = (
+            0.55 * hot_score_30
+            + 0.45 * hot_score_35
+        )
+    else:
+        hot_extreme_score = None
+
+    rainfall_score = clamp_score(
+        precip_mean,
+        150.0,
+        2200.0,
+    )
+
+    variability_score = clamp_score(
+        precip_cv,
+        0.08,
+        0.45,
+    )
+
+    warming_score = clamp_score(
+        warming_rate,
+        -0.1,
+        0.8,
+    )
+
+    return {
+        "thermal": {
+            "score": thermal_score,
+            "raw": mean_temp,
+            "label": fingerprint_level(
+                thermal_score,
+                (
+                    "Cool",
+                    "Temperate",
+                    "Warm",
+                ),
+            ),
+            "unit": "°C baseline mean",
+        },
+
+        "hot_extremes": {
+            "score": hot_extreme_score,
+            "raw": hot30,
+            "label": fingerprint_level(
+                hot_extreme_score,
+                (
+                    "Limited",
+                    "Seasonal",
+                    "Frequent",
+                ),
+            ),
+            "unit": "hot-day profile",
+        },
+
+        "rainfall": {
+            "score": rainfall_score,
+            "raw": precip_mean,
+            "label": fingerprint_level(
+                rainfall_score,
+                (
+                    "Dry",
+                    "Moderate",
+                    "Wet",
+                ),
+            ),
+            "unit": "mm/year",
+        },
+
+        "variability": {
+            "score": variability_score,
+            "raw": precip_cv,
+            "label": fingerprint_level(
+                variability_score,
+                (
+                    "Stable",
+                    "Variable",
+                    "Highly variable",
+                ),
+            ),
+            "unit": "year-to-year",
+        },
+
+        "warming": {
+            "score": warming_score,
+            "raw": warming_rate,
+            "label": fingerprint_level(
+                warming_score,
+                (
+                    "Weak",
+                    "Moderate",
+                    "Strong",
+                ),
+            ),
+            "unit": "trend signal",
+        },
+    }
+
+
+def fingerprint_signature(
+    fingerprint,
+):
+    if not fingerprint:
+        return "Climate profile unavailable"
+
+    return " · ".join(
+        [
+            fingerprint[
+                "thermal"
+            ][
+                "label"
+            ],
+            (
+                fingerprint[
+                    "rainfall"
+                ][
+                    "label"
+                ]
+                + " rainfall"
+            ),
+            (
+                fingerprint[
+                    "hot_extremes"
+                ][
+                    "label"
+                ]
+                + " hot extremes"
+            ),
+            (
+                fingerprint[
+                    "warming"
+                ][
+                    "label"
+                ]
+                + " warming signal"
+            ),
+        ]
+    )
+
+
+def fingerprint_score_text(
+    value,
+):
+    if value is None:
+        return "N/A"
+
+    return str(
+        int(
+            round(
+                value
+            )
+        )
+    )
+
+
+
+def comparison_scope_label(
+    result_type,
+):
+    return {
+        "country": "Country centroid proxy",
+        "area": "Area centroid",
+        "place": "City / settlement",
+        "local_point": "Local point",
+        "location": "Selected point",
+    }.get(
+        result_type,
+        "Selected point",
+    )
+
+
+def comparison_location_from_feature(
+    feature,
+):
+    """
+    Convert search results into a point usable by the comparison page.
+
+    Countries are allowed here ONLY as centroid-based proxies. The UI
+    explicitly labels them as such because one point cannot represent
+    all climates within a country.
+    """
+    location = maptiler_to_climate_location(
+        feature
+    )
+
+    result_type = maptiler_feature_type(
+        feature
+    )
+
+    if result_type == "country":
+        country_name = (
+            maptiler_english_name(
+                feature
+            )
+        )
+
+        location[
+            "name"
+        ] = country_name
+
+        location[
+            "country"
+        ] = country_name
+
+        location[
+            "result_type"
+        ] = "country"
+
+        location[
+            "scope_note"
+        ] = (
+            "Country comparison uses the selected country's "
+            "MapTiler centroid as a point proxy. It is not "
+            "a national area-average climate."
+        )
+
+    return location
+
+
+def comparison_snapshot(
+    feature,
+    include_future=False,
+    future_models=None,
+):
+    """
+    Build one comparison record: historical ERA5, current
+    conditions, observed trend and optional CMIP6 ensemble.
+    """
+    location = comparison_location_from_feature(
+        feature
+    )
+    result_type = maptiler_feature_type(
+        feature
+    )
+    label = maptiler_result_label(
+        feature
+    )
+
+    record = {
+        "label": label,
+        "location": location,
+        "result_type": result_type,
+        "scope": comparison_scope_label(
+            result_type
+        ),
+        "city_id": None,
+        "history_status": "not_started",
+        "summary": None,
+        "anomalies": None,
+        "trend": None,
+        "current": {},
+        "air": {},
+        "future_ensemble": None,
+    }
+
+    try:
+        history_result = ensure_city_history(
+            location
+        )
+        record["city_id"] = history_result.get(
+            "city_id"
+        )
+        record["history_status"] = history_result.get(
+            "history_status",
+            "loading",
+        )
+    except Exception:
+        record["history_status"] = "unavailable"
+
+    if record["city_id"] is not None:
+        try:
+            (
+                _city,
+                record["summary"],
+                record["anomalies"],
+                record["trend"],
+            ) = cached_dashboard_data(
+                record["city_id"]
+            )
+        except Exception:
+            pass
+
+    try:
+        live = cached_live_environment(
+            location["latitude"],
+            location["longitude"],
+            location.get(
+                "timezone",
+                "auto",
+            ),
+        )
+        record["current"] = (
+            live.get(
+                "weather",
+                {}
+            ).get(
+                "current",
+                {}
+            )
+        )
+        record["air"] = (
+            live.get(
+                "air",
+                {}
+            ).get(
+                "current",
+                {}
+            )
+        )
+    except Exception:
+        pass
+
+    if include_future and future_models:
+        try:
+            record["future_ensemble"] = (
+                cached_midcentury_ensemble(
+                    location["latitude"],
+                    location["longitude"],
+                    tuple(
+                        future_models
+                    ),
+                )
+            )
+        except Exception:
+            record["future_ensemble"] = None
+
+    return record
+
+
+def comparison_metrics(
+    record,
+):
+    summary_data = record.get(
+        "summary"
+    )
+    anomaly_data = record.get(
+        "anomalies"
+    )
+    trend_data = record.get(
+        "trend"
+    )
+
+    baseline_temp = None
+    baseline_precip = None
+    baseline_hot30 = None
+    baseline_hot35 = None
+    recent_temp = None
+    recent_hot30 = None
+    latest_anomaly = None
+    warming_rate_value = None
+
+    if (
+        summary_data is not None
+        and not summary_data.empty
+        and "year" in summary_data.columns
+    ):
+        baseline = summary_data[
+            (summary_data["year"] >= 1991)
+            &
+            (summary_data["year"] <= 2020)
+        ]
+        recent = summary_data[
+            (summary_data["year"] >= 2016)
+            &
+            (summary_data["year"] <= 2025)
+        ]
+
+        if not baseline.empty:
+            baseline_temp = safe_float(
+                baseline["avg_temperature_c"].mean()
+            )
+            baseline_precip = safe_float(
+                baseline[
+                    "annual_precipitation_mm"
+                ].mean()
+            )
+            baseline_hot30 = safe_float(
+                baseline["hot_days_30c"].mean()
+            )
+            baseline_hot35 = safe_float(
+                baseline[
+                    "extreme_hot_days_35c"
+                ].mean()
+            )
+
+        if not recent.empty:
+            recent_temp = safe_float(
+                recent["avg_temperature_c"].mean()
+            )
+            recent_hot30 = safe_float(
+                recent["hot_days_30c"].mean()
+            )
+
+    if (
+        anomaly_data is not None
+        and not anomaly_data.empty
+    ):
+        latest_anomaly = safe_float(
+            anomaly_data
+            .sort_values("year")
+            .iloc[-1]["anomaly_c"]
+        )
+
+    if trend_data:
+        warming_rate_value = safe_float(
+            trend_data.get(
+                "warming_rate_c_per_decade"
+            )
+        )
+
+    current = record.get(
+        "current",
+        {}
+    )
+    air = record.get(
+        "air",
+        {}
+    )
+    ensemble = record.get(
+        "future_ensemble"
+    ) or {}
+
+    current_temp = safe_float(
+        current.get("temperature_2m")
+    )
+    current_feels = safe_float(
+        current.get("apparent_temperature")
+    )
+    current_humidity = safe_float(
+        current.get("relative_humidity_2m")
+    )
+    current_aqi = safe_float(
+        air.get("european_aqi")
+    )
+
+    future_temp_median = safe_float(
+        ensemble.get(
+            "temperature_median_c"
+        )
+    )
+    future_temp_low = safe_float(
+        ensemble.get(
+            "temperature_min_c"
+        )
+    )
+    future_temp_high = safe_float(
+        ensemble.get(
+            "temperature_max_c"
+        )
+    )
+
+    future_hot30_median = safe_float(
+        ensemble.get(
+            "hot_days_30c_median"
+        )
+    )
+    future_hot30_low = safe_float(
+        ensemble.get(
+            "hot_days_30c_min"
+        )
+    )
+    future_hot30_high = safe_float(
+        ensemble.get(
+            "hot_days_30c_max"
+        )
+    )
+
+    future_precip_median = safe_float(
+        ensemble.get(
+            "precipitation_median_mm"
+        )
+    )
+    future_precip_low = safe_float(
+        ensemble.get(
+            "precipitation_min_mm"
+        )
+    )
+    future_precip_high = safe_float(
+        ensemble.get(
+            "precipitation_max_mm"
+        )
+    )
+
+    recent_temp_delta = None
+    if (
+        recent_temp is not None
+        and baseline_temp is not None
+    ):
+        recent_temp_delta = (
+            recent_temp
+            - baseline_temp
+        )
+
+    future_temp_delta = None
+    if (
+        future_temp_median is not None
+        and baseline_temp is not None
+    ):
+        future_temp_delta = (
+            future_temp_median
+            - baseline_temp
+        )
+
+    return {
+        "baseline_temp": baseline_temp,
+        "baseline_precip": baseline_precip,
+        "baseline_hot30": baseline_hot30,
+        "baseline_hot35": baseline_hot35,
+        "recent_temp": recent_temp,
+        "recent_hot30": recent_hot30,
+        "recent_temp_delta": recent_temp_delta,
+        "current_temp": current_temp,
+        "current_feels": current_feels,
+        "current_humidity": current_humidity,
+        "current_aqi": current_aqi,
+        "latest_anomaly": latest_anomaly,
+        "warming_rate": warming_rate_value,
+        "future_temp_median": future_temp_median,
+        "future_temp_low": future_temp_low,
+        "future_temp_high": future_temp_high,
+        "future_temp_delta": future_temp_delta,
+        "future_hot30_median": future_hot30_median,
+        "future_hot30_low": future_hot30_low,
+        "future_hot30_high": future_hot30_high,
+        "future_precip_median": future_precip_median,
+        "future_precip_low": future_precip_low,
+        "future_precip_high": future_precip_high,
+        "future_model_count": ensemble.get(
+            "model_count",
+            0,
+        ),
+        "future_temp_agreement": ensemble.get(
+            "temperature_agreement",
+            "Not available",
+        ),
+        "future_hot_agreement": ensemble.get(
+            "hot_days_agreement",
+            "Not available",
+        ),
+        "future_precip_agreement": ensemble.get(
+            "precipitation_agreement",
+            "Not available",
+        ),
+    }
+
+
+def comparison_verdict(
+    records,
+):
+    if not records:
+        return {}
+
+    metrics_by_label = {
+        record["label"]: comparison_metrics(
+            record
+        )
+        for record in records
+    }
+
+    def max_label(key):
+        available = [
+            (
+                label,
+                values.get(key),
+            )
+            for label, values
+            in metrics_by_label.items()
+            if values.get(key) is not None
+        ]
+        if not available:
+            return "Not enough data"
+        return max(
+            available,
+            key=lambda row: row[1],
+        )[0]
+
+    return {
+        "warmest_now": max_label(
+            "current_temp"
+        ),
+        "fastest_historical_warming": max_label(
+            "warming_rate"
+        ),
+        "most_baseline_hot_days": max_label(
+            "baseline_hot30"
+        ),
+        "highest_future_heat": max_label(
+            "future_temp_median"
+        ),
+        "largest_future_warming": max_label(
+            "future_temp_delta"
+        ),
+    }
+
+
+def comparison_narrative(
+    records,
+):
+    verdict = comparison_verdict(
+        records
+    )
+    parts = []
+
+    warmest = verdict.get(
+        "warmest_now"
+    )
+    fastest = verdict.get(
+        "fastest_historical_warming"
+    )
+    future = verdict.get(
+        "highest_future_heat"
+    )
+
+    if warmest not in {
+        None,
+        "Not enough data",
+    }:
+        parts.append(
+            f"{warmest} is currently warmest among "
+            f"the selected locations."
+        )
+
+    if fastest not in {
+        None,
+        "Not enough data",
+    }:
+        parts.append(
+            f"{fastest} has the largest observed historical "
+            f"warming rate in the available ERA5 record."
+        )
+
+    if future not in {
+        None,
+        "Not enough data",
+    }:
+        parts.append(
+            f"The CMIP6 ensemble gives {future} the highest "
+            f"median mid-century mean temperature among "
+            f"the selected locations."
+        )
+
+    if not parts:
+        return (
+            "More historical or future data are needed "
+            "for a comparative verdict."
+        )
+
+    return " ".join(parts)
+
+
+def today_normal_label(
+    percentile,
+):
+    if percentile is None:
+        return (
+            "Historical context unavailable",
+            "#92a7b8",
+        )
+
+    value = float(
+        percentile
+    )
+
+    if value >= 97:
+        return (
+            "Exceptionally hot",
+            "#ff5b5b",
+        )
+
+    if value >= 90:
+        return (
+            "Unusually hot",
+            "#ff8a55",
+        )
+
+    if value >= 75:
+        return (
+            "Warmer than typical",
+            "#ffb35c",
+        )
+
+    if value <= 3:
+        return (
+            "Exceptionally cool",
+            "#4da8ff",
+        )
+
+    if value <= 10:
+        return (
+            "Unusually cool",
+            "#62b8ff",
+        )
+
+    if value <= 25:
+        return (
+            "Cooler than typical",
+            "#7dc7ff",
+        )
+
+    return (
+        "Within the typical range",
+        "#63dc91",
+    )
+
+
+def safe_date_label(
+    value,
+):
+    if value is None:
+        return "N/A"
+
+    try:
+        return value.strftime(
+            "%d %b %Y"
+        )
+    except AttributeError:
+        return str(value)
+
+
 def aqi_note(aqi):
     if aqi is None:
         return "AQI unavailable"
@@ -865,6 +2328,63 @@ def cached_live_environment(
         "weather": weather_data,
         "air": air_data,
     }
+
+
+@st.cache_data(
+    ttl=1800,
+    max_entries=128,
+    show_spinner=False,
+)
+def cached_today_forecast(
+    latitude,
+    longitude,
+    timezone,
+):
+    return get_today_forecast(
+        latitude,
+        longitude,
+        timezone=timezone,
+    )
+
+
+@st.cache_data(
+    ttl=21600,
+    max_entries=128,
+    show_spinner=False,
+)
+def cached_today_climate_context(
+    city_id,
+    target_date,
+    forecast_high_c,
+    forecast_low_c,
+):
+    return get_today_climate_context(
+        city_id=city_id,
+        target_date=target_date,
+        forecast_high_c=forecast_high_c,
+        forecast_low_c=forecast_low_c,
+        window_days=7,
+    )
+
+
+@st.cache_data(
+    ttl=86400,
+    max_entries=128,
+    show_spinner=False,
+)
+def cached_midcentury_ensemble(
+    latitude,
+    longitude,
+    model_names,
+):
+    """Cache one multi-model future ensemble for 24 hours."""
+    return get_midcentury_ensemble(
+        latitude=latitude,
+        longitude=longitude,
+        model_names=tuple(
+            model_names
+        ),
+    )
 
 
 @st.cache_data(
@@ -1055,6 +2575,9 @@ with st.sidebar:
             "Map Explorer",
             "Climate Trends",
             "Data & Methods",
+            "Compare Places",
+            "Climate Passport",
+            "About",
         ],
         key="main_navigation",
         label_visibility="collapsed",
@@ -1064,6 +2587,9 @@ with st.sidebar:
             "Map Explorer": "▧   Map Explorer",
             "Climate Trends": "↗   Climate Trends",
             "Data & Methods": "▤   Data & Methods",
+            "Compare Places": "⇄   Compare Places",
+            "Climate Passport": "◈   Climate Passport",
+            "About": "◎   About ClimatePulse",
         }[value],
     )
 
@@ -1351,6 +2877,65 @@ if st.session_state.selected_city_id is not None:
 
 
 
+today_forecast = {}
+today_context = None
+
+if city is not None:
+
+    try:
+        today_forecast = (
+            cached_today_forecast(
+                city["latitude"],
+                city["longitude"],
+                city["timezone"],
+            )
+        )
+
+    except Exception:
+        today_forecast = {}
+
+    forecast_high_c = (
+        today_forecast.get(
+            "temperature_max_c"
+        )
+    )
+
+    forecast_low_c = (
+        today_forecast.get(
+            "temperature_min_c"
+        )
+    )
+
+    forecast_date = (
+        today_forecast.get(
+            "date"
+        )
+    )
+
+    if (
+        forecast_date
+        and forecast_high_c is not None
+        and forecast_low_c is not None
+    ):
+
+        try:
+            today_context = (
+                cached_today_climate_context(
+                    city["city_id"],
+                    forecast_date,
+                    float(
+                        forecast_high_c
+                    ),
+                    float(
+                        forecast_low_c
+                    ),
+                )
+            )
+
+        except Exception:
+            today_context = None
+
+
 @st.fragment(
     run_every=5,
 )
@@ -1505,6 +3090,1318 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+# =========================================================
+# DERIVED CLIMATE PRODUCT DATA
+# =========================================================
+#
+# These variables must be created before Climate Passport,
+# Dashboard Fingerprint, or Climate Trends attempts to use
+# them. Keeping them here prevents NameError on navigation.
+# =========================================================
+
+warming_rate = None
+warming_text = "N/A"
+climate_fingerprint = None
+climate_signature = "Climate profile unavailable"
+
+if (
+    summary is not None
+    and not summary.empty
+):
+    warming_rate = (
+        safe_float(
+            trend.get(
+                "warming_rate_c_per_decade"
+            )
+        )
+        if trend
+        else None
+    )
+
+    warming_text = (
+        f"{warming_rate:+.2f}°C/decade"
+        if warming_rate is not None
+        else "N/A"
+    )
+
+    climate_fingerprint = (
+        build_climate_fingerprint(
+            summary,
+            warming_rate,
+        )
+    )
+
+    climate_signature = (
+        fingerprint_signature(
+            climate_fingerprint
+        )
+    )
+
+
+
+# =========================================================
+# COMPARE PLACES
+# =========================================================
+
+if nav_view == "Compare Places":
+
+    st.markdown(
+        """<div class="cp-compare-hero">
+<div class="cp-compare-title">⇄ Compare Places</div>
+<div class="cp-compare-sub">
+Compare two to four places across <b>Past</b>, <b>Recent Climate</b>,
+<b>Now</b>, <b>Observed Trend</b> and an optional
+<b>2041–2049 multi-model CMIP6 ensemble</b>. Future uncertainty is shown
+as model spread rather than as artificial emissions scenarios.
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    control_a, control_b = st.columns(
+        [
+            0.8,
+            1.7,
+        ],
+        gap="medium",
+    )
+
+    with control_a:
+        compare_count = st.selectbox(
+            "Number of places",
+            options=[
+                2,
+                3,
+                4,
+            ],
+            index=0,
+            key="compare_count",
+        )
+
+    with control_b:
+        future_mode = st.selectbox(
+            "Future climate ensemble",
+            options=[
+                "Off",
+                "Core 4 models",
+                "All 7 models",
+            ],
+            index=0,
+            key="future_ensemble_mode",
+            help=(
+                "Core 4 is recommended for routine use. "
+                "All 7 gives a broader model-spread check "
+                "but uses heavier climate API calls."
+            ),
+        )
+
+    if future_mode == "Core 4 models":
+        selected_future_models = [
+            "CMCC_CM2_VHR4",
+            "MRI_AGCM3_2_S",
+            "EC_Earth3P_HR",
+            "MPI_ESM1_2_XR",
+        ]
+    elif future_mode == "All 7 models":
+        selected_future_models = list(
+            CLIMATE_MODELS
+        )
+    else:
+        selected_future_models = []
+
+    include_future = bool(
+        selected_future_models
+    )
+
+    st.markdown(
+        """<div class="cp-compare-warning">
+<b>Scope:</b> country selections use a centroid-point proxy rather than
+a national area average. Future low/median/high values represent the
+spread across selected climate models — not low/medium/high emissions
+pathways.
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    selector_columns = st.columns(
+        compare_count,
+        gap="small",
+    )
+
+    selected_features = []
+
+    for index in range(
+        compare_count
+    ):
+        state_key = (
+            f"compare_feature_{index}"
+        )
+
+        with selector_columns[index]:
+            result = st_searchbox(
+                global_search,
+                key=(
+                    f"compare_search_{index}"
+                ),
+                label=(
+                    f"Place {index + 1}"
+                ),
+                placeholder=(
+                    "Search country, city or place..."
+                ),
+                debounce=300,
+                edit_after_submit="option",
+                clear_on_submit=False,
+            )
+
+            if result:
+                st.session_state[
+                    state_key
+                ] = result
+
+            stored = st.session_state.get(
+                state_key
+            )
+
+            if stored:
+                selected_features.append(
+                    stored
+                )
+
+    clear_col, note_col = st.columns(
+        [
+            0.8,
+            3.2,
+        ],
+        vertical_alignment="center",
+    )
+
+    with clear_col:
+        if st.button(
+            "Clear comparison",
+            width="stretch",
+        ):
+            for index in range(4):
+                st.session_state.pop(
+                    f"compare_feature_{index}",
+                    None,
+                )
+            st.rerun()
+
+    with note_col:
+        st.caption(
+            "Historical metrics appear when the ERA5 record "
+            "for that location is ready."
+        )
+
+    if len(selected_features) < 2:
+        st.markdown(
+            """<div class="cp-landing">
+<b>Select at least two locations</b><br>
+<span class="cp-muted">
+ClimatePulse can compare two, three or four locations side by side.
+</span>
+</div>""",
+            unsafe_allow_html=True,
+        )
+        st.stop()
+
+    comparison_records = []
+
+    with st.spinner(
+        (
+            "Preparing historical, live and CMIP6 ensemble data..."
+            if include_future
+            else "Preparing historical and live comparison..."
+        )
+    ):
+        for feature in selected_features:
+            comparison_records.append(
+                comparison_snapshot(
+                    feature,
+                    include_future=include_future,
+                    future_models=selected_future_models,
+                )
+            )
+
+    # -----------------------------------------------------
+    # OVERVIEW CARDS
+    # -----------------------------------------------------
+
+    st.markdown(
+        "### Side-by-side overview"
+    )
+
+    overview_columns = st.columns(
+        len(comparison_records),
+        gap="small",
+    )
+
+    for column, record in zip(
+        overview_columns,
+        comparison_records,
+    ):
+        values = comparison_metrics(
+            record
+        )
+
+        current_text = (
+            f"{values['current_temp']:.1f}°C"
+            if values["current_temp"] is not None
+            else "N/A"
+        )
+        baseline_text = (
+            f"{values['baseline_temp']:.1f}°C"
+            if values["baseline_temp"] is not None
+            else "Loading"
+        )
+        trend_text = (
+            f"{values['warming_rate']:+.2f}°C/dec"
+            if values["warming_rate"] is not None
+            else "Loading"
+        )
+
+        if values["future_temp_median"] is not None:
+            future_text = (
+                f"{values['future_temp_median']:.1f}°C"
+            )
+            future_range = (
+                f"{values['future_temp_low']:.1f}–"
+                f"{values['future_temp_high']:.1f}°C "
+                f"({values['future_model_count']} models)"
+            )
+        else:
+            future_text = (
+                "Off"
+                if not include_future
+                else "Unavailable"
+            )
+            future_range = "—"
+
+        with column:
+            st.markdown(
+                f"""<div class="cp-compare-place">
+<div class="cp-compare-name">{record["label"]}</div>
+<div class="cp-compare-type">{record["scope"]}</div>
+<div class="cp-compare-big">{current_text}</div>
+<div class="cp-compare-caption">Current temperature</div>
+
+<div class="cp-compare-mini">
+<div class="cp-compare-mini-card">
+<div class="cp-compare-mini-label">1991–2020 baseline</div>
+<div class="cp-compare-mini-value">{baseline_text}</div>
+</div>
+<div class="cp-compare-mini-card">
+<div class="cp-compare-mini-label">Observed warming</div>
+<div class="cp-compare-mini-value">{trend_text}</div>
+</div>
+<div class="cp-compare-mini-card">
+<div class="cp-compare-mini-label">2041–2049 median</div>
+<div class="cp-compare-mini-value">{future_text}</div>
+</div>
+<div class="cp-compare-mini-card">
+<div class="cp-compare-mini-label">Model spread</div>
+<div class="cp-compare-mini-value">{future_range}</div>
+</div>
+</div>
+</div>""",
+                unsafe_allow_html=True,
+            )
+
+    # -----------------------------------------------------
+    # DETAILED MATRIX
+    # -----------------------------------------------------
+
+    st.markdown(
+        "### Past · Recent · Now · Trend · Future"
+    )
+
+    matrix_rows = []
+
+    for record in comparison_records:
+        values = comparison_metrics(
+            record
+        )
+
+        future_hot_range = None
+        if values["future_hot30_median"] is not None:
+            future_hot_range = (
+                f"{values['future_hot30_low']:.0f}–"
+                f"{values['future_hot30_high']:.0f}"
+            )
+
+        matrix_rows.append(
+            {
+                "Place": record["label"],
+                "Scope": record["scope"],
+                "Past mean temp 1991–2020 (°C)": values["baseline_temp"],
+                "Past annual precip (mm)": values["baseline_precip"],
+                "Past hot days ≥30°C / yr": values["baseline_hot30"],
+                "Past days ≥35°C / yr": values["baseline_hot35"],
+                "Recent mean temp 2016–2025 (°C)": values["recent_temp"],
+                "Recent change vs baseline (°C)": values["recent_temp_delta"],
+                "Now temp (°C)": values["current_temp"],
+                "Feels like (°C)": values["current_feels"],
+                "Humidity (%)": values["current_humidity"],
+                "European AQI": values["current_aqi"],
+                "Latest anomaly (°C)": values["latest_anomaly"],
+                "Observed trend (°C/decade)": values["warming_rate"],
+                "Future temp median (°C)": values["future_temp_median"],
+                "Future temp model min (°C)": values["future_temp_low"],
+                "Future temp model max (°C)": values["future_temp_high"],
+                "Future hot days median / yr": values["future_hot30_median"],
+                "Future hot days model range": future_hot_range,
+                "Future precip median (mm/yr)": values["future_precip_median"],
+                "Future model count": values["future_model_count"],
+            }
+        )
+
+    comparison_df = pd.DataFrame(
+        matrix_rows
+    )
+
+    st.dataframe(
+        comparison_df,
+        width="stretch",
+        hide_index=True,
+    )
+
+    chart_labels = [
+        record["label"]
+        for record in comparison_records
+    ]
+
+    chart_metrics = [
+        comparison_metrics(record)
+        for record in comparison_records
+    ]
+
+    # -----------------------------------------------------
+    # TEMPERATURE / TREND
+    # -----------------------------------------------------
+
+    chart_a, chart_b = st.columns(
+        2,
+        gap="medium",
+    )
+
+    with chart_a:
+        with st.container(border=True):
+            st.markdown(
+                '<div class="cp-section-heading">Temperature evolution</div>',
+                unsafe_allow_html=True,
+            )
+
+            fig = go.Figure()
+
+            fig.add_trace(
+                go.Bar(
+                    x=chart_labels,
+                    y=[
+                        values["baseline_temp"]
+                        for values in chart_metrics
+                    ],
+                    name="1991–2020",
+                )
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=chart_labels,
+                    y=[
+                        values["recent_temp"]
+                        for values in chart_metrics
+                    ],
+                    name="2016–2025",
+                )
+            )
+
+            if include_future:
+                fig.add_trace(
+                    go.Bar(
+                        x=chart_labels,
+                        y=[
+                            values["future_temp_median"]
+                            for values in chart_metrics
+                        ],
+                        error_y=dict(
+                            type="data",
+                            symmetric=False,
+                            array=[
+                                (
+                                    values["future_temp_high"]
+                                    - values["future_temp_median"]
+                                )
+                                if (
+                                    values["future_temp_high"] is not None
+                                    and values["future_temp_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                            arrayminus=[
+                                (
+                                    values["future_temp_median"]
+                                    - values["future_temp_low"]
+                                )
+                                if (
+                                    values["future_temp_low"] is not None
+                                    and values["future_temp_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                        ),
+                        name="2041–2049 ensemble",
+                    )
+                )
+
+            fig.update_layout(
+                barmode="group"
+            )
+            style_plotly(
+                fig,
+                height=330,
+                y_title="°C",
+            )
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                config={
+                    "displayModeBar": False,
+                },
+            )
+
+    with chart_b:
+        with st.container(border=True):
+            st.markdown(
+                '<div class="cp-section-heading">Observed warming rate</div>',
+                unsafe_allow_html=True,
+            )
+
+            fig = go.Figure(
+                go.Bar(
+                    x=chart_labels,
+                    y=[
+                        values["warming_rate"]
+                        for values in chart_metrics
+                    ],
+                )
+            )
+            style_plotly(
+                fig,
+                height=330,
+                y_title="°C / decade",
+            )
+            fig.update_layout(
+                showlegend=False
+            )
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                config={
+                    "displayModeBar": False,
+                },
+            )
+
+    # -----------------------------------------------------
+    # FUTURE ENSEMBLE
+    # -----------------------------------------------------
+
+    if include_future:
+
+        future_a, future_b = st.columns(
+            2,
+            gap="medium",
+        )
+
+        with future_a:
+            with st.container(border=True):
+                st.markdown(
+                    '<div class="cp-section-heading">Future hot days</div>',
+                    unsafe_allow_html=True,
+                )
+
+                fig = go.Figure(
+                    go.Bar(
+                        x=chart_labels,
+                        y=[
+                            values["future_hot30_median"]
+                            for values in chart_metrics
+                        ],
+                        error_y=dict(
+                            type="data",
+                            symmetric=False,
+                            array=[
+                                (
+                                    values["future_hot30_high"]
+                                    - values["future_hot30_median"]
+                                )
+                                if (
+                                    values["future_hot30_high"] is not None
+                                    and values["future_hot30_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                            arrayminus=[
+                                (
+                                    values["future_hot30_median"]
+                                    - values["future_hot30_low"]
+                                )
+                                if (
+                                    values["future_hot30_low"] is not None
+                                    and values["future_hot30_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                        ),
+                    )
+                )
+                style_plotly(
+                    fig,
+                    height=310,
+                    y_title="Days ≥30°C / year",
+                )
+                fig.update_layout(
+                    showlegend=False
+                )
+                st.plotly_chart(
+                    fig,
+                    width="stretch",
+                    config={
+                        "displayModeBar": False,
+                    },
+                )
+
+        with future_b:
+            with st.container(border=True):
+                st.markdown(
+                    '<div class="cp-section-heading">Future annual precipitation</div>',
+                    unsafe_allow_html=True,
+                )
+
+                fig = go.Figure(
+                    go.Bar(
+                        x=chart_labels,
+                        y=[
+                            values["future_precip_median"]
+                            for values in chart_metrics
+                        ],
+                        error_y=dict(
+                            type="data",
+                            symmetric=False,
+                            array=[
+                                (
+                                    values["future_precip_high"]
+                                    - values["future_precip_median"]
+                                )
+                                if (
+                                    values["future_precip_high"] is not None
+                                    and values["future_precip_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                            arrayminus=[
+                                (
+                                    values["future_precip_median"]
+                                    - values["future_precip_low"]
+                                )
+                                if (
+                                    values["future_precip_low"] is not None
+                                    and values["future_precip_median"] is not None
+                                )
+                                else 0
+                                for values in chart_metrics
+                            ],
+                        ),
+                    )
+                )
+                style_plotly(
+                    fig,
+                    height=310,
+                    y_title="mm / year",
+                )
+                fig.update_layout(
+                    showlegend=False
+                )
+                st.plotly_chart(
+                    fig,
+                    width="stretch",
+                    config={
+                        "displayModeBar": False,
+                    },
+                )
+
+        st.markdown(
+            "### Model agreement"
+        )
+
+        agreement_columns = st.columns(
+            len(comparison_records),
+            gap="small",
+        )
+
+        for column, record in zip(
+            agreement_columns,
+            comparison_records,
+        ):
+            values = comparison_metrics(
+                record
+            )
+
+            with column:
+                st.markdown(
+                    f"**{record['label']}**"
+                )
+                st.metric(
+                    "Temperature",
+                    values["future_temp_agreement"],
+                )
+                st.metric(
+                    "Hot days",
+                    values["future_hot_agreement"],
+                )
+                st.metric(
+                    "Precipitation",
+                    values["future_precip_agreement"],
+                )
+
+        with st.expander(
+            "Individual CMIP6 model results",
+            expanded=False,
+        ):
+            model_rows = []
+
+            for record in comparison_records:
+                ensemble = (
+                    record.get(
+                        "future_ensemble"
+                    )
+                    or {}
+                )
+
+                for model_result in ensemble.get(
+                    "models",
+                    []
+                ):
+                    model_rows.append(
+                        {
+                            "Place": record["label"],
+                            "Model": model_result.get("model"),
+                            "Mean temp 2041–2049 (°C)": model_result.get(
+                                "future_mean_temperature_c"
+                            ),
+                            "Hot days ≥30°C / yr": model_result.get(
+                                "future_hot_days_30c_per_year"
+                            ),
+                            "Annual precip (mm)": model_result.get(
+                                "future_annual_precipitation_mm"
+                            ),
+                        }
+                    )
+
+            if model_rows:
+                st.dataframe(
+                    pd.DataFrame(model_rows),
+                    width="stretch",
+                    hide_index=True,
+                )
+            else:
+                st.info(
+                    "No future-model results were returned."
+                )
+
+    # -----------------------------------------------------
+    # VERDICT
+    # -----------------------------------------------------
+
+    verdict = comparison_verdict(
+        comparison_records
+    )
+    narrative = comparison_narrative(
+        comparison_records
+    )
+
+    st.markdown(
+        f"""<div class="cp-verdict">
+<div class="cp-verdict-title">Data-based comparison verdict</div>
+<div class="cp-compare-sub">{narrative}</div>
+
+<div class="cp-verdict-grid">
+<div class="cp-verdict-card">
+<div class="cp-verdict-label">Warmest right now</div>
+<div class="cp-verdict-value">{verdict.get("warmest_now", "N/A")}</div>
+</div>
+<div class="cp-verdict-card">
+<div class="cp-verdict-label">Fastest observed warming</div>
+<div class="cp-verdict-value">{verdict.get("fastest_historical_warming", "N/A")}</div>
+</div>
+<div class="cp-verdict-card">
+<div class="cp-verdict-label">Most baseline hot days</div>
+<div class="cp-verdict-value">{verdict.get("most_baseline_hot_days", "N/A")}</div>
+</div>
+<div class="cp-verdict-card">
+<div class="cp-verdict-label">Highest future ensemble heat</div>
+<div class="cp-verdict-value">{verdict.get("highest_future_heat", "Enable ensemble")}</div>
+</div>
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """<div class="cp-product-note">
+Future model ranges show CMIP6 model spread, not emissions-scenario
+uncertainty. Open-Meteo recommends comparing multiple climate models,
+and local precipitation generally carries greater model uncertainty
+than long-period temperature change.
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.download_button(
+        "Download comparison CSV",
+        data=comparison_df.to_csv(
+            index=False
+        ),
+        file_name="climatepulse_comparison.csv",
+        mime="text/csv",
+        width="stretch",
+    )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • Compare Places</div>',
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
+
+
+
+# =========================================================
+# CLIMATE PASSPORT
+# =========================================================
+
+if nav_view == "Climate Passport":
+
+    passport_baseline_ready = False
+
+    if (
+        summary is not None
+        and not summary.empty
+        and "year" in summary.columns
+    ):
+        passport_baseline_years = summary[
+            (
+                summary["year"] >= 1991
+            )
+            &
+            (
+                summary["year"] <= 2020
+            )
+        ]
+
+        passport_baseline_ready = (
+            len(
+                passport_baseline_years
+            )
+            >= 25
+        )
+
+    if (
+        city is None
+        or summary is None
+        or summary.empty
+        or climate_fingerprint is None
+        or not passport_baseline_ready
+    ):
+
+        st.markdown(
+            """
+<div class="cp-landing">
+<b>Climate Passport needs historical climate data</b><br>
+<span class="cp-muted">
+Search a location with sufficient ERA5 history. If it is a new place,
+ClimatePulse will prepare its historical record before the passport can
+be generated.
+</span>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if city is not None:
+            render_history_progress(
+                city["city_id"]
+            )
+
+        st.stop()
+
+    fp = climate_fingerprint
+
+    passport_latest = (
+        summary
+        .sort_values(
+            "year"
+        )
+        .iloc[-1]
+    )
+
+    passport_baseline = summary[
+        (
+            summary["year"] >= 1991
+        )
+        &
+        (
+            summary["year"] <= 2020
+        )
+    ]
+
+    passport_mean_temp = safe_float(
+        passport_baseline[
+            "avg_temperature_c"
+        ].mean()
+    )
+
+    passport_precip = safe_float(
+        passport_baseline[
+            "annual_precipitation_mm"
+        ].mean()
+    )
+
+    passport_hot_days = safe_float(
+        passport_baseline[
+            "hot_days_30c"
+        ].mean()
+    )
+
+    passport_extreme_days = safe_float(
+        passport_baseline[
+            "extreme_hot_days_35c"
+        ].mean()
+    )
+
+    passport_record_high = safe_float(
+        summary[
+            "hottest_day_c"
+        ].max()
+    )
+
+    passport_record_low = safe_float(
+        summary[
+            "coldest_day_c"
+        ].min()
+    )
+
+    passport_html = f"""<div class="cp-passport">
+<div class="cp-passport-eyebrow">ClimatePulse Climate Passport</div>
+<div class="cp-passport-location">{city["city_name"]}, {city["country_name"]}</div>
+<div class="cp-passport-meta">◈ {city["latitude"]:.4f}°, {city["longitude"]:.4f}° &nbsp; • &nbsp; ERA5 1990–2025 &nbsp; • &nbsp; Baseline 1991–2020</div>
+<div class="cp-passport-signature">{climate_signature}</div>
+</div>"""
+
+    st.markdown(
+        passport_html,
+        unsafe_allow_html=True,
+    )
+
+    passport_left, passport_right = st.columns(
+        [
+            1.12,
+            0.88,
+        ],
+        gap="medium",
+    )
+
+    with passport_left:
+
+        st.markdown(
+            f"""<div class="cp-passport-grid">
+<div class="cp-passport-card">
+<div class="cp-passport-label">Baseline mean temperature</div>
+<div class="cp-passport-value">{fmt(passport_mean_temp, ".1f")}°C</div>
+<div class="cp-passport-note">1991–2020 annual mean</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Baseline precipitation</div>
+<div class="cp-passport-value">{fmt(passport_precip, ".0f")} mm</div>
+<div class="cp-passport-note">Average annual total</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Hot days ≥30°C</div>
+<div class="cp-passport-value">{fmt(passport_hot_days, ".0f")}</div>
+<div class="cp-passport-note">Average days/year</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Very hot days ≥35°C</div>
+<div class="cp-passport-value">{fmt(passport_extreme_days, ".0f")}</div>
+<div class="cp-passport-note">Average days/year</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Warming trend</div>
+<div class="cp-passport-value">{warming_text}</div>
+<div class="cp-passport-note">1990–2025 linear trend</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Record high</div>
+<div class="cp-passport-value">{fmt(passport_record_high, ".1f")}°C</div>
+<div class="cp-passport-note">Daily maximum, 1990–2025</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Record low</div>
+<div class="cp-passport-value">{fmt(passport_record_low, ".1f")}°C</div>
+<div class="cp-passport-note">Daily minimum, 1990–2025</div>
+</div>
+
+<div class="cp-passport-card">
+<div class="cp-passport-label">Latest annual mean</div>
+<div class="cp-passport-value">{fmt(passport_latest["avg_temperature_c"], ".1f")}°C</div>
+<div class="cp-passport-note">{int(passport_latest["year"])} ERA5</div>
+</div>
+</div>""",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            """
+<div class="cp-product-note">
+The Climate Passport summarizes the selected ERA5 grid point. For a
+large administrative region, it represents the selected centroid rather
+than an area-wide average.
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with passport_right:
+
+        passport_categories = [
+            "Thermal Level",
+            "Hot Extremes",
+            "Rainfall",
+            "Rainfall Variability",
+            "Warming Signal",
+        ]
+
+        passport_values = [
+            fp["thermal"]["score"],
+            fp["hot_extremes"]["score"],
+            fp["rainfall"]["score"],
+            fp["variability"]["score"],
+            fp["warming"]["score"],
+        ]
+
+        passport_values = [
+            value
+            if value is not None
+            else 0
+            for value in passport_values
+        ]
+
+        passport_radar = go.Figure()
+
+        passport_radar.add_trace(
+            go.Scatterpolar(
+                r=(
+                    passport_values
+                    + [
+                        passport_values[0]
+                    ]
+                ),
+                theta=(
+                    passport_categories
+                    + [
+                        passport_categories[0]
+                    ]
+                ),
+                fill="toself",
+                name="Climate Fingerprint",
+                hovertemplate=(
+                    "%{theta}: %{r:.0f}/100"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+        passport_radar.update_layout(
+            height=390,
+            margin=dict(
+                l=35,
+                r=35,
+                t=35,
+                b=25,
+            ),
+            title=dict(
+                text="Climate Fingerprint",
+                x=0.5,
+                font=dict(
+                    size=15,
+                ),
+            ),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    visible=True,
+                    range=[
+                        0,
+                        100,
+                    ],
+                    tickvals=[
+                        0,
+                        25,
+                        50,
+                        75,
+                        100,
+                    ],
+                    gridcolor="rgba(130,170,195,.12)",
+                    linecolor="rgba(130,170,195,.12)",
+                    tickfont=dict(
+                        size=8,
+                        color="#68869a",
+                    ),
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(130,170,195,.10)",
+                    linecolor="rgba(130,170,195,.10)",
+                    tickfont=dict(
+                        size=9,
+                        color="#adc1cf",
+                    ),
+                ),
+            ),
+            font=dict(
+                color="#d9e8f1",
+            ),
+        )
+
+        st.plotly_chart(
+            passport_radar,
+            width="stretch",
+            config={
+                "displayModeBar": False,
+            },
+        )
+
+    st.markdown(
+        "### Fingerprint interpretation"
+    )
+
+    interpretation_columns = st.columns(
+        5,
+        gap="small",
+    )
+
+    interpretation_data = [
+        (
+            "Thermal",
+            fp["thermal"],
+        ),
+        (
+            "Heat",
+            fp["hot_extremes"],
+        ),
+        (
+            "Rainfall",
+            fp["rainfall"],
+        ),
+        (
+            "Variability",
+            fp["variability"],
+        ),
+        (
+            "Warming",
+            fp["warming"],
+        ),
+    ]
+
+    for column, (
+        title_text,
+        item,
+    ) in zip(
+        interpretation_columns,
+        interpretation_data,
+    ):
+        with column:
+            st.metric(
+                title_text,
+                (
+                    f"{fingerprint_score_text(item['score'])}/100"
+                ),
+                item[
+                    "label"
+                ],
+            )
+
+    st.markdown(
+        """
+<div class="cp-product-note">
+<b>How to read the Passport:</b> a higher fingerprint score means more of
+that climate characteristic under the fixed ClimatePulse scale. It does
+not mean “better”, “worse”, “safer” or “more dangerous”. Climate risk
+would require separate hazard, exposure and vulnerability analysis.
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    passport_export = {
+        "location": (
+            f"{city['city_name']}, "
+            f"{city['country_name']}"
+        ),
+        "latitude": float(
+            city["latitude"]
+        ),
+        "longitude": float(
+            city["longitude"]
+        ),
+        "historical_period": "1990-2025",
+        "baseline": "1991-2020",
+        "signature": climate_signature,
+        "baseline_mean_temperature_c": (
+            passport_mean_temp
+        ),
+        "baseline_precipitation_mm": (
+            passport_precip
+        ),
+        "baseline_hot_days_30c": (
+            passport_hot_days
+        ),
+        "baseline_extreme_hot_days_35c": (
+            passport_extreme_days
+        ),
+        "warming_rate_c_per_decade": (
+            warming_rate
+        ),
+        "record_high_c": (
+            passport_record_high
+        ),
+        "record_low_c": (
+            passport_record_low
+        ),
+        "fingerprint": {
+            key: {
+                "score": (
+                    value[
+                        "score"
+                    ]
+                ),
+                "label": (
+                    value[
+                        "label"
+                    ]
+                ),
+            }
+            for key, value in fp.items()
+        },
+    }
+
+    st.download_button(
+        "Download Climate Passport (JSON)",
+        data=json.dumps(
+            passport_export,
+            indent=2,
+        ),
+        file_name=(
+            f"climatepulse_"
+            f"{city['city_name'].lower().replace(' ', '_')}_"
+            f"passport.json"
+        ),
+        mime="application/json",
+        width="stretch",
+    )
+
+    st.caption(
+        "Climate Passport is an interpretive ClimatePulse product "
+        "based on ERA5 reanalysis and the selected point. "
+        "It is not an official climate classification or risk assessment."
+    )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • Climate Passport</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.stop()
+
+
+
+if nav_view == "About":
+
+    st.markdown(
+        """<div class="cp-about-hero">
+<div class="cp-about-name">ClimatePulse</div>
+<div class="cp-about-headline">Independent climate intelligence project</div>
+<div class="cp-about-copy">
+ClimatePulse combines live environmental conditions, historical ERA5
+reanalysis and climate-model projections to make local climate
+information easier to explore and interpret.
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""<div class="cp-about-hero">
+<div class="cp-about-name">{BUILDER_NAME}</div>
+<div class="cp-about-headline">{BUILDER_HEADLINE}</div>
+<div class="cp-about-copy">{BUILDER_BIO}</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    link_left, link_right = st.columns(
+        2,
+        gap="medium",
+    )
+
+    with link_left:
+        if GITHUB_URL:
+            st.link_button(
+                "GitHub",
+                GITHUB_URL,
+                width="stretch",
+            )
+
+    with link_right:
+        if LINKEDIN_URL:
+            st.link_button(
+                "LinkedIn",
+                LINKEDIN_URL,
+                width="stretch",
+            )
+
+    st.markdown(
+        """
+**Project stack:** Python · PostgreSQL / Neon · Streamlit · MapTiler ·
+Open-Meteo · ERA5 · CMIP6
+
+ClimatePulse is an independent informational project. Historical
+indicators use gridded reanalysis around selected coordinates. Future
+values are climate-model projections and are not deterministic weather
+forecasts or official risk assessments.
+        """
+    )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • About</div>',
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
+
 if nav_view in {"Dashboard", "Map Explorer"}:
     st.markdown('<div id="map-explorer"></div>', unsafe_allow_html=True)
     map_col, current_col = st.columns([1.55, 1], gap="medium")
@@ -1551,6 +4448,229 @@ if nav_view in {"Dashboard", "Map Explorer"}:
                     """,
                     unsafe_allow_html=True,
                 )
+
+
+if (
+    nav_view == "Dashboard"
+    and city is not None
+    and today_forecast
+    and today_context
+    and (
+        today_context.get(
+            "baseline_sample_count"
+        )
+        or 0
+    ) >= 100
+):
+
+    forecast_high = safe_float(
+        today_forecast.get(
+            "temperature_max_c"
+        )
+    )
+
+    forecast_low = safe_float(
+        today_forecast.get(
+            "temperature_min_c"
+        )
+    )
+
+    typical_high = safe_float(
+        today_context.get(
+            "typical_high_c"
+        )
+    )
+
+    typical_low = safe_float(
+        today_context.get(
+            "typical_low_c"
+        )
+    )
+
+    high_p10 = safe_float(
+        today_context.get(
+            "high_p10_c"
+        )
+    )
+
+    high_p90 = safe_float(
+        today_context.get(
+            "high_p90_c"
+        )
+    )
+
+    high_percentile = safe_float(
+        today_context.get(
+            "high_percentile"
+        )
+    )
+
+    seasonal_shift = safe_float(
+        today_context.get(
+            "seasonal_shift_c"
+        )
+    )
+
+    record_high = safe_float(
+        today_context.get(
+            "seasonal_record_high_c"
+        )
+    )
+
+    record_high_date = (
+        today_context.get(
+            "seasonal_record_high_date"
+        )
+    )
+
+    difference_high = None
+
+    if (
+        forecast_high is not None
+        and typical_high is not None
+    ):
+        difference_high = (
+            forecast_high
+            - typical_high
+        )
+
+    normal_label, normal_color = (
+        today_normal_label(
+            high_percentile
+        )
+    )
+
+    if difference_high is None:
+        difference_text = "N/A"
+    else:
+        difference_text = (
+            f"{difference_high:+.1f}°C"
+        )
+
+    if high_percentile is None:
+        percentile_text = "N/A"
+        percentile_note = (
+            "Not enough baseline observations"
+        )
+    else:
+        percentile_text = (
+            f"{high_percentile:.0f}th"
+        )
+
+        percentile_note = (
+            f"Warmer than about "
+            f"{high_percentile:.0f}% of comparable "
+            f"1991–2020 days"
+        )
+
+    if (
+        high_p10 is not None
+        and high_p90 is not None
+    ):
+        normal_range_text = (
+            f"{high_p10:.1f}–"
+            f"{high_p90:.1f}°C"
+        )
+    else:
+        normal_range_text = "N/A"
+
+    if seasonal_shift is None:
+        shift_text = "N/A"
+    else:
+        shift_text = (
+            f"{seasonal_shift:+.1f}°C"
+        )
+
+    if record_high is None:
+        record_text = "N/A"
+        record_note = ""
+    else:
+        record_text = (
+            f"{record_high:.1f}°C"
+        )
+        record_note = (
+            safe_date_label(
+                record_high_date
+            )
+        )
+
+    if (
+        forecast_high is not None
+        and typical_high is not None
+    ):
+        if difference_high >= 2:
+            story = (
+                f"Today's forecast high is "
+                f"{difference_high:.1f}°C above the "
+                f"1991–2020 seasonal average."
+            )
+
+        elif difference_high <= -2:
+            story = (
+                f"Today's forecast high is "
+                f"{abs(difference_high):.1f}°C below the "
+                f"1991–2020 seasonal average."
+            )
+
+        else:
+            story = (
+                "Today's forecast high is close to the "
+                "1991–2020 seasonal average."
+            )
+
+    else:
+        story = (
+            "Historical comparison is unavailable."
+        )
+
+    intel_html = f"""<div class="cp-intel">
+<div class="cp-intel-top">
+<div>
+<div class="cp-intel-title">◉ Is Today Normal?</div>
+<div class="cp-intel-sub">Today's forecast compared with ERA5 days within ±7 calendar days of this date, using the 1991–2020 climate baseline.</div>
+</div>
+<div class="cp-intel-status" style="color:{normal_color}; border-color:{normal_color}55;">{normal_label}</div>
+</div>
+
+<div class="cp-intel-grid">
+<div class="cp-intel-card">
+<div class="cp-intel-label">Today's forecast high</div>
+<div class="cp-intel-value">{forecast_high:.1f}°C</div>
+<div class="cp-intel-note">Typical: {typical_high:.1f}°C • {difference_text}</div>
+</div>
+
+<div class="cp-intel-card">
+<div class="cp-intel-label">Climate percentile</div>
+<div class="cp-intel-value">{percentile_text}</div>
+<div class="cp-intel-note">{percentile_note}</div>
+</div>
+
+<div class="cp-intel-card">
+<div class="cp-intel-label">Typical high range</div>
+<div class="cp-intel-value">{normal_range_text}</div>
+<div class="cp-intel-note">10th–90th percentile, 1991–2020</div>
+</div>
+
+<div class="cp-intel-card">
+<div class="cp-intel-label">Seasonal warming shift</div>
+<div class="cp-intel-value">{shift_text}</div>
+<div class="cp-intel-note">2016–2025 vs 1991–2000 average high</div>
+</div>
+
+<div class="cp-intel-card">
+<div class="cp-intel-label">Seasonal record high</div>
+<div class="cp-intel-value">{record_text}</div>
+<div class="cp-intel-note">{record_note}</div>
+</div>
+</div>
+
+<div class="cp-intel-story">{story} This is climatological context, not a statement that climate change caused today's weather.</div>
+</div>"""
+
+    st.markdown(
+        intel_html,
+        unsafe_allow_html=True,
+    )
 
 
 if nav_view == "Map Explorer":
@@ -1687,8 +4807,6 @@ if nav_view == "Climate Trends":
 latest = summary.iloc[-1]
 latest_anomaly = anomalies.iloc[-1]
 latest_year = int(latest["year"])
-warming_rate = safe_float(trend.get("warming_rate_c_per_decade")) if trend else None
-warming_text = f"{warming_rate:+.2f}°C/decade" if warming_rate is not None else "N/A"
 
 st.markdown(
     f"""
@@ -1703,6 +4821,181 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+# =========================================================
+# CLIMATE FINGERPRINT
+# =========================================================
+
+if (
+    nav_view == "Dashboard"
+    and climate_fingerprint
+):
+
+    fp = climate_fingerprint
+
+    fingerprint_html = f"""<div class="cp-fingerprint-wrap">
+<div class="cp-fingerprint-header">
+<div>
+<div class="cp-fingerprint-title">◈ Climate Fingerprint</div>
+<div class="cp-fingerprint-sub">A compact descriptive signature of this location's 1991–2020 climate and 1990–2025 warming signal.</div>
+</div>
+<div class="cp-fingerprint-badge">{climate_signature}</div>
+</div>
+
+<div class="cp-fingerprint-metrics">
+<div class="cp-fingerprint-metric">
+<div class="cp-fingerprint-label">Thermal Level</div>
+<div class="cp-fingerprint-score">{fingerprint_score_text(fp["thermal"]["score"])}</div>
+<div class="cp-fingerprint-desc">{fp["thermal"]["label"]} · {fmt(fp["thermal"]["raw"], ".1f")}°C baseline mean</div>
+</div>
+
+<div class="cp-fingerprint-metric">
+<div class="cp-fingerprint-label">Hot Extremes</div>
+<div class="cp-fingerprint-score">{fingerprint_score_text(fp["hot_extremes"]["score"])}</div>
+<div class="cp-fingerprint-desc">{fp["hot_extremes"]["label"]} hot-day profile</div>
+</div>
+
+<div class="cp-fingerprint-metric">
+<div class="cp-fingerprint-label">Rainfall Amount</div>
+<div class="cp-fingerprint-score">{fingerprint_score_text(fp["rainfall"]["score"])}</div>
+<div class="cp-fingerprint-desc">{fp["rainfall"]["label"]} · {fmt(fp["rainfall"]["raw"], ".0f")} mm/year</div>
+</div>
+
+<div class="cp-fingerprint-metric">
+<div class="cp-fingerprint-label">Rainfall Variability</div>
+<div class="cp-fingerprint-score">{fingerprint_score_text(fp["variability"]["score"])}</div>
+<div class="cp-fingerprint-desc">{fp["variability"]["label"]} year-to-year variation</div>
+</div>
+
+<div class="cp-fingerprint-metric">
+<div class="cp-fingerprint-label">Warming Signal</div>
+<div class="cp-fingerprint-score">{fingerprint_score_text(fp["warming"]["score"])}</div>
+<div class="cp-fingerprint-desc">{fp["warming"]["label"]} · {warming_text}</div>
+</div>
+</div>
+
+<div class="cp-product-note">
+Fingerprint scores are descriptive 0–100 indices built from fixed climate anchors. They are designed to summarize climate character, not to rank safety, quality of life or climate risk.
+</div>
+</div>"""
+
+    st.markdown(
+        fingerprint_html,
+        unsafe_allow_html=True,
+    )
+
+    radar_categories = [
+        "Thermal Level",
+        "Hot Extremes",
+        "Rainfall",
+        "Rainfall Variability",
+        "Warming Signal",
+    ]
+
+    radar_values = [
+        fp["thermal"]["score"],
+        fp["hot_extremes"]["score"],
+        fp["rainfall"]["score"],
+        fp["variability"]["score"],
+        fp["warming"]["score"],
+    ]
+
+    radar_values = [
+        value
+        if value is not None
+        else 0
+        for value in radar_values
+    ]
+
+    radar_fig = go.Figure()
+
+    radar_fig.add_trace(
+        go.Scatterpolar(
+            r=(
+                radar_values
+                + [
+                    radar_values[0]
+                ]
+            ),
+            theta=(
+                radar_categories
+                + [
+                    radar_categories[0]
+                ]
+            ),
+            fill="toself",
+            name="Climate Fingerprint",
+            line=dict(
+                width=2,
+            ),
+            hovertemplate=(
+                "%{theta}: %{r:.0f}/100"
+                "<extra></extra>"
+            ),
+        )
+    )
+
+    radar_fig.update_layout(
+        height=320,
+        margin=dict(
+            l=35,
+            r=35,
+            t=20,
+            b=25,
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        polar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            radialaxis=dict(
+                visible=True,
+                range=[
+                    0,
+                    100,
+                ],
+                tickvals=[
+                    0,
+                    25,
+                    50,
+                    75,
+                    100,
+                ],
+                tickfont=dict(
+                    size=9,
+                    color="#668398",
+                ),
+                gridcolor="rgba(130,170,195,.12)",
+                linecolor="rgba(130,170,195,.12)",
+            ),
+            angularaxis=dict(
+                tickfont=dict(
+                    size=10,
+                    color="#a9becd",
+                ),
+                gridcolor="rgba(130,170,195,.10)",
+                linecolor="rgba(130,170,195,.10)",
+            ),
+        ),
+        font=dict(
+            color="#d7e5ee",
+        ),
+    )
+
+    with st.expander(
+        "View fingerprint radar",
+        expanded=False,
+    ):
+        st.plotly_chart(
+            radar_fig,
+            width="stretch",
+            config={
+                "displayModeBar": False,
+            },
+        )
+
+
 
 st.markdown('<div id="climate-trends"></div>', unsafe_allow_html=True)
 chart1, chart2, chart3 = st.columns(3, gap="medium")
