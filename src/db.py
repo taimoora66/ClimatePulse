@@ -1,13 +1,15 @@
 import os
 from datetime import date
+from functools import lru_cache
 
-import psycopg
+import streamlit as st
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 
 # =========================================================
-# ENVIRONMENT / DATABASE CONNECTION
+# ENVIRONMENT / DATABASE
 # =========================================================
 
 load_dotenv()
@@ -15,10 +17,12 @@ load_dotenv()
 
 def get_database_url():
     """
-    Use Streamlit Cloud secrets when deployed.
-    Fall back to local .env during development.
-    """
+    Streamlit Cloud:
+        read DATABASE_URL from st.secrets.
 
+    Local development:
+        fall back to DATABASE_URL from .env.
+    """
     try:
         if "DATABASE_URL" in st.secrets:
             return st.secrets["DATABASE_URL"]
@@ -30,7 +34,6 @@ def get_database_url():
 
 DATABASE_URL = get_database_url()
 
-
 if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL is missing. "
@@ -38,17 +41,44 @@ if not DATABASE_URL:
         "or in the local .env file."
     )
 
+
+# =========================================================
+# CONNECTION POOL
+# =========================================================
+
+@lru_cache(maxsize=1)
+def get_pool():
+    """
+    Keep a small reusable PostgreSQL connection pool.
+
+    This avoids creating a brand-new TLS/PostgreSQL
+    connection to Neon for every SQL query.
+    """
+    return ConnectionPool(
+        conninfo=DATABASE_URL,
+        min_size=0,
+        max_size=5,
+        timeout=10,
+        max_idle=300,
+        max_lifetime=1800,
+        kwargs={
+            "row_factory": dict_row,
+        },
+        check=ConnectionPool.check_connection,
+        open=True,
+    )
+
+
 def get_connection():
     """
-    Open a PostgreSQL connection.
+    Return a pooled connection context manager.
 
-    Rows are returned as dictionaries, for example:
-    row["city_name"]
+    Existing code can continue using:
+
+        with get_connection() as conn:
+            ...
     """
-    return psycopg.connect(
-        DATABASE_URL,
-        row_factory=dict_row,
-    )
+    return get_pool().connection()
 
 
 # =========================================================
@@ -57,12 +87,8 @@ def get_connection():
 
 def upsert_city(location):
     """
-    Insert a geocoded location into the cities table.
-
-    If the same external location already exists,
-    update its metadata and return its city_id.
+    Insert/update a city and return its internal city_id.
     """
-
     query = """
         INSERT INTO cities (
             external_id,
@@ -124,7 +150,6 @@ def upsert_city(location):
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-
             cur.execute(
                 query,
                 values,
@@ -136,20 +161,19 @@ def upsert_city(location):
 
 
 # =========================================================
-# FAST DAILY WEATHER STORAGE
+# FAST DAILY ERA5 STORAGE
 # =========================================================
 
-def insert_weather_daily(city_id, weather_data):
+def insert_weather_daily(
+    city_id,
+    weather_data,
+):
     """
-    Bulk-load daily ERA5 weather into PostgreSQL.
+    Bulk-load daily ERA5 data using PostgreSQL COPY.
 
-    The function first COPY-loads rows into a temporary
-    staging table, then performs one upsert into the real
-    weather_daily table.
-
-    This is much faster than executemany() for ~13k rows.
+    For ~13,000 daily records this is substantially
+    faster than issuing thousands of INSERT statements.
     """
-
     daily = weather_data.get("daily")
 
     if not daily:
@@ -163,7 +187,6 @@ def insert_weather_daily(city_id, weather_data):
     records = []
 
     for i in range(len(dates)):
-
         records.append(
             (
                 city_id,
@@ -172,7 +195,7 @@ def insert_weather_daily(city_id, weather_data):
                 daily["temperature_2m_max"][i],
                 daily["temperature_2m_min"][i],
                 daily["precipitation_sum"][i],
-                daily["wind_speed_10m_max"][i],
+                (daily.get("wind_speed_10m_max") or [None] * len(dates))[i],
                 "ERA5",
             )
         )
@@ -180,7 +203,6 @@ def insert_weather_daily(city_id, weather_data):
     with get_connection() as conn:
         with conn.cursor() as cur:
 
-            # Temporary table exists only for this transaction.
             cur.execute(
                 """
                 CREATE TEMP TABLE weather_daily_stage (
@@ -197,7 +219,6 @@ def insert_weather_daily(city_id, weather_data):
                 """
             )
 
-            # Very fast bulk insert into staging table.
             with cur.copy(
                 """
                 COPY weather_daily_stage (
@@ -217,7 +238,6 @@ def insert_weather_daily(city_id, weather_data):
                 for record in records:
                     copy.write_row(record)
 
-            # Upsert staged rows into the permanent table.
             cur.execute(
                 """
                 INSERT INTO weather_daily (
@@ -276,16 +296,26 @@ def insert_weather_daily(city_id, weather_data):
 # HISTORICAL COVERAGE CHECK
 # =========================================================
 
-HISTORY_START = date(1990, 1, 1)
-HISTORY_END = date(2025, 12, 31)
+HISTORY_START = date(
+    1990,
+    1,
+    1,
+)
+
+HISTORY_END = date(
+    2025,
+    12,
+    31,
+)
 
 
-def city_has_complete_history(city_id):
+def city_has_complete_history(
+    city_id,
+):
     """
-    Return True when the city already has a complete
-    1990-01-01 through 2025-12-31 daily climate record.
+    Return True when the city already contains the
+    complete 1990–2025 daily history.
     """
-
     query = """
         SELECT
             MIN(observation_date) AS first_date,
@@ -296,7 +326,6 @@ def city_has_complete_history(city_id):
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-
             cur.execute(
                 query,
                 (city_id,),
@@ -317,4 +346,69 @@ def city_has_complete_history(city_id):
         result["first_date"] <= HISTORY_START
         and
         result["last_date"] >= HISTORY_END
+    )
+
+
+# =========================================================
+# HISTORY YEAR COVERAGE
+# =========================================================
+
+def get_existing_history_years(
+    city_id,
+):
+    """
+    Return years that already have daily rows stored.
+
+    A successful yearly Open-Meteo chunk is inserted
+    transactionally, so a present year can be safely skipped
+    when resuming a background history job.
+    """
+    query = """
+        SELECT DISTINCT
+            EXTRACT(
+                YEAR FROM observation_date
+            )::INTEGER AS year
+        FROM weather_daily
+        WHERE city_id = %s
+        ORDER BY year;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                query,
+                (city_id,),
+            )
+
+            rows = cur.fetchall()
+
+    return {
+        int(row["year"])
+        for row in rows
+        if row["year"] is not None
+    }
+
+
+def get_history_record_count(
+    city_id,
+):
+    query = """
+        SELECT COUNT(*) AS record_count
+        FROM weather_daily
+        WHERE city_id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                query,
+                (city_id,),
+            )
+
+            row = cur.fetchone()
+
+    return int(
+        row["record_count"]
+        if row
+        else 0
     )
