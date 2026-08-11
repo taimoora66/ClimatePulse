@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -18,6 +19,15 @@ from src.api.future_climate import (
     CLIMATE_MODELS,
     get_midcentury_ensemble,
 )
+from src.api.country_rankings import (
+    CCKP_PERIODS,
+    CCKP_SCENARIOS,
+    get_country_projection_rankings,
+    get_country_scenario_trajectory,
+)
+from src.api.country_dashboard import (
+    get_country_historical_climate,
+)
 from src.api.maptiler_search import search_maptiler_places
 from src.queries.insights import get_today_climate_context
 from src.profile import (
@@ -28,7 +38,10 @@ from src.profile import (
     LINKEDIN_URL,
     PORTFOLIO_URL,
     PROJECT_MOTIVATION,
+    PROFILE_PHOTO_PATH,
 )
+from src.about_page import render_about_page
+
 from src.queries.climate import (
     get_annual_climate_summary,
     get_city_details,
@@ -762,6 +775,322 @@ html, body, [class*="css"] {
 @media (max-width: 520px) {
     .cp-verdict-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+
+/* Global Rankings */
+.cp-rank-hero {
+    background: linear-gradient(135deg, rgba(14,37,56,.98), rgba(7,20,33,.98));
+    border: 1px solid rgba(72,197,255,.18);
+    border-radius: 16px;
+    padding: 19px;
+    margin: 10px 0 14px 0;
+}
+.cp-rank-title { color:#fff; font-size:1.35rem; font-weight:820; }
+.cp-rank-sub { color:#8ca5b7; font-size:.79rem; line-height:1.55; margin-top:5px; }
+.cp-rank-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin:12px 0 14px; }
+.cp-rank-card { background:#0b1c2a; border:1px solid rgba(139,179,208,.11); border-radius:11px; padding:12px; }
+.cp-rank-label { color:#7f99ac; font-size:.67rem; }
+.cp-rank-value { color:#fff; font-size:1.12rem; font-weight:780; margin-top:4px; line-height:1.25; }
+.cp-rank-note { color:#678295; font-size:.65rem; margin-top:4px; }
+.cp-scenario-pill { display:inline-flex; border:1px solid rgba(83,193,255,.20); background:rgba(83,193,255,.08); border-radius:999px; padding:5px 9px; color:#8dd5ff; font-size:.70rem; font-weight:700; }
+.cp-method-box { background:rgba(11,29,43,.8); border-left:3px solid #43b9f5; border-radius:8px; padding:10px 12px; color:#9fb2bf; font-size:.72rem; line-height:1.52; margin-top:10px; }
+@media (max-width:900px) { .cp-rank-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:520px) { .cp-rank-grid { grid-template-columns:1fr; } }
+
+
+.cp-country-overview {
+    margin: 18px 0 12px 0;
+    padding: 14px 16px;
+    background: linear-gradient(
+        135deg,
+        rgba(15, 39, 58, .96),
+        rgba(8, 24, 38, .96)
+    );
+    border: 1px solid rgba(72, 197, 255, .16);
+    border-radius: 13px;
+}
+.cp-country-overview-title {
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+.cp-country-overview-sub {
+    color: #86a2b5;
+    font-size: .72rem;
+    margin-top: 3px;
+}
+
+
+/* =========================================================
+   PROFESSIONAL ABOUT / CREATOR PAGE
+   ========================================================= */
+
+.about-main-hero {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(13, 37, 56, 0.98),
+            rgba(7, 22, 35, 0.98)
+        );
+    border: 1px solid rgba(91, 195, 255, 0.16);
+    border-radius: 18px;
+    padding: 28px 30px;
+    margin: 8px 0 26px 0;
+}
+
+.about-eyebrow {
+    color: #43b9f5;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+}
+
+.about-main-title {
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 850;
+    line-height: 1.12;
+}
+
+.about-main-subtitle {
+    color: #79cfff;
+    font-size: 0.96rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.about-main-copy {
+    color: #a5bac8;
+    font-size: 0.84rem;
+    line-height: 1.72;
+    max-width: 920px;
+    margin-top: 16px;
+}
+
+.creator-shell {
+    margin-top: 2px;
+    margin-bottom: 12px;
+}
+
+.creator-card {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(12, 31, 46, 0.98),
+            rgba(8, 24, 37, 0.98)
+        );
+    border: 1px solid rgba(139, 179, 208, 0.13);
+    border-radius: 16px;
+    padding: 24px 26px;
+    min-height: 218px;
+}
+
+.creator-label {
+    color: #43b9f5;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    font-weight: 800;
+}
+
+.creator-name {
+    color: #ffffff;
+    font-size: 1.62rem;
+    font-weight: 850;
+    margin-top: 7px;
+}
+
+.creator-role {
+    color: #5ec8ff;
+    font-size: 0.87rem;
+    font-weight: 650;
+    margin-top: 5px;
+}
+
+.creator-university {
+    color: #8ea9ba;
+    font-size: 0.76rem;
+    margin-top: 4px;
+}
+
+.creator-bio {
+    color: #b2c3ce;
+    font-size: 0.80rem;
+    line-height: 1.66;
+    margin-top: 16px;
+}
+
+.creator-focus {
+    color: #7390a2;
+    font-size: 0.70rem;
+    margin-top: 15px;
+}
+
+.profile-photo-card {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(12, 31, 46, 0.98),
+            rgba(8, 24, 37, 0.98)
+        );
+    border: 1px solid rgba(139, 179, 208, 0.13);
+    border-radius: 16px;
+    padding: 10px;
+    text-align: center;
+}
+
+.profile-photo-card img {
+    border-radius: 13px !important;
+    object-fit: cover !important;
+    border: 1px solid rgba(92, 190, 240, 0.18);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.20);
+}
+
+.profile-photo-caption {
+    color: #6f8ea1;
+    font-size: 0.63rem;
+    margin-top: 8px;
+}
+
+.profile-photo-placeholder {
+    width: 100%;
+    min-height: 215px;
+    border-radius: 13px;
+    border: 1px dashed rgba(116, 171, 205, 0.28);
+    background: #0b1c2a;
+    color: #7792a5;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 18px;
+}
+
+.profile-photo-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+
+.about-section-title {
+    color: #ffffff;
+    font-size: 1.03rem;
+    font-weight: 800;
+    margin-top: 30px;
+    margin-bottom: 12px;
+}
+
+.about-feature-card {
+    min-height: 146px;
+    background: #0b1c2a;
+    border: 1px solid rgba(139, 179, 208, 0.11);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.about-feature-icon {
+    color: #4ec7ff;
+    font-size: 1.03rem;
+    margin-bottom: 8px;
+}
+
+.about-feature-title {
+    color: #ffffff;
+    font-size: 0.81rem;
+    font-weight: 750;
+}
+
+.about-feature-copy {
+    color: #829dad;
+    font-size: 0.69rem;
+    line-height: 1.5;
+    margin-top: 6px;
+}
+
+.about-info-card {
+    background: #091925;
+    border: 1px solid rgba(139, 179, 208, 0.11);
+    border-radius: 13px;
+    padding: 20px;
+    min-height: 190px;
+    margin-top: 20px;
+}
+
+.about-info-label {
+    color: #4ec7ff;
+    font-size: 0.61rem;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+}
+
+.about-info-heading {
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 750;
+    margin-top: 8px;
+}
+
+.about-info-copy {
+    color: #91a8b7;
+    font-size: 0.74rem;
+    line-height: 1.66;
+    margin-top: 10px;
+}
+
+.tech-chip-wrap {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.tech-chip {
+    background: rgba(58, 172, 235, 0.09);
+    color: #95d9ff;
+    border: 1px solid rgba(58, 172, 235, 0.18);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.67rem;
+    font-weight: 600;
+}
+
+.about-note {
+    background: rgba(11, 29, 43, 0.75);
+    border-left: 3px solid #43b9f5;
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: #8ea6b6;
+    font-size: 0.70rem;
+    line-height: 1.55;
+    margin-top: 18px;
+}
+
+.about-footer {
+    text-align: center;
+    color: #59768a;
+    font-size: 0.66rem;
+    margin-top: 30px;
+    padding: 18px 0 8px;
+}
+
+@media (max-width: 850px) {
+    .about-main-hero {
+        padding: 22px;
+    }
+
+    .about-main-title {
+        font-size: 1.65rem;
+    }
+
+    .creator-card {
+        padding: 20px;
+    }
+
+    .about-feature-card {
+        min-height: 132px;
     }
 }
 
@@ -2089,6 +2418,51 @@ def comparison_narrative(
     return " ".join(parts)
 
 
+def alpha3_country_code(
+    country_code,
+):
+    if not country_code:
+        return None
+
+    value = str(country_code).strip().upper()
+
+    if len(value) == 3:
+        return value
+
+    try:
+        import pycountry
+
+        country = pycountry.countries.get(
+            alpha_2=value
+        )
+
+        if country:
+            return country.alpha_3
+
+    except Exception:
+        pass
+
+    return None
+
+
+def selected_feature_iso3(
+    feature,
+):
+    try:
+        location = maptiler_to_climate_location(
+            feature
+        )
+
+        return alpha3_country_code(
+            location.get(
+                "country_code"
+            )
+        )
+
+    except Exception:
+        return None
+
+
 def today_normal_label(
     percentile,
 ):
@@ -2388,6 +2762,53 @@ def cached_midcentury_ensemble(
 
 
 @st.cache_data(
+    ttl=43200,
+    max_entries=256,
+    show_spinner=False,
+)
+def cached_country_historical_climate(
+    iso3_code,
+):
+    """
+    National spatial-average historical climate from
+    World Bank CCKP / CRU.
+    """
+    return get_country_historical_climate(
+        iso3_code=iso3_code,
+    )
+
+
+@st.cache_data(
+    ttl=43200,
+    max_entries=64,
+    show_spinner=False,
+)
+def cached_country_projection_rankings(
+    scenario,
+    period,
+):
+    return get_country_projection_rankings(
+        scenario=scenario,
+        period=period,
+    )
+
+
+@st.cache_data(
+    ttl=43200,
+    max_entries=256,
+    show_spinner=False,
+)
+def cached_country_scenario_trajectory(
+    iso3_code,
+    scenario,
+):
+    return get_country_scenario_trajectory(
+        iso3_code=iso3_code,
+        scenario=scenario,
+    )
+
+
+@st.cache_data(
     ttl=3600,
     max_entries=256,
     show_spinner=False,
@@ -2576,6 +2997,7 @@ with st.sidebar:
             "Climate Trends",
             "Data & Methods",
             "Compare Places",
+            "Global Rankings",
             "Climate Passport",
             "About",
         ],
@@ -2588,6 +3010,7 @@ with st.sidebar:
             "Climate Trends": "↗   Climate Trends",
             "Data & Methods": "▤   Data & Methods",
             "Compare Places": "⇄   Compare Places",
+            "Global Rankings": "▲   Global Rankings",
             "Climate Passport": "◈   Climate Passport",
             "About": "◎   About ClimatePulse",
         }[value],
@@ -2614,7 +3037,7 @@ with st.sidebar:
 <div class="cp-data-box">
 <b style="color:#eaf4fb;">Data &amp; Models</b><br>
 Weather: Open-Meteo<br>
-Climate: ERA5 reanalysis<br>
+Climate: ERA5 / CRU / CMIP6<br>
 Analytics: PostgreSQL / Neon<br>
 Maps: CARTO + MapTiler
 </div>
@@ -2936,6 +3359,133 @@ if city is not None:
             today_context = None
 
 
+
+# =========================================================
+# COUNTRY-LEVEL NATIONAL CLIMATE DATA
+# =========================================================
+#
+# A country is fundamentally different from a city/point.
+# ClimatePulse therefore uses:
+#
+#   Historical national climate:
+#       World Bank CCKP / CRU spatial country averages
+#
+#   Future national climate:
+#       World Bank CCKP / CMIP6 country aggregates
+#
+#   Live conditions:
+#       centroid weather only, explicitly labelled as a proxy
+#
+# This avoids presenting one centroid ERA5 grid cell as
+# "the climate of the whole country".
+# =========================================================
+
+country_feature = (
+    st.session_state.get(
+        "selected_country"
+    )
+)
+
+country_national = None
+country_iso3 = None
+country_location = None
+country_live_weather = {}
+country_live_air = {}
+country_future_default = None
+country_data_error = None
+country_future_error = None
+
+if country_feature:
+
+    country_iso3 = selected_feature_iso3(
+        country_feature
+    )
+
+    try:
+        country_location = (
+            maptiler_to_climate_location(
+                country_feature
+            )
+        )
+    except Exception:
+        country_location = None
+
+    country_data_error = None
+    country_future_error = None
+
+    if country_iso3:
+        try:
+            country_national = (
+                cached_country_historical_climate(
+                    country_iso3
+                )
+            )
+        except Exception as error:
+            country_national = None
+            country_data_error = str(
+                error
+            )
+
+        try:
+            country_future_default = (
+                cached_country_scenario_trajectory(
+                    country_iso3,
+                    "ssp245",
+                )
+            )
+        except Exception as error:
+            country_future_default = None
+            country_future_error = str(
+                error
+            )
+
+    # A live "national weather" value does not exist.
+    # We still provide the current weather at the country
+    # search centroid as optional geographic context.
+    if country_location:
+        try:
+            country_live = cached_live_environment(
+                country_location[
+                    "latitude"
+                ],
+                country_location[
+                    "longitude"
+                ],
+                country_location.get(
+                    "timezone",
+                    "auto",
+                ),
+            )
+
+            country_live_weather = (
+                country_live
+                .get(
+                    "weather",
+                    {},
+                )
+                .get(
+                    "current",
+                    {},
+                )
+            )
+
+            country_live_air = (
+                country_live
+                .get(
+                    "air",
+                    {},
+                )
+                .get(
+                    "current",
+                    {},
+                )
+            )
+
+        except Exception:
+            country_live_weather = {}
+            country_live_air = {}
+
+
 @st.fragment(
     run_every=5,
 )
@@ -3074,8 +3624,32 @@ if city is not None:
         f"{scope_html}"
     )
 elif st.session_state.selected_country:
-    title = maptiler_result_label(st.session_state.selected_country)
-    meta = "Country view • select a city to load detailed climate analytics"
+    title = maptiler_result_label(
+        st.session_state.selected_country
+    )
+
+    if (
+        country_national is not None
+        and not country_national.empty
+    ):
+        country_source_label = (
+            "National climate data ready"
+        )
+    elif country_data_error:
+        country_source_label = (
+            "National data source unavailable"
+        )
+    else:
+        country_source_label = (
+            "Retrieving national climate data"
+        )
+
+    meta = (
+        f"◈ {country_iso3 or 'Country'}"
+        f"<span>World Bank CCKP national averages</span>"
+        f"<span>CRU historical national series</span>"
+        f"<span>{country_source_label}</span>"
+    )
 else:
     title = "Global Climate Intelligence"
     meta = "Search any city, place or country to explore climate conditions and long-term trends"
@@ -3814,6 +4388,228 @@ ClimatePulse can compare two, three or four locations side by side.
                     "No future-model results were returned."
                 )
 
+
+    # -----------------------------------------------------
+    # CLIMATE TRAJECTORY
+    # -----------------------------------------------------
+
+    st.markdown(
+        "### Climate trajectory"
+    )
+
+    trajectory_fig = go.Figure()
+
+    for record in comparison_records:
+        values = comparison_metrics(
+            record
+        )
+
+        x_values = []
+        y_values = []
+
+        if values["baseline_temp"] is not None:
+            x_values.append("1991–2020")
+            y_values.append(
+                values["baseline_temp"]
+            )
+
+        if values["recent_temp"] is not None:
+            x_values.append("2016–2025")
+            y_values.append(
+                values["recent_temp"]
+            )
+
+        if values["future_temp_median"] is not None:
+            x_values.append("2041–2049")
+            y_values.append(
+                values["future_temp_median"]
+            )
+
+        if len(y_values) >= 2:
+            trajectory_fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=y_values,
+                    mode="lines+markers",
+                    name=record["label"],
+                    hovertemplate=(
+                        "<b>%{fullData.name}</b><br>"
+                        "%{x}: %{y:.2f}°C"
+                        "<extra></extra>"
+                    ),
+                )
+            )
+
+    if trajectory_fig.data:
+        style_plotly(
+            trajectory_fig,
+            height=390,
+            y_title="Mean temperature (°C)",
+        )
+        trajectory_fig.update_layout(
+            hovermode="x unified",
+        )
+        st.plotly_chart(
+            trajectory_fig,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
+
+    # True country-average SSP trajectories when all selections
+    # are countries.
+    country_selections = []
+    all_country_mode = True
+
+    for feature in selected_features:
+        if maptiler_feature_type(feature) != "country":
+            all_country_mode = False
+            break
+
+        iso3 = selected_feature_iso3(
+            feature
+        )
+
+        if not iso3:
+            all_country_mode = False
+            break
+
+        country_selections.append(
+            (
+                maptiler_result_label(feature),
+                iso3,
+            )
+        )
+
+    if all_country_mode:
+
+        st.markdown(
+            "### Country scenario trajectories to 2100"
+        )
+
+        scenario_name = st.selectbox(
+            "Shared Socioeconomic Pathway",
+            options=list(
+                CCKP_SCENARIOS.keys()
+            ),
+            index=1,
+            key="country_compare_scenario",
+        )
+
+        scenario_code = CCKP_SCENARIOS[
+            scenario_name
+        ]
+
+        scenario_fig = go.Figure()
+
+        scenario_rows = []
+
+        for display_name, iso3 in (
+            country_selections
+        ):
+            try:
+                traj = (
+                    cached_country_scenario_trajectory(
+                        iso3,
+                        scenario_code,
+                    )
+                )
+            except Exception:
+                traj = None
+
+            if traj is None or traj.empty:
+                continue
+
+            scenario_fig.add_trace(
+                go.Scatter(
+                    x=traj["period"],
+                    y=traj["median_c"],
+                    mode="lines+markers",
+                    name=display_name,
+                    customdata=traj[
+                        ["p10_c", "p90_c"]
+                    ].values,
+                    hovertemplate=(
+                        "<b>%{fullData.name}</b><br>"
+                        "%{x}<br>"
+                        "Median: %{y:.2f}°C<br>"
+                        "P10–P90: %{customdata[0]:.2f}–"
+                        "%{customdata[1]:.2f}°C"
+                        "<extra></extra>"
+                    ),
+                )
+            )
+
+            for _, row in traj.iterrows():
+                scenario_rows.append(
+                    {
+                        "Country": display_name,
+                        "ISO3": iso3,
+                        "Scenario": scenario_name,
+                        "Period": row["period"],
+                        "Median warming (°C)": row["median_c"],
+                        "P10 (°C)": row["p10_c"],
+                        "P90 (°C)": row["p90_c"],
+                    }
+                )
+
+        if scenario_fig.data:
+            style_plotly(
+                scenario_fig,
+                height=420,
+                y_title=(
+                    "Temperature anomaly vs "
+                    "1995–2014 (°C)"
+                ),
+            )
+            scenario_fig.update_layout(
+                hovermode="x unified",
+            )
+            st.plotly_chart(
+                scenario_fig,
+                width="stretch",
+                config={
+                    "displayModeBar": True,
+                    "responsive": True,
+                },
+            )
+
+            with st.expander(
+                "Scenario data table",
+                expanded=False,
+            ):
+                st.dataframe(
+                    pd.DataFrame(
+                        scenario_rows
+                    ),
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Median warming (°C)": st.column_config.NumberColumn(
+                            "Median warming",
+                            format="%.2f °C",
+                        ),
+                        "P10 (°C)": st.column_config.NumberColumn(
+                            "P10",
+                            format="%.2f °C",
+                        ),
+                        "P90 (°C)": st.column_config.NumberColumn(
+                            "P90",
+                            format="%.2f °C",
+                        ),
+                    },
+                )
+
+            st.caption(
+                "These country trajectories use World Bank CCKP "
+                "national spatial averages. City/place projections "
+                "remain point-based."
+            )
+
+
+
     # -----------------------------------------------------
     # VERDICT
     # -----------------------------------------------------
@@ -3876,6 +4672,495 @@ than long-period temperature change.
         '<div class="cp-footer">ClimatePulse • Compare Places</div>',
         unsafe_allow_html=True,
     )
+    st.stop()
+
+
+
+
+
+# =========================================================
+# GLOBAL COUNTRY WARMING RANKINGS
+# =========================================================
+
+if nav_view == "Global Rankings":
+
+    st.markdown(
+        """<div class="cp-rank-hero">
+<div class="cp-rank-title">▲ Global Country Warming Rankings</div>
+<div class="cp-rank-sub">
+Rank countries by projected mean-temperature change using World Bank
+Climate Change Knowledge Portal country-level CMIP6 spatial aggregates.
+Unlike centroid-based country views, these are national spatial averages.
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    c1, c2, c3 = st.columns(
+        [1.15, 1.15, .8],
+        gap="medium",
+    )
+
+    with c1:
+        scenario_label = st.selectbox(
+            "Emissions pathway",
+            options=list(
+                CCKP_SCENARIOS.keys()
+            ),
+            index=1,
+            key="global_rank_scenario",
+        )
+
+    scenario_code = CCKP_SCENARIOS[
+        scenario_label
+    ]
+
+    with c2:
+        period_label = st.selectbox(
+            "Projection period",
+            options=list(
+                CCKP_PERIODS.keys()
+            ),
+            index=1,
+            key="global_rank_period",
+        )
+
+    period_code = CCKP_PERIODS[
+        period_label
+    ]
+
+    with c3:
+        top_n = st.selectbox(
+            "Show top / bottom",
+            options=[5, 10, 15, 20],
+            index=1,
+            key="global_rank_n",
+        )
+
+    st.markdown(
+        f'<span class="cp-scenario-pill">{scenario_label} · {period_label}</span>',
+        unsafe_allow_html=True,
+    )
+
+    try:
+        ranking_df = cached_country_projection_rankings(
+            scenario_code,
+            period_code,
+        )
+    except Exception as error:
+        st.error(
+            "Unable to load World Bank CCKP country projections."
+        )
+
+        with st.expander(
+            "Technical data-source detail",
+            expanded=False,
+        ):
+            st.code(
+                str(error)
+            )
+
+        st.stop()
+
+    if ranking_df is None or ranking_df.empty:
+        st.error(
+            "Country ranking data could not be parsed from the "
+            "World Bank CCKP response. ClimatePulse did not "
+            "substitute estimated or invented values."
+        )
+        st.caption(
+            "Try another SSP/period once. If the message persists, "
+            "the World Bank endpoint may be temporarily unavailable."
+        )
+        st.stop()
+
+    ranking_df = ranking_df.copy()
+
+    for column in [
+        "projected_warming_c",
+        "p10_c",
+        "p90_c",
+    ]:
+        ranking_df[column] = pd.to_numeric(
+            ranking_df[column],
+            errors="coerce",
+        )
+
+    ranking_df = (
+        ranking_df
+        .dropna(
+            subset=["projected_warming_c"]
+        )
+        .sort_values(
+            "projected_warming_c",
+            ascending=False,
+        )
+        .reset_index(drop=True)
+    )
+
+    ranking_df["rank"] = (
+        ranking_df.index + 1
+    )
+
+    hottest = ranking_df.head(
+        top_n
+    ).copy()
+
+    least = (
+        ranking_df
+        .sort_values(
+            "projected_warming_c",
+            ascending=True,
+        )
+        .head(top_n)
+        .copy()
+    )
+
+    warmest_row = (
+        ranking_df.iloc[0]
+        if not ranking_df.empty
+        else None
+    )
+
+    least_row = (
+        ranking_df.iloc[-1]
+        if not ranking_df.empty
+        else None
+    )
+
+    median_value = safe_float(
+        ranking_df[
+            "projected_warming_c"
+        ].median()
+    )
+
+    st.markdown(
+        f"""<div class="cp-rank-grid">
+<div class="cp-rank-card">
+<div class="cp-rank-label">Highest projected warming</div>
+<div class="cp-rank-value">{warmest_row["country_name"] if warmest_row is not None else "N/A"}</div>
+<div class="cp-rank-note">{fmt(warmest_row["projected_warming_c"] if warmest_row is not None else None, ".2f")}°C</div>
+</div>
+<div class="cp-rank-card">
+<div class="cp-rank-label">Lowest projected warming</div>
+<div class="cp-rank-value">{least_row["country_name"] if least_row is not None else "N/A"}</div>
+<div class="cp-rank-note">{fmt(least_row["projected_warming_c"] if least_row is not None else None, ".2f")}°C</div>
+</div>
+<div class="cp-rank-card">
+<div class="cp-rank-label">Country median</div>
+<div class="cp-rank-value">{fmt(median_value, ".2f")}°C</div>
+<div class="cp-rank-note">Median across returned countries</div>
+</div>
+<div class="cp-rank-card">
+<div class="cp-rank-label">Countries ranked</div>
+<div class="cp-rank-value">{len(ranking_df)}</div>
+<div class="cp-rank-note">National spatial aggregates</div>
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    tab_most, tab_least, tab_all = st.tabs(
+        [
+            "Most warming",
+            "Least warming",
+            "All countries",
+        ]
+    )
+
+    with tab_most:
+        fig = go.Figure(
+            go.Bar(
+                x=hottest["projected_warming_c"],
+                y=hottest["country_name"],
+                orientation="h",
+                customdata=hottest[
+                    ["iso3", "p10_c", "p90_c"]
+                ].values,
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Median: %{x:.2f}°C<br>"
+                    "ISO3: %{customdata[0]}<br>"
+                    "P10–P90: %{customdata[1]:.2f}–"
+                    "%{customdata[2]:.2f}°C"
+                    "<extra></extra>"
+                ),
+            )
+        )
+        fig.update_layout(
+            yaxis=dict(
+                autorange="reversed"
+            ),
+            xaxis_title=(
+                "Projected warming vs 1995–2014 (°C)"
+            ),
+            showlegend=False,
+        )
+        style_plotly(
+            fig,
+            height=max(
+                330,
+                34 * len(hottest),
+            ),
+        )
+        st.plotly_chart(
+            fig,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
+        st.dataframe(
+            hottest[
+                [
+                    "rank",
+                    "country_name",
+                    "iso3",
+                    "projected_warming_c",
+                    "p10_c",
+                    "p90_c",
+                ]
+            ],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "rank": st.column_config.NumberColumn(
+                    "Rank",
+                    format="%d",
+                ),
+                "country_name": "Country",
+                "iso3": "ISO3",
+                "projected_warming_c": st.column_config.NumberColumn(
+                    "Median warming",
+                    format="%.2f °C",
+                ),
+                "p10_c": st.column_config.NumberColumn(
+                    "P10",
+                    format="%.2f °C",
+                ),
+                "p90_c": st.column_config.NumberColumn(
+                    "P90",
+                    format="%.2f °C",
+                ),
+            },
+        )
+
+    with tab_least:
+        fig = go.Figure(
+            go.Bar(
+                x=least["projected_warming_c"],
+                y=least["country_name"],
+                orientation="h",
+                customdata=least[
+                    ["iso3", "p10_c", "p90_c"]
+                ].values,
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Median: %{x:.2f}°C<br>"
+                    "P10–P90: %{customdata[1]:.2f}–"
+                    "%{customdata[2]:.2f}°C"
+                    "<extra></extra>"
+                ),
+            )
+        )
+        fig.update_layout(
+            xaxis_title=(
+                "Projected warming vs 1995–2014 (°C)"
+            ),
+            showlegend=False,
+        )
+        style_plotly(
+            fig,
+            height=max(
+                330,
+                34 * len(least),
+            ),
+        )
+        st.plotly_chart(
+            fig,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
+        st.dataframe(
+            least[
+                [
+                    "country_name",
+                    "iso3",
+                    "projected_warming_c",
+                    "p10_c",
+                    "p90_c",
+                ]
+            ],
+            width="stretch",
+            hide_index=True,
+        )
+
+    with tab_all:
+        filter_text = st.text_input(
+            "Filter countries",
+            placeholder=(
+                "Country name or ISO3..."
+            ),
+            key="rank_filter",
+        )
+
+        filtered = ranking_df.copy()
+
+        if filter_text.strip():
+            q = filter_text.strip().casefold()
+
+            filtered = filtered[
+                filtered["country_name"]
+                .astype(str)
+                .str.casefold()
+                .str.contains(q, na=False)
+                |
+                filtered["iso3"]
+                .astype(str)
+                .str.casefold()
+                .str.contains(q, na=False)
+            ]
+
+        st.dataframe(
+            filtered[
+                [
+                    "rank",
+                    "country_name",
+                    "iso3",
+                    "projected_warming_c",
+                    "p10_c",
+                    "p90_c",
+                ]
+            ],
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "rank": st.column_config.NumberColumn(
+                    "Rank",
+                    format="%d",
+                ),
+                "country_name": "Country",
+                "iso3": "ISO3",
+                "projected_warming_c": st.column_config.ProgressColumn(
+                    "Median warming",
+                    format="%.2f °C",
+                    min_value=float(
+                        ranking_df[
+                            "projected_warming_c"
+                        ].min()
+                    ),
+                    max_value=float(
+                        ranking_df[
+                            "projected_warming_c"
+                        ].max()
+                    ),
+                ),
+                "p10_c": st.column_config.NumberColumn(
+                    "P10",
+                    format="%.2f °C",
+                ),
+                "p90_c": st.column_config.NumberColumn(
+                    "P90",
+                    format="%.2f °C",
+                ),
+            },
+        )
+
+    st.markdown(
+        "### Scenario sensitivity"
+    )
+
+    scenario_fig = go.Figure()
+
+    for scenario_name, scenario_value in (
+        CCKP_SCENARIOS.items()
+    ):
+        try:
+            scenario_df = (
+                cached_country_projection_rankings(
+                    scenario_value,
+                    period_code,
+                )
+            )
+
+            if (
+                scenario_df is None
+                or scenario_df.empty
+            ):
+                continue
+
+            scenario_df = scenario_df.sort_values(
+                "projected_warming_c",
+                ascending=False,
+            ).head(10)
+
+            scenario_fig.add_trace(
+                go.Scatter(
+                    x=scenario_df["country_name"],
+                    y=scenario_df[
+                        "projected_warming_c"
+                    ],
+                    mode="lines+markers",
+                    name=scenario_name,
+                    hovertemplate=(
+                        "<b>%{x}</b><br>"
+                        "%{y:.2f}°C"
+                        "<extra>%{fullData.name}</extra>"
+                    ),
+                )
+            )
+
+        except Exception:
+            continue
+
+    if scenario_fig.data:
+        style_plotly(
+            scenario_fig,
+            height=390,
+            y_title="Projected warming (°C)",
+        )
+        st.plotly_chart(
+            scenario_fig,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
+
+    st.markdown(
+        """<div class="cp-method-box">
+<b>Method:</b> World Bank CCKP CMIP6 country spatial averages.
+Temperature change is the multi-model ensemble anomaly relative to
+1995–2014. P10 and P90 communicate model uncertainty. This is a national
+comparison, unlike ClimatePulse's centroid proxy used for ordinary
+country point searches.
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.download_button(
+        "Download ranking CSV",
+        data=ranking_df.to_csv(
+            index=False
+        ),
+        file_name=(
+            f"climatepulse_country_warming_"
+            f"{scenario_code}_{period_code}.csv"
+        ),
+        mime="text/csv",
+        width="stretch",
+    )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • Global Rankings</div>',
+        unsafe_allow_html=True,
+    )
+
     st.stop()
 
 
@@ -4339,66 +5624,7 @@ would require separate hazard, exposure and vulnerability analysis.
 
 
 if nav_view == "About":
-
-    st.markdown(
-        """<div class="cp-about-hero">
-<div class="cp-about-name">ClimatePulse</div>
-<div class="cp-about-headline">Independent climate intelligence project</div>
-<div class="cp-about-copy">
-ClimatePulse combines live environmental conditions, historical ERA5
-reanalysis and climate-model projections to make local climate
-information easier to explore and interpret.
-</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""<div class="cp-about-hero">
-<div class="cp-about-name">{BUILDER_NAME}</div>
-<div class="cp-about-headline">{BUILDER_HEADLINE}</div>
-<div class="cp-about-copy">{BUILDER_BIO}</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    link_left, link_right = st.columns(
-        2,
-        gap="medium",
-    )
-
-    with link_left:
-        if GITHUB_URL:
-            st.link_button(
-                "GitHub",
-                GITHUB_URL,
-                width="stretch",
-            )
-
-    with link_right:
-        if LINKEDIN_URL:
-            st.link_button(
-                "LinkedIn",
-                LINKEDIN_URL,
-                width="stretch",
-            )
-
-    st.markdown(
-        """
-**Project stack:** Python · PostgreSQL / Neon · Streamlit · MapTiler ·
-Open-Meteo · ERA5 · CMIP6
-
-ClimatePulse is an independent informational project. Historical
-indicators use gridded reanalysis around selected coordinates. Future
-values are climate-model projections and are not deterministic weather
-forecasts or official risk assessments.
-        """
-    )
-
-    st.markdown(
-        '<div class="cp-footer">ClimatePulse • About</div>',
-        unsafe_allow_html=True,
-    )
+    render_about_page()
     st.stop()
 
 
@@ -4433,6 +5659,139 @@ if nav_view in {"Dashboard", "Map Explorer"}:
                     """,
                     unsafe_allow_html=True,
                 )
+            elif country_feature:
+
+                if (
+                    country_national is not None
+                    and not country_national.empty
+                ):
+                    country_baseline = country_national[
+                        (
+                            country_national[
+                                "year"
+                            ] >= 1991
+                        )
+                        &
+                        (
+                            country_national[
+                                "year"
+                            ] <= 2020
+                        )
+                    ]
+
+                    country_recent = country_national[
+                        (
+                            country_national[
+                                "year"
+                            ] >= 2015
+                        )
+                        &
+                        (
+                            country_national[
+                                "year"
+                            ] <= 2024
+                        )
+                    ]
+
+                    national_temp = safe_float(
+                        country_baseline[
+                            "mean_temperature_c"
+                        ].mean()
+                    )
+
+                    recent_temp = safe_float(
+                        country_recent[
+                            "mean_temperature_c"
+                        ].mean()
+                    )
+
+                    national_precip = safe_float(
+                        country_baseline[
+                            "annual_precipitation_mm"
+                        ].mean()
+                    )
+
+                    national_trend = safe_float(
+                        country_national.attrs.get(
+                            "warming_rate_c_per_decade"
+                        )
+                    )
+
+                    centroid_temp = safe_float(
+                        country_live_weather.get(
+                            "temperature_2m"
+                        )
+                    )
+
+                    st.markdown(
+                        f"""
+<div class="cp-section-heading">🌍 &nbsp; National Climate Overview</div>
+<div class="cp-current-temp">{fmt(national_temp, '.1f')}°C</div>
+<div class="cp-muted">1991–2020 national mean temperature</div>
+
+<div class="cp-mini-grid" style="margin-top:18px;">
+<div class="cp-mini-card">
+<div class="cp-mini-label">Recent 2015–2024</div>
+<div class="cp-mini-value">{fmt(recent_temp, '.1f')}°C</div>
+</div>
+<div class="cp-mini-card">
+<div class="cp-mini-label">Warming trend</div>
+<div class="cp-mini-value">{fmt(national_trend, '+.2f')}°C/dec</div>
+</div>
+<div class="cp-mini-card">
+<div class="cp-mini-label">Baseline precipitation</div>
+<div class="cp-mini-value">{fmt(national_precip, '.0f')} mm</div>
+</div>
+<div class="cp-mini-card">
+<div class="cp-mini-label">Centroid weather now</div>
+<div class="cp-mini-value">{fmt(centroid_temp, '.1f')}°C</div>
+</div>
+</div>
+
+<div class="cp-product-note">
+Historical values above are national spatial averages. “Centroid weather now”
+is only a point proxy and is not national current weather.
+</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                else:
+                    centroid_temp = safe_float(
+                        country_live_weather.get(
+                            "temperature_2m"
+                        )
+                    )
+
+                    centroid_humidity = safe_float(
+                        country_live_weather.get(
+                            "relative_humidity_2m"
+                        )
+                    )
+
+                    st.markdown(
+                        f"""
+<div class="cp-section-heading">🌍 &nbsp; Country Climate</div>
+<div class="cp-current-temp">{fmt(centroid_temp, '.1f')}°C</div>
+<div class="cp-muted">
+Live weather at the selected country centroid. This is a geographic
+reference point, not a national-average current temperature.
+</div>
+
+<div class="cp-mini-grid" style="margin-top:18px;">
+<div class="cp-mini-card">
+<div class="cp-mini-label">Centroid humidity</div>
+<div class="cp-mini-value">{fmt(centroid_humidity, '.0f')}%</div>
+</div>
+<div class="cp-mini-card">
+<div class="cp-mini-label">National history</div>
+<div class="cp-mini-value">Unavailable</div>
+</div>
+</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
             else:
                 st.markdown(
                     """
@@ -4443,7 +5802,7 @@ if nav_view in {"Dashboard", "Map Explorer"}:
     <div class="cp-mini-card"><div class="cp-mini-label">Climate history</div><div class="cp-mini-value">1990–2025</div></div>
     <div class="cp-mini-card"><div class="cp-mini-label">Database</div><div class="cp-mini-value">PostgreSQL / Neon</div></div>
     <div class="cp-mini-card"><div class="cp-mini-label">Weather</div><div class="cp-mini-value">Open-Meteo</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Climate</div><div class="cp-mini-value">ERA5</div></div>
+    <div class="cp-mini-card"><div class="cp-mini-label">Climate</div><div class="cp-mini-value">ERA5 / CRU / CMIP6</div></div>
     </div>
                     """,
                     unsafe_allow_html=True,
@@ -4674,9 +6033,92 @@ if (
 
 
 if nav_view == "Map Explorer":
-    if city is not None and st.session_state.get("history_status") != "ready":
-        render_history_progress(city["city_id"])
-    st.markdown('<div class="cp-footer">ClimatePulse • Map Explorer</div>', unsafe_allow_html=True)
+
+    if country_feature:
+        render_country_national_dashboard(
+            compact=True
+        )
+
+    if (
+        city is not None
+        and st.session_state.get(
+            "history_status"
+        )
+        != "ready"
+    ):
+        render_history_progress(
+            city["city_id"]
+        )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • Map Explorer</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.stop()
+
+
+if (
+    nav_view == "Data & Methods"
+    and country_feature
+):
+    st.markdown(
+        "### Country Data & Methods"
+    )
+
+    st.markdown(
+        """
+**Historical national climate:** World Bank Climate Change Knowledge
+Portal (CCKP), spatially aggregated CRU country time series.
+
+**Historical temperature and precipitation:** 1901–2024.
+
+**Reference baseline:** 1991–2020.
+
+**Observed national warming trend:** linear least-squares slope over
+1971–2024, reported in °C per decade.
+
+**Future national projections:** CCKP CMIP6 country spatial averages,
+multi-model ensemble, with SSP1-2.6, SSP2-4.5, SSP3-7.0 and SSP5-8.5.
+
+**Projection uncertainty:** P10 / median / P90 across the climate-model
+ensemble.
+
+**Current weather for a country:** when shown, this is the weather at
+the selected country-search centroid only. It is explicitly a point
+proxy and is not interpreted as a national average.
+        """
+    )
+
+    if (
+        country_national is not None
+        and not country_national.empty
+    ):
+        st.dataframe(
+            country_national,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "year": st.column_config.NumberColumn(
+                    "Year",
+                    format="%d",
+                ),
+                "mean_temperature_c": st.column_config.NumberColumn(
+                    "National mean temperature",
+                    format="%.2f °C",
+                ),
+                "annual_precipitation_mm": st.column_config.NumberColumn(
+                    "National annual precipitation",
+                    format="%.0f mm",
+                ),
+            },
+        )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • Country Data & Methods</div>',
+        unsafe_allow_html=True,
+    )
+
     st.stop()
 
 
@@ -4745,6 +6187,30 @@ centroid rather than a boundary-wide average.
 
     st.markdown(
         '<div class="cp-footer">ClimatePulse • Data & Methods</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.stop()
+
+
+
+# =========================================================
+# COUNTRY DASHBOARD / CLIMATE TRENDS
+# =========================================================
+
+if (
+    country_feature
+    and nav_view in {
+        "Dashboard",
+        "Climate Trends",
+    }
+):
+    render_country_national_dashboard(
+        compact=False
+    )
+
+    st.markdown(
+        '<div class="cp-footer">ClimatePulse • National Climate Intelligence</div>',
         unsafe_allow_html=True,
     )
 

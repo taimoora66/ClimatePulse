@@ -1,25 +1,22 @@
 # =========================================================
-# PUBLIC BUILDER PROFILE
+# PUBLIC PROFILE — CLIMATEPULSE
 # =========================================================
 
 BUILDER_NAME = "Taimoor Ahmad"
 
 BUILDER_HEADLINE = (
-    "MSc Student — Environmental Change & Global Sustainability"
+    "MSc Environmental Change & Global Sustainability"
 )
 
 BUILDER_BIO = (
-    "Master's student at the University of Milan studying "
-    "Environmental Change and Global Sustainability, with an "
-    "interest in climate and environmental data, data-driven "
-    "analysis, and digital tools for understanding environmental "
-    "change."
+    "Interested in climate data, environmental analysis and digital "
+    "tools for making environmental change easier to understand."
 )
 
 PROJECT_MOTIVATION = (
-    "ClimatePulse is an independent project connecting live "
-    "environmental conditions, historical climate data and "
-    "climate-model projections in one accessible interface."
+    "ClimatePulse is an independent environmental-data project that "
+    "brings together live conditions, historical climate information "
+    "and future climate projections in one accessible interface."
 )
 
 GITHUB_URL = (
@@ -31,3 +28,5 @@ LINKEDIN_URL = (
 )
 
 PORTFOLIO_URL = ""
+
+PROFILE_PHOTO_PATH = "assets/profile.jpg"
