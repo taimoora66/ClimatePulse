@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -8,10 +9,23 @@ import pandas as pd
 import plotly.graph_objects as go
 import pydeck as pdk
 import streamlit as st
-
+from src.ui_v27 import (
+    dark_dataframe,
+    inject_v27_ui,
+    style_plotly_v27,
+)
+from src.analytics import (
+    capture_streamlit_context,
+    ensure_analytics_database,
+    get_analytics_summary,
+    is_local_session,
+    render_analytics_heartbeat,
+    track_event_once,
+    track_local_sessions_enabled,
+    track_pageview,
+)
 from dotenv import load_dotenv
 from streamlit_searchbox import st_searchbox
-
 from src.api.air_quality import get_current_air_quality
 from src.api.current_weather import get_current_weather
 from src.api.today_forecast import get_today_forecast
@@ -83,6 +97,22 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# Analytics is useful, but it must never prevent the climate app from loading.
+try:
+    ensure_analytics_database()
+    ANALYTICS_READY = True
+    ANALYTICS_INIT_ERROR = None
+except Exception as analytics_error:
+    ANALYTICS_READY = False
+    ANALYTICS_INIT_ERROR = str(
+        analytics_error
+    )
+    print(
+        "ClimatePulse analytics initialization error:",
+        analytics_error,
+    )
+
+inject_v27_ui()
 
 st.markdown(
     """
@@ -1139,6 +1169,98 @@ div[data-testid="stChatInput"] input::placeholder {
 [data-testid="stExpander"] details {
     background: rgba(4, 17, 27, .82) !important;
 }
+
+
+/* =========================================================
+   V34 — PROFESSIONAL GLOBAL SEARCH + AUDIENCE STATUS
+   ========================================================= */
+.cp-search-panel {
+    border: 1px solid rgba(65, 201, 244, .18);
+    border-radius: 16px;
+    padding: 11px 13px 12px;
+    background:
+        radial-gradient(circle at 92% 8%, rgba(51, 211, 239, .08), transparent 34%),
+        linear-gradient(145deg, rgba(9, 26, 40, .98), rgba(5, 17, 28, .98));
+    box-shadow:
+        0 14px 34px rgba(0, 0, 0, .22),
+        inset 0 0 0 1px rgba(255,255,255,.018);
+}
+
+.cp-search-kicker {
+    color: #5fdcff;
+    font-size: .64rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.cp-search-title {
+    color: #f6fbff;
+    font-size: .91rem;
+    font-weight: 720;
+    margin-bottom: 1px;
+}
+
+.cp-search-help {
+    color: #7894a8;
+    font-size: .68rem;
+    line-height: 1.35;
+    margin-bottom: 7px;
+}
+
+.cp-audience-wrap {
+    height: 100%;
+    min-height: 78px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.cp-audience-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(75, 220, 164, .24);
+    background:
+        linear-gradient(135deg, rgba(20, 67, 55, .30), rgba(7, 27, 29, .82));
+    color: #b9f7d4;
+    font-size: .75rem;
+    font-weight: 730;
+    white-space: nowrap;
+    box-shadow: 0 10px 26px rgba(0,0,0,.18);
+}
+
+.cp-audience-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #52e99d;
+    box-shadow: 0 0 10px rgba(82, 233, 157, .78);
+    flex: 0 0 auto;
+}
+
+.cp-audience-sub {
+    color: #6f9f8c;
+    font-size: .62rem;
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+@media (max-width: 800px) {
+    .cp-search-panel {
+        padding: 10px 11px 11px;
+    }
+
+    .cp-audience-wrap {
+        min-height: 42px;
+        justify-content: flex-start;
+    }
+}
+
 </style>
     """,
     unsafe_allow_html=True,
@@ -2657,26 +2779,33 @@ def render_map_fragment():
         )
 
 
-def style_plotly(fig, height=290, y_title=None):
+def style_plotly(
+    fig,
+    height=290,
+    y_title=None,
+):
+    fig = style_plotly_v27(
+        fig
+    )
+
     fig.update_layout(
         height=height,
-        margin=dict(l=15, r=12, t=16, b=20),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#aebdca", size=11),
+        margin=dict(
+            l=42,
+            r=24,
+            t=35,
+            b=35,
+        ),
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, font=dict(size=10)),
-        xaxis=dict(title=None, gridcolor="rgba(160,190,210,.10)", zeroline=False),
-        yaxis=dict(title=y_title, gridcolor="rgba(160,190,210,.10)", zeroline=False),
     )
+
+    if y_title:
+        fig.update_yaxes(
+            title=y_title
+        )
+
     return fig
 
-
-@st.cache_data(
-    ttl=21600,
-    max_entries=128,
-    show_spinner=False,
-)
 def cached_dashboard_data(city_id):
     """
     Load the four PostgreSQL dashboard datasets in parallel
@@ -3026,6 +3155,46 @@ def global_search(search_term):
     ]
 
 
+# =========================================================
+# PRIVATE DEVELOPER ACCESS
+# =========================================================
+
+def get_analytics_password():
+    """Read the private developer password from Secrets / .env."""
+    try:
+        if "ANALYTICS_PASSWORD" in st.secrets:
+            return str(st.secrets["ANALYTICS_PASSWORD"])
+    except Exception:
+        pass
+
+    value = os.getenv("ANALYTICS_PASSWORD")
+    return str(value) if value else None
+
+
+def developer_mode_requested():
+    """
+    Analytics is intentionally absent from normal public navigation.
+
+    A developer can reveal the private entry point by opening the app with:
+        ?dev=1
+
+    The dashboard still requires ANALYTICS_PASSWORD.
+    """
+    try:
+        value = st.query_params.get("dev")
+        if isinstance(value, list):
+            value = value[0] if value else None
+        return str(value or "").strip().lower() in {"1", "true", "yes"}
+    except Exception:
+        return False
+
+
+DEVELOPER_MODE = bool(
+    developer_mode_requested()
+    or st.session_state.get("cp_analytics_authenticated", False)
+)
+
+
 with st.sidebar:
 
     st.markdown(
@@ -3036,26 +3205,41 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # Dashboard remains in the codebase but is intentionally removed from
+    # the visible navigation because Home already contains the main dashboard.
+    if st.session_state.get("main_navigation") == "Dashboard":
+        st.session_state["main_navigation"] = "Home"
+
+    # Public users never see Developer Analytics in the normal sidebar.
+    navigation_options = [
+        "Home",
+        "Map Explorer",
+        "Climate Timeline",
+        "Climate Trends",
+        "Data & Methods",
+        "Compare Places",
+        "Global Rankings",
+        "Climate Passport",
+        "About",
+    ]
+
+    if DEVELOPER_MODE:
+        navigation_options.insert(-1, "Developer Analytics")
+
+    # If a stale session points at the old public Analytics item, recover safely.
+    if st.session_state.get("main_navigation") == "Analytics":
+        st.session_state["main_navigation"] = (
+            "Developer Analytics" if DEVELOPER_MODE else "Home"
+        )
+
     nav_view = st.radio(
         "Navigation",
-        options=[
-            "Home",
-            "Dashboard",
-            "Map Explorer",
-            "Climate Timeline",
-            "Climate Trends",
-            "Data & Methods",
-            "Compare Places",
-            "Global Rankings",
-            "Climate Passport",
-            "About",
-        ],
+        options=navigation_options,
         key="main_navigation",
         label_visibility="collapsed",
         width="stretch",
         format_func=lambda value: {
             "Home": "✦   Home",
-            "Dashboard": "⌂   Dashboard",
             "Map Explorer": "▧   Map Explorer",
             "Climate Timeline": "⟶   Climate Timeline",
             "Climate Trends": "↗   Climate Trends",
@@ -3063,6 +3247,7 @@ with st.sidebar:
             "Compare Places": "⇄   Compare Places",
             "Global Rankings": "▲   Global Rankings",
             "Climate Passport": "◈   Climate Passport",
+            "Developer Analytics": "▥   Developer Analytics",
             "About": "◎   About ClimatePulse",
         }[value],
     )
@@ -3089,12 +3274,219 @@ with st.sidebar:
 <b style="color:#eaf4fb;">Data &amp; Models</b><br>
 Weather: Open-Meteo<br>
 Climate: ERA5 / CRU / CMIP6<br>
-Analytics: PostgreSQL / Neon<br>
+Database: PostgreSQL / Neon<br>
 Maps: CARTO + MapTiler
 </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+# =========================================================
+# FIRST-PARTY AUDIENCE ANALYTICS — NATIVE STREAMLIT CONTEXT
+# =========================================================
+# No custom JavaScript component is used here. Streamlit 1.61 exposes locale,
+# timezone, theme, URL, embedding status and request headers through st.context.
+# This avoids component-rendering failures while preserving useful analytics.
+# Developer sessions are excluded, and localhost is excluded by default.
+
+AUDIENCE_ANALYTICS_READY = False
+LOCAL_ANALYTICS_SESSION = False
+
+try:
+    LOCAL_ANALYTICS_SESSION = is_local_session()
+except Exception:
+    LOCAL_ANALYTICS_SESSION = False
+
+SHOULD_TRACK_AUDIENCE = bool(
+    ANALYTICS_READY
+    and not DEVELOPER_MODE
+    and (
+        not LOCAL_ANALYTICS_SESSION
+        or track_local_sessions_enabled()
+    )
+)
+
+if SHOULD_TRACK_AUDIENCE:
+    try:
+        context_allowed = capture_streamlit_context()
+
+        if context_allowed:
+            AUDIENCE_ANALYTICS_READY = True
+            track_pageview(nav_view)
+            render_analytics_heartbeat(nav_view)
+
+    except Exception as analytics_tracking_error:
+        # Analytics must never be allowed to break the climate application.
+        AUDIENCE_ANALYTICS_READY = False
+        print(
+            "ClimatePulse analytics tracking error:",
+            analytics_tracking_error,
+        )
+
+# =========================================================
+# PRIVATE DEVELOPER ANALYTICS PAGE
+# =========================================================
+# Normal visitors cannot see this item. To reveal it, the developer opens:
+#   http://localhost:8501/?dev=1
+# or the deployed app URL with ?dev=1, then authenticates with the secret.
+
+if nav_view == "Developer Analytics":
+
+    if not DEVELOPER_MODE:
+        st.session_state["main_navigation"] = "Home"
+        st.rerun()
+
+    if not ANALYTICS_READY:
+        st.error(
+            "Developer analytics could not connect to the ClimatePulse database."
+        )
+
+        if ANALYTICS_INIT_ERROR:
+            with st.expander("Technical detail", expanded=False):
+                st.code(ANALYTICS_INIT_ERROR)
+
+        st.stop()
+
+    expected_password = get_analytics_password()
+
+    if not expected_password:
+        st.warning(
+            "Developer analytics is locked because ANALYTICS_PASSWORD is not configured."
+        )
+        st.caption(
+            "Add ANALYTICS_PASSWORD to your local .env and to your deployment secrets."
+        )
+        st.stop()
+
+    authenticated = bool(
+        st.session_state.get("cp_analytics_authenticated", False)
+    )
+
+    if not authenticated:
+        st.markdown("## ▥ ClimatePulse Developer Analytics")
+        st.caption("Private developer access · not part of public navigation")
+
+        entered_password = st.text_input(
+            "Developer analytics password",
+            type="password",
+            key="cp_analytics_password_input_v35",
+        )
+
+        login_col, _ = st.columns([1, 3])
+
+        with login_col:
+            login_clicked = st.button(
+                "Unlock analytics",
+                type="primary",
+                width="stretch",
+                key="cp_analytics_login_v35",
+            )
+
+        if login_clicked:
+            if hmac.compare_digest(
+                entered_password or "",
+                expected_password,
+            ):
+                st.session_state["cp_analytics_authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Incorrect developer password.")
+
+        st.stop()
+
+    # Import the heavy dashboard only after developer authentication.
+    # This keeps public ClimatePulse resilient even if the optional
+    # analytics dashboard has a local dependency problem.
+    try:
+        from src.analytics_dashboard import render_analytics_dashboard
+
+        render_analytics_dashboard()
+    except Exception as dashboard_error:
+        st.error(
+            "Developer analytics dashboard could not be rendered. "
+            "The public ClimatePulse application remains available."
+        )
+        with st.expander("Developer analytics technical detail", expanded=True):
+            st.exception(dashboard_error)
+
+    logout_col, _ = st.columns([1, 4])
+    with logout_col:
+        if st.button(
+            "Lock developer analytics",
+            key="cp_analytics_logout_v35",
+            width="stretch",
+        ):
+            st.session_state["cp_analytics_authenticated"] = False
+            st.session_state["main_navigation"] = "Home"
+            st.rerun()
+
+    st.stop()
+
+# =========================================================
+# SEARCHBOX VISUAL THEME
+# =========================================================
+# streamlit-searchbox is a React component, so styling its inner control
+# through ordinary Streamlit CSS is unreliable. These overrides are applied
+# directly inside the component while preserving the existing autocomplete
+# behavior.
+
+GLOBAL_SEARCHBOX_STYLE = {
+    "dropdown": {
+        "rotate": True,
+        "width": 18,
+        "height": 18,
+        "stroke": "#63dff7",
+        "fill": "none",
+    },
+    "clear": {
+        "width": 18,
+        "height": 18,
+        "icon": "cross",
+        "stroke": "#8ba6b7",
+        "clearable": "always",
+    },
+    "searchbox": {
+        "control": {
+            "backgroundColor": "#0a1b2a",
+            "border": "1px solid rgba(83, 204, 239, 0.25)",
+            "borderRadius": "12px",
+            "minHeight": "46px",
+            "boxShadow": "0 8px 22px rgba(0, 0, 0, 0.20)",
+            "cursor": "text",
+        },
+        "input": {
+            "color": "#f4fbff",
+            "fontSize": "15px",
+            "fontWeight": 550,
+        },
+        "placeholder": {
+            "color": "#829bad",
+            "fontSize": "14px",
+        },
+        "singleValue": {
+            "color": "#f5fbff",
+            "fontSize": "15px",
+            "fontWeight": 650,
+        },
+        "menuList": {
+            "backgroundColor": "#081725",
+            "border": "1px solid rgba(83, 204, 239, 0.16)",
+            "borderRadius": "10px",
+            "paddingTop": "5px",
+            "paddingBottom": "5px",
+            "boxShadow": "0 18px 40px rgba(0,0,0,.34)",
+        },
+        "option": {
+            "color": "#dceaf3",
+            "backgroundColor": "#081725",
+            "fontSize": "14px",
+            "paddingTop": "10px",
+            "paddingBottom": "10px",
+            "highlightColor": "rgba(72, 205, 238, .20)",
+        },
+    },
+}
 
 
 # =========================================================
@@ -3107,33 +3499,67 @@ st.markdown(
 )
 
 search_col, status_col = st.columns(
-    [4.8, 1.2],
+    [5.0, 1.35],
+    gap="medium",
     vertical_alignment="center",
 )
 
 with search_col:
-    selected_search_result = st_searchbox(
-        global_search,
-        key="global_place_search",
-        label="Search",
-        placeholder="Search any city, place or country...",
-        debounce=300,
-        edit_after_submit="option",
-        clear_on_submit=False,
-    )
-
-with status_col:
     st.markdown(
         """
-        <div style="text-align:right;">
-            <span class="cp-live-pill">
-                ● All systems normal
-            </span>
-        </div>
+<div class="cp-search-panel">
+<div class="cp-search-kicker">GLOBAL PLACE SEARCH</div>
+<div class="cp-search-title">Explore any city, place or country</div>
+<div class="cp-search-help">Search globally to move ClimatePulse, load live conditions and connect historical climate context.</div>
+</div>
         """,
         unsafe_allow_html=True,
     )
 
+    selected_search_result = st_searchbox(
+        global_search,
+        key="global_place_search",
+        label=None,
+        placeholder="Search Milan, Islamabad, Tokyo, Pakistan...",
+        debounce=300,
+        edit_after_submit="option",
+        clear_on_submit=False,
+        style_overrides=GLOBAL_SEARCHBOX_STYLE,
+    )
+
+with status_col:
+    # Public visitors see only system status. Audience numbers remain private
+    # and are shown here only after the developer has authenticated.
+    developer_authenticated = bool(
+        st.session_state.get("cp_analytics_authenticated", False)
+    )
+
+    if developer_authenticated and ANALYTICS_READY:
+        try:
+            active_visitors = int(
+                get_analytics_summary().get("active_now", 0)
+            )
+            audience_text = f"{active_visitors:,} active now"
+            audience_sub = "Developer view"
+        except Exception:
+            audience_text = "Analytics unavailable"
+            audience_sub = "Developer view"
+    else:
+        audience_text = "All systems normal"
+        audience_sub = "Live Earth online"
+
+    st.markdown(
+        f"""
+<div class="cp-audience-wrap">
+    <div class="cp-audience-pill">
+        <span class="cp-audience-dot"></span>
+        <span>{audience_text}</span>
+        <span class="cp-audience-sub">· {audience_sub}</span>
+    </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # =========================================================
 # HANDLE SEARCH RESULT
@@ -3162,6 +3588,26 @@ if selected_search_result:
     add_recent(
         selected_label
     )
+
+    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+        try:
+            track_event_once(
+                f"search::{result_type}::{selected_label}",
+                "search_select",
+                category="search",
+                page_name=nav_view,
+                metadata={
+                    "label": selected_label,
+                    "result_type": result_type,
+                    "country_code": (
+                        selected_search_result.get("properties", {}).get("country_code")
+                        if isinstance(selected_search_result.get("properties"), dict)
+                        else None
+                    ),
+                },
+            )
+        except Exception as analytics_event_error:
+            print("ClimatePulse search analytics error:", analytics_event_error)
 
     # -----------------------------------------------------
     # COUNTRY
@@ -3271,6 +3717,104 @@ if pending_location:
                 "unavailable"
             )
 
+        st.rerun()
+
+
+
+# =========================================================
+# V27 BROWSER-LOCATION AUTO SYNC
+# =========================================================
+#
+# Home's browser geolocation runs after the main app search logic.  When it
+# succeeds it sets v27_location_sync_pending and reruns.  On this next pass,
+# make that browser point the actual global ClimatePulse selection BEFORE
+# dashboard/history variables are created.
+# =========================================================
+
+if st.session_state.get(
+    "v27_location_sync_pending"
+):
+    browser_point = st.session_state.get(
+        "v21_browser_location"
+    )
+
+    if browser_point:
+        if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+            try:
+                track_event_once(
+                    "browser_location_used",
+                    "browser_location_used",
+                    category="location",
+                    page_name=nav_view,
+                    metadata={
+                        "source": "browser_geolocation",
+                        "country_code": browser_point.get("country_code"),
+                        "result_type": browser_point.get("result_type", "location"),
+                    },
+                )
+            except Exception as analytics_event_error:
+                print("ClimatePulse location analytics error:", analytics_event_error)
+
+        browser_id = browser_point.get(
+            "id"
+        )
+
+        current_point = st.session_state.get(
+            "selected_location"
+        )
+
+        current_id = (
+            current_point.get(
+                "id"
+            )
+            if isinstance(
+                current_point,
+                dict,
+            )
+            else None
+        )
+
+        if browser_id != current_id:
+            st.session_state.selected_location = (
+                browser_point
+            )
+            st.session_state.selected_country = None
+            st.session_state.selected_city_id = None
+            st.session_state.history_status = (
+                "loading"
+            )
+            st.session_state.history_retry_after_seconds = None
+
+            try:
+                browser_history = ensure_city_history(
+                    browser_point
+                )
+
+                st.session_state.selected_city_id = (
+                    browser_history.get(
+                        "city_id"
+                    )
+                )
+
+                st.session_state.history_status = (
+                    browser_history.get(
+                        "history_status",
+                        "loading",
+                    )
+                )
+            except Exception:
+                # Live weather remains immediately available even if ERA5
+                # history is not yet ready.
+                st.session_state.history_status = (
+                    "unavailable"
+                )
+
+        st.session_state[
+            "v27_location_sync_pending"
+        ] = False
+
+        # One clean rerun guarantees every downstream page sees the new
+        # location and any newly resolved DB city/history id.
         st.rerun()
 
 
@@ -4752,6 +5296,22 @@ as model spread rather than as artificial emissions scenarios.
         selected_future_models
     )
 
+    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+        try:
+            track_event_once(
+                f"compare_config::{compare_count}::{future_mode}",
+                "compare_configuration",
+                category="compare",
+                page_name=nav_view,
+                metadata={
+                    "place_count": compare_count,
+                    "future_mode": future_mode,
+                    "model_count": len(selected_future_models),
+                },
+            )
+        except Exception as analytics_event_error:
+            print("ClimatePulse compare analytics error:", analytics_event_error)
+
     st.markdown(
         """<div class="cp-compare-warning">
 <b>Scope:</b> country selections use a centroid-point proxy rather than
@@ -4791,6 +5351,7 @@ pathways.
                 debounce=300,
                 edit_after_submit="option",
                 clear_on_submit=False,
+                style_overrides=GLOBAL_SEARCHBOX_STYLE,
             )
 
             if result:
@@ -4844,6 +5405,27 @@ ClimatePulse can compare two, three or four locations side by side.
             unsafe_allow_html=True,
         )
         st.stop()
+
+    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+        try:
+            compare_labels = [
+                maptiler_result_label(feature)
+                for feature in selected_features
+            ]
+            compare_signature = "|".join(compare_labels) + f"|{future_mode}"
+            track_event_once(
+                f"compare_selection::{compare_signature}",
+                "compare_places_selected",
+                category="compare",
+                page_name=nav_view,
+                metadata={
+                    "places": compare_labels,
+                    "place_count": len(compare_labels),
+                    "future_mode": future_mode,
+                },
+            )
+        except Exception as analytics_event_error:
+            print("ClimatePulse compare selection analytics error:", analytics_event_error)
 
     comparison_records = []
 
@@ -4999,10 +5581,8 @@ ClimatePulse can compare two, three or four locations side by side.
         matrix_rows
     )
 
-    st.dataframe(
-        comparison_df,
-        width="stretch",
-        hide_index=True,
+    dark_dataframe(
+        comparison_df
     )
 
     chart_labels = [
@@ -5693,6 +6273,23 @@ Unlike centroid-based country views, these are national spatial averages.
         period_label
     ]
 
+    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+        try:
+            track_event_once(
+                f"rankings::{scenario_code}::{period_code}",
+                "global_rankings_view",
+                category="rankings",
+                page_name=nav_view,
+                metadata={
+                    "scenario": scenario_code,
+                    "scenario_label": scenario_label,
+                    "period": period_code,
+                    "period_label": period_label,
+                },
+            )
+        except Exception as analytics_event_error:
+            print("ClimatePulse rankings analytics error:", analytics_event_error)
+
     with c3:
         top_n = st.selectbox(
             "Show top / bottom",
@@ -6190,6 +6787,27 @@ be generated.
         st.stop()
 
     fp = climate_fingerprint
+
+    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
+        try:
+            passport_location_label = (
+                f"{city.get('city_name', '')}, {city.get('country_name', '')}"
+                if isinstance(city, dict)
+                else "Selected location"
+            )
+            track_event_once(
+                f"passport::{passport_location_label}",
+                "climate_passport_generated",
+                category="climate_product",
+                page_name=nav_view,
+                metadata={
+                    "location": passport_location_label,
+                    "historical_period": "1990-2025",
+                    "baseline": "1991-2020",
+                },
+            )
+        except Exception as analytics_event_error:
+            print("ClimatePulse passport analytics error:", analytics_event_error)
 
     passport_latest = (
         summary
@@ -7523,5 +8141,5 @@ if nav_view == "Home":
 
 st.markdown(
     '<div class="cp-footer">ClimatePulse • Python + PostgreSQL + Neon + MapTiler + CARTO + Open-Meteo + ERA5 + Streamlit</div>',
-    unsafe_allow_html=True,
+   unsafe_allow_html=True,
 )
