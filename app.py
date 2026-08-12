@@ -3179,10 +3179,10 @@ def get_analytics_password():
 
 def get_analytics_dev_key():
     """
-    Read the secret URL gate key.
+    Read the private developer URL gate key.
 
     This key is deliberately separate from ANALYTICS_PASSWORD. A visitor must
-    first know the long random gate key before the Developer Analytics item is
+    first know the exact private gate key before the Developer Analytics item is
     revealed, and must then enter the separate analytics password.
     """
     return _read_private_setting("ANALYTICS_DEV_KEY")
@@ -3209,7 +3209,7 @@ def _clean_developer_query_parameter():
 def developer_mode_requested():
     """
     Open the private developer gate only when the supplied URL token exactly
-    matches ANALYTICS_DEV_KEY.
+    matches ANALYTICS_DEV_KEY. A memorable key of 8+ characters is accepted.
 
     Public visitors see no Developer Analytics navigation item. The accepted
     gate is remembered only in this Streamlit browser session. The long token
@@ -3227,9 +3227,9 @@ def developer_mode_requested():
     if not expected_key:
         return False
 
-    # Refuse weak developer keys. This prevents accidentally deploying a
-    # guessable value such as "1", "admin", or a short word.
-    if len(expected_key) < 32:
+    # Allow a memorable developer key, but still refuse extremely short
+    # values. The separate ANALYTICS_PASSWORD remains the second security layer.
+    if len(expected_key) < 8:
         return False
 
     try:
@@ -3418,13 +3418,14 @@ if nav_view == "Developer Analytics":
     expected_dev_key = get_analytics_dev_key()
     expected_password = get_analytics_password()
 
-    if not expected_dev_key or len(expected_dev_key) < 32:
+    if not expected_dev_key or len(expected_dev_key) < 8:
         st.warning(
             "Developer analytics is locked because ANALYTICS_DEV_KEY is missing "
-            "or shorter than 32 characters."
+            "or shorter than 8 characters."
         )
         st.caption(
-            "Generate a long random key and store it only in .env / deployment secrets."
+            "Use your own memorable private key (8+ characters) and store it only "
+            "in .env / Streamlit Secrets."
         )
         st.stop()
 
@@ -3448,7 +3449,7 @@ if nav_view == "Developer Analytics":
         entered_password = st.text_input(
             "Developer analytics password",
             type="password",
-            key="cp_analytics_password_input_v38",
+            key="cp_analytics_password_input_v40",
         )
 
         login_col, _ = st.columns([1, 3])
@@ -3458,7 +3459,7 @@ if nav_view == "Developer Analytics":
                 "Unlock analytics",
                 type="primary",
                 width="stretch",
-                key="cp_analytics_login_v38",
+                key="cp_analytics_login_v40",
             )
 
         if login_clicked:
@@ -3492,7 +3493,7 @@ if nav_view == "Developer Analytics":
     with logout_col:
         if st.button(
             "Lock developer analytics",
-            key="cp_analytics_logout_v38",
+            key="cp_analytics_logout_v40",
             width="stretch",
         ):
             st.session_state["cp_analytics_authenticated"] = False
