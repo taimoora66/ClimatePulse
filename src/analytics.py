@@ -77,6 +77,19 @@ def track_local_sessions_enabled() -> bool:
     return _env_bool("ANALYTICS_TRACK_LOCAL", False)
 
 
+def persistent_visitor_id_enabled() -> bool:
+    """
+    Backwards-compatible analytics API.
+
+    ClimatePulse V37+ intentionally uses session-scoped anonymous visitor IDs
+    and does not implement persistent browser fingerprinting. Older dashboard
+    builds imported this function, so it remains available and always returns
+    False. Keeping this compatibility shim prevents mixed-version deployments
+    from crashing while preserving the privacy-conscious V37+ behaviour.
+    """
+    return False
+
+
 def _query_param(name: str) -> str | None:
     try:
         value = st.query_params.get(name)

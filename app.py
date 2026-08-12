@@ -3159,40 +3159,105 @@ def global_search(search_term):
 # PRIVATE DEVELOPER ACCESS
 # =========================================================
 
-def get_analytics_password():
-    """Read the private developer password from Secrets / .env."""
+def _read_private_setting(name):
+    """Read a private setting from Streamlit Secrets first, then .env."""
     try:
-        if "ANALYTICS_PASSWORD" in st.secrets:
-            return str(st.secrets["ANALYTICS_PASSWORD"])
+        if name in st.secrets:
+            value = st.secrets[name]
+            return str(value).strip() if value is not None else None
     except Exception:
         pass
 
-    value = os.getenv("ANALYTICS_PASSWORD")
-    return str(value) if value else None
+    value = os.getenv(name)
+    return str(value).strip() if value else None
+
+
+def get_analytics_password():
+    """Read the private developer password from Secrets / .env."""
+    return _read_private_setting("ANALYTICS_PASSWORD")
+
+
+def get_analytics_dev_key():
+    """
+    Read the secret URL gate key.
+
+    This key is deliberately separate from ANALYTICS_PASSWORD. A visitor must
+    first know the long random gate key before the Developer Analytics item is
+    revealed, and must then enter the separate analytics password.
+    """
+    return _read_private_setting("ANALYTICS_DEV_KEY")
+
+
+def _clean_developer_query_parameter():
+    """
+    Remove the developer gate token from the visible URL after it is accepted.
+
+    Streamlit's query-parameter API updates the browser URL. We preserve any
+    unrelated query parameters instead of clearing the entire query string.
+    """
+    try:
+        current = st.query_params.to_dict()
+        if "cp_gate" in current:
+            current.pop("cp_gate", None)
+            st.query_params.from_dict(current)
+    except Exception:
+        # URL cleanup is a privacy convenience; access control does not depend
+        # on it succeeding because the validated gate state is session-scoped.
+        pass
 
 
 def developer_mode_requested():
     """
-    Analytics is intentionally absent from normal public navigation.
+    Open the private developer gate only when the supplied URL token exactly
+    matches ANALYTICS_DEV_KEY.
 
-    A developer can reveal the private entry point by opening the app with:
-        ?dev=1
+    Public visitors see no Developer Analytics navigation item. The accepted
+    gate is remembered only in this Streamlit browser session. The long token
+    is removed from the visible URL immediately after validation.
 
-    The dashboard still requires ANALYTICS_PASSWORD.
+    Example:
+        ?cp_gate=<your-long-random-secret>
+
+    The dashboard still requires the separate ANALYTICS_PASSWORD.
     """
-    try:
-        value = st.query_params.get("dev")
-        if isinstance(value, list):
-            value = value[0] if value else None
-        return str(value or "").strip().lower() in {"1", "true", "yes"}
-    except Exception:
+    if st.session_state.get("cp_developer_gate_open", False):
+        return True
+
+    expected_key = get_analytics_dev_key()
+    if not expected_key:
         return False
 
+    # Refuse weak developer keys. This prevents accidentally deploying a
+    # guessable value such as "1", "admin", or a short word.
+    if len(expected_key) < 32:
+        return False
 
-DEVELOPER_MODE = bool(
-    developer_mode_requested()
-    or st.session_state.get("cp_analytics_authenticated", False)
-)
+    try:
+        provided_key = st.query_params.get("cp_gate")
+        if isinstance(provided_key, list):
+            provided_key = provided_key[0] if provided_key else None
+        provided_key = str(provided_key or "").strip()
+    except Exception:
+        provided_key = ""
+
+    if not provided_key:
+        return False
+
+    if hmac.compare_digest(provided_key, expected_key):
+        st.session_state["cp_developer_gate_open"] = True
+        _clean_developer_query_parameter()
+        return True
+
+    # A wrong gate key reveals nothing and never opens developer mode.
+    return False
+
+
+DEVELOPER_MODE = bool(developer_mode_requested())
+
+# A stale authentication flag from an older app session must never bypass the
+# secret developer gate.
+if not DEVELOPER_MODE:
+    st.session_state["cp_analytics_authenticated"] = False
 
 
 with st.sidebar:
@@ -3328,8 +3393,10 @@ if SHOULD_TRACK_AUDIENCE:
 # PRIVATE DEVELOPER ANALYTICS PAGE
 # =========================================================
 # Normal visitors cannot see this item. To reveal it, the developer opens:
-#   http://localhost:8501/?dev=1
-# or the deployed app URL with ?dev=1, then authenticates with the secret.
+#   http://localhost:8501/?cp_gate=<ANALYTICS_DEV_KEY>
+# or the deployed app URL with the same long secret gate key, then enters
+# the separate ANALYTICS_PASSWORD. The gate token is removed from the visible
+# URL after validation and remembered only for the current Streamlit session.
 
 if nav_view == "Developer Analytics":
 
@@ -3348,7 +3415,18 @@ if nav_view == "Developer Analytics":
 
         st.stop()
 
+    expected_dev_key = get_analytics_dev_key()
     expected_password = get_analytics_password()
+
+    if not expected_dev_key or len(expected_dev_key) < 32:
+        st.warning(
+            "Developer analytics is locked because ANALYTICS_DEV_KEY is missing "
+            "or shorter than 32 characters."
+        )
+        st.caption(
+            "Generate a long random key and store it only in .env / deployment secrets."
+        )
+        st.stop()
 
     if not expected_password:
         st.warning(
@@ -3370,7 +3448,7 @@ if nav_view == "Developer Analytics":
         entered_password = st.text_input(
             "Developer analytics password",
             type="password",
-            key="cp_analytics_password_input_v35",
+            key="cp_analytics_password_input_v38",
         )
 
         login_col, _ = st.columns([1, 3])
@@ -3380,7 +3458,7 @@ if nav_view == "Developer Analytics":
                 "Unlock analytics",
                 type="primary",
                 width="stretch",
-                key="cp_analytics_login_v35",
+                key="cp_analytics_login_v38",
             )
 
         if login_clicked:
@@ -3414,10 +3492,11 @@ if nav_view == "Developer Analytics":
     with logout_col:
         if st.button(
             "Lock developer analytics",
-            key="cp_analytics_logout_v35",
+            key="cp_analytics_logout_v38",
             width="stretch",
         ):
             st.session_state["cp_analytics_authenticated"] = False
+            st.session_state["cp_developer_gate_open"] = False
             st.session_state["main_navigation"] = "Home"
             st.rerun()
 

@@ -8,7 +8,9 @@ from src.analytics import (
     get_analytics_summary,
     get_browser_breakdown,
     get_campaign_breakdown,
+    get_country_hint_breakdown,
     get_daily_traffic,
+    get_entry_pages,
     get_device_breakdown,
     get_hourly_activity,
     get_language_breakdown,
@@ -19,9 +21,9 @@ from src.analytics import (
     get_recent_events,
     get_referrer_breakdown,
     get_search_destinations,
+    get_theme_breakdown,
     get_timezone_breakdown,
     get_top_events,
-    persistent_visitor_id_enabled,
 )
 
 
@@ -162,12 +164,6 @@ def render_analytics_dashboard() -> None:
     _analytics_css()
     summary = get_analytics_summary()
 
-    persistence_label = (
-        "persistent anonymous visitor IDs enabled"
-        if persistent_visitor_id_enabled()
-        else "session-scoped anonymous visitor IDs"
-    )
-
     st.html(
         f"""
 <div class="cp-admin-hero">
@@ -182,7 +178,8 @@ def render_analytics_dashboard() -> None:
         {summary['active_now']:,} active now
     </div>
     <div class="cp-admin-note">
-        Privacy mode: {persistence_label}. The tracker intentionally avoids names,
+        Privacy mode: session-scoped anonymous identifiers. Native Streamlit session
+        context is used instead of a custom browser component. The tracker avoids names,
         email addresses, raw IP addresses, precise GPS coordinates, raw user-agent
         strings, advertising IDs and AI message contents.
     </div>
@@ -205,9 +202,9 @@ def render_analytics_dashboard() -> None:
     row2[4].metric("Pages / session", f"{summary['avg_pages_per_session']:.2f}")
 
     row3 = st.columns(3, gap="small")
-    row3[0].metric("Returning visitors", f"{summary['returning_visitors']:,}")
-    row3[1].metric("Events / session", f"{summary['avg_events_per_session']:.2f}")
-    row3[2].metric("Single-page sessions", f"{summary['single_page_rate_pct']:.1f}%")
+    row3[0].metric("Events / session", f"{summary['avg_events_per_session']:.2f}")
+    row3[1].metric("Single-page sessions", f"{summary['single_page_rate_pct']:.1f}%")
+    row3[2].metric("Identity model", "Session-scoped")
 
     overview_tab, acquisition_tab, audience_tab, engagement_tab, live_tab, data_tab = st.tabs(
         [
@@ -286,6 +283,12 @@ def render_analytics_dashboard() -> None:
             else:
                 st.info("No hourly activity yet.")
 
+        st.markdown("### Entry pages")
+        _bar_from_rows(
+            get_entry_pages(15),
+            title="Sessions by entry page",
+        )
+
     with acquisition_tab:
         left, right = st.columns(2, gap="medium")
 
@@ -350,6 +353,21 @@ def render_analytics_dashboard() -> None:
         with c4:
             st.markdown("### Browser language")
             _bar_from_rows(get_language_breakdown(), title="Sessions by language")
+
+        geo_col, theme_col = st.columns(2, gap="medium")
+        with geo_col:
+            st.markdown("### Country hint")
+            _bar_from_rows(
+                get_country_hint_breakdown(20),
+                title="Sessions by hosting-provided country hint",
+            )
+
+        with theme_col:
+            st.markdown("### Theme")
+            _bar_from_rows(
+                get_theme_breakdown(),
+                title="Sessions by Streamlit theme",
+            )
 
         st.markdown("### Timezone distribution")
         timezone_rows = get_timezone_breakdown(20)
@@ -433,7 +451,9 @@ def render_analytics_dashboard() -> None:
                     "device_category": "Device",
                     "browser_family": "Browser",
                     "os_family": "OS",
+                    "language": "Language",
                     "timezone": "Timezone",
+                    "country_hint": "Country hint",
                 }
             )
             st.dataframe(live_df, hide_index=True, width="stretch")
@@ -460,6 +480,11 @@ def render_analytics_dashboard() -> None:
                     "os_family": "OS",
                     "language": "Language",
                     "timezone": "Timezone",
+                    "timezone_offset_minutes": "TZ offset (min)",
+                    "theme_type": "Theme",
+                    "is_embedded": "Embedded",
+                    "app_host": "App host",
+                    "country_hint": "Country hint",
                     "referrer_domain": "Referrer",
                     "utm_source": "UTM source",
                     "utm_medium": "UTM medium",
@@ -483,12 +508,13 @@ def render_analytics_dashboard() -> None:
 - Referring domain only (not the full referring URL)
 - UTM source, medium, campaign, content and term
 
-**Device context**
+**Browser / environment context**
 - Coarse device category: desktop / tablet / mobile
-- Browser family and operating-system family
-- Browser language and timezone
-- Screen and viewport dimensions
-- Screen orientation, preferred light/dark theme and touch capability
+- Browser family and operating-system family (parsed without storing raw user-agent text)
+- Browser locale, timezone and timezone offset from Streamlit's native session context
+- Streamlit light/dark theme and embedded-app status
+- App host/domain
+- Optional coarse country hint only when the hosting/CDN already supplies one
 
 **Product usage**
 - Navigation/page views
@@ -511,5 +537,5 @@ def render_analytics_dashboard() -> None:
 
         st.warning(
             "Analytics configuration is not a substitute for a privacy notice or legal review. "
-            "Persistent cross-visit identifiers are disabled by default in this build."
+            "This build deliberately does not create a persistent cross-visit fingerprint."
         )
