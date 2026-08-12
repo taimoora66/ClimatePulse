@@ -1,3 +1,13 @@
+
+<img width="1920" height="1080" alt="climatepulse-home" src="https://github.com/user-attachments/assets/5241cb03-021f-46dd-a686-094b85e0e162" />
+<img width="1920" height="1080" alt="climate trends" src="https://github.com/user-attachments/assets/7315a3c2-4f5b-43f5-a8b6-874b4f24bf67" />
+<img width="1920" height="1080" alt="climatepulse-Country Comparison" src="https://github.com/user-attachments/assets/a6a706cc-85a3-42d1-9e15-09060708b2e8" />
+
+
+
+
+
+
 # 🌍 ClimatePulse
 
 ### Global Climate Intelligence
@@ -553,7 +563,8 @@ They are not weather forecasts.
 ClimatePulse aims to maintain this distinction throughout the application.
 
 ---
-
+<img width="1920" height="1080" alt="climate projections" src="https://github.com/user-attachments/assets/7c4e771a-c98c-4ac6-ae83-8a2361574a4f" />
+<img width="1920" height="1080" alt="climatepulse-globe" src="https://github.com/user-attachments/assets/9d3a7685-e5c1-4bc1-806d-945de62b0ca5" />
 # ⚠️ Limitations
 
 ClimatePulse is an evolving research and educational application.
@@ -704,6 +715,7 @@ https://github.com/taimoora66/ClimatePulse
 If you find ClimatePulse useful or interesting, consider starring the repository.
 
 A GitHub star helps make the project easier for others to discover.
+<img width="1920" height="1080" alt="climate passport" src="https://github.com/user-attachments/assets/28516f00-25a0-42bf-814b-956b1e4ef1e6" />
 
 ---
 
