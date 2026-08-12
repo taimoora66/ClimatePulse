@@ -3579,6 +3579,607 @@ def render_history_progress(
             "Live conditions remain available."
         )
 
+def render_country_national_dashboard(
+    compact=False,
+):
+    """
+    Render national historical and future climate for the
+    currently selected country.
+    """
+    if not country_feature:
+        return False
+
+    country_name = maptiler_result_label(
+        country_feature
+    )
+
+    if (
+        country_national is None
+        or country_national.empty
+    ):
+        st.warning(
+            "National historical climate could not be loaded from "
+            "the World Bank CCKP aggregate service. Live map and "
+            "centroid conditions remain available."
+        )
+
+        if country_data_error:
+            with st.expander(
+                "Technical data-source detail",
+                expanded=False,
+            ):
+                st.code(
+                    country_data_error
+                )
+
+        return False
+
+    national = country_national.copy()
+
+    for column in [
+        "mean_temperature_c",
+        "annual_precipitation_mm",
+    ]:
+        if column in national.columns:
+            national[column] = pd.to_numeric(
+                national[column],
+                errors="coerce",
+            )
+
+    baseline = national[
+        (
+            national["year"] >= 1991
+        )
+        &
+        (
+            national["year"] <= 2020
+        )
+    ]
+
+    recent = national[
+        (
+            national["year"] >= 2015
+        )
+        &
+        (
+            national["year"] <= 2024
+        )
+    ]
+
+    reference_1995_2014 = national[
+        (
+            national["year"] >= 1995
+        )
+        &
+        (
+            national["year"] <= 2014
+        )
+    ]
+
+    latest = (
+        national
+        .sort_values(
+            "year"
+        )
+        .iloc[-1]
+    )
+
+    baseline_temp = safe_float(
+        baseline[
+            "mean_temperature_c"
+        ].mean()
+    )
+
+    recent_temp = safe_float(
+        recent[
+            "mean_temperature_c"
+        ].mean()
+    )
+
+    baseline_precip = safe_float(
+        baseline[
+            "annual_precipitation_mm"
+        ].mean()
+    )
+
+    recent_precip = safe_float(
+        recent[
+            "annual_precipitation_mm"
+        ].mean()
+    )
+
+    latest_temp = safe_float(
+        latest[
+            "mean_temperature_c"
+        ]
+    )
+
+    latest_precip = safe_float(
+        latest[
+            "annual_precipitation_mm"
+        ]
+    )
+
+    warming_rate = safe_float(
+        national.attrs.get(
+            "warming_rate_c_per_decade"
+        )
+    )
+
+    temp_change = None
+
+    if (
+        recent_temp is not None
+        and baseline_temp is not None
+    ):
+        temp_change = (
+            recent_temp
+            - baseline_temp
+        )
+
+    precip_change_pct = None
+
+    if (
+        recent_precip is not None
+        and baseline_precip not in {
+            None,
+            0,
+        }
+    ):
+        precip_change_pct = (
+            (
+                recent_precip
+                - baseline_precip
+            )
+            / baseline_precip
+            * 100.0
+        )
+
+    future_mid = None
+    future_low = None
+    future_high = None
+
+    if (
+        country_future_default is not None
+        and not country_future_default.empty
+    ):
+        future_row = country_future_default[
+            country_future_default[
+                "period"
+            ]
+            == "2040-2059"
+        ]
+
+        if not future_row.empty:
+            future_mid = safe_float(
+                future_row.iloc[0][
+                    "median_c"
+                ]
+            )
+            future_low = safe_float(
+                future_row.iloc[0][
+                    "p10_c"
+                ]
+            )
+            future_high = safe_float(
+                future_row.iloc[0][
+                    "p90_c"
+                ]
+            )
+
+    st.markdown(
+        f"""<div class="cp-country-overview">
+<div class="cp-country-overview-title">National Climate Overview</div>
+<div class="cp-country-overview-sub">
+{country_name} · country spatial averages, not a centroid climate proxy
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""<div class="cp-kpi-grid">
+<div class="cp-kpi">
+<div class="cp-kpi-label">1991–2020 Mean Temperature</div>
+<div class="cp-kpi-value cp-cyan">{fmt(baseline_temp, ".1f")}°C</div>
+<div class="cp-kpi-note">National CRU average</div>
+</div>
+
+<div class="cp-kpi">
+<div class="cp-kpi-label">Recent Climate 2015–2024</div>
+<div class="cp-kpi-value cp-red">{fmt(recent_temp, ".1f")}°C</div>
+<div class="cp-kpi-note">{fmt(temp_change, "+.2f")}°C vs baseline</div>
+</div>
+
+<div class="cp-kpi">
+<div class="cp-kpi-label">Historical Warming Trend</div>
+<div class="cp-kpi-value cp-blue">{fmt(warming_rate, "+.2f")}°C/dec</div>
+<div class="cp-kpi-note">1971–2024 national series</div>
+</div>
+
+<div class="cp-kpi">
+<div class="cp-kpi-label">Baseline Precipitation</div>
+<div class="cp-kpi-value cp-blue">{fmt(baseline_precip, ".0f")} mm</div>
+<div class="cp-kpi-note">1991–2020 annual mean</div>
+</div>
+
+<div class="cp-kpi">
+<div class="cp-kpi-label">Recent Precipitation</div>
+<div class="cp-kpi-value cp-cyan">{fmt(recent_precip, ".0f")} mm</div>
+<div class="cp-kpi-note">{fmt(precip_change_pct, "+.1f")}% vs baseline</div>
+</div>
+
+<div class="cp-kpi">
+<div class="cp-kpi-label">2040–2059 SSP2-4.5</div>
+<div class="cp-kpi-value cp-orange">{fmt(future_mid, "+.2f")}°C</div>
+<div class="cp-kpi-note">P10–P90: {fmt(future_low, "+.2f")} to {fmt(future_high, "+.2f")}°C vs 1995–2014</div>
+</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    if compact:
+        return True
+
+    warmest_year = national.attrs.get(
+        "warmest_year"
+    )
+    warmest_value = national.attrs.get(
+        "warmest_temperature_c"
+    )
+    coolest_year = national.attrs.get(
+        "coolest_year"
+    )
+    coolest_value = national.attrs.get(
+        "coolest_temperature_c"
+    )
+    wettest_year = national.attrs.get(
+        "wettest_year"
+    )
+    wettest_value = national.attrs.get(
+        "wettest_precipitation_mm"
+    )
+    driest_year = national.attrs.get(
+        "driest_year"
+    )
+    driest_value = national.attrs.get(
+        "driest_precipitation_mm"
+    )
+
+    record_cols = st.columns(
+        4,
+        gap="small",
+    )
+
+    with record_cols[0]:
+        st.metric(
+            "Warmest annual mean",
+            f"{fmt(warmest_value, '.1f')}°C",
+            str(
+                warmest_year
+                or "N/A"
+            ),
+        )
+
+    with record_cols[1]:
+        st.metric(
+            "Coolest annual mean",
+            f"{fmt(coolest_value, '.1f')}°C",
+            str(
+                coolest_year
+                or "N/A"
+            ),
+        )
+
+    with record_cols[2]:
+        st.metric(
+            "Wettest year",
+            f"{fmt(wettest_value, '.0f')} mm",
+            str(
+                wettest_year
+                or "N/A"
+            ),
+        )
+
+    with record_cols[3]:
+        st.metric(
+            "Driest year",
+            f"{fmt(driest_value, '.0f')} mm",
+            str(
+                driest_year
+                or "N/A"
+            ),
+        )
+
+    chart_left, chart_right = st.columns(
+        2,
+        gap="medium",
+    )
+
+    with chart_left:
+        with st.container(
+            border=True
+        ):
+            st.markdown(
+                '<div class="cp-section-heading">National Temperature History</div>',
+                unsafe_allow_html=True,
+            )
+
+            fig = go.Figure()
+
+            fig.add_trace(
+                go.Scatter(
+                    x=national[
+                        "year"
+                    ],
+                    y=national[
+                        "mean_temperature_c"
+                    ],
+                    mode="lines",
+                    name="Annual mean temperature",
+                    hovertemplate=(
+                        "<b>%{x}</b><br>"
+                        "%{y:.2f}°C"
+                        "<extra></extra>"
+                    ),
+                )
+            )
+
+            if baseline_temp is not None:
+                fig.add_hline(
+                    y=baseline_temp,
+                    line_dash="dash",
+                    annotation_text=(
+                        "1991–2020 baseline"
+                    ),
+                )
+
+            style_plotly(
+                fig,
+                height=350,
+                y_title="°C",
+            )
+
+            fig.update_layout(
+                hovermode="x unified",
+            )
+
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                config={
+                    "displayModeBar": True,
+                    "responsive": True,
+                },
+            )
+
+    with chart_right:
+        with st.container(
+            border=True
+        ):
+            st.markdown(
+                '<div class="cp-section-heading">National Precipitation History</div>',
+                unsafe_allow_html=True,
+            )
+
+            fig = go.Figure()
+
+            fig.add_trace(
+                go.Bar(
+                    x=national[
+                        "year"
+                    ],
+                    y=national[
+                        "annual_precipitation_mm"
+                    ],
+                    name="Annual precipitation",
+                    hovertemplate=(
+                        "<b>%{x}</b><br>"
+                        "%{y:.0f} mm"
+                        "<extra></extra>"
+                    ),
+                )
+            )
+
+            if baseline_precip is not None:
+                fig.add_hline(
+                    y=baseline_precip,
+                    line_dash="dash",
+                    annotation_text=(
+                        "1991–2020 baseline"
+                    ),
+                )
+
+            style_plotly(
+                fig,
+                height=350,
+                y_title="mm / year",
+            )
+
+            fig.update_layout(
+                hovermode="x unified",
+                showlegend=False,
+            )
+
+            st.plotly_chart(
+                fig,
+                width="stretch",
+                config={
+                    "displayModeBar": True,
+                    "responsive": True,
+                },
+            )
+
+    # -----------------------------------------------------
+    # NATIONAL SSP SCENARIOS
+    # -----------------------------------------------------
+
+    st.markdown(
+        "### Future National Warming Scenarios"
+    )
+
+    scenario_fig = go.Figure()
+    scenario_rows = []
+
+    for scenario_label, scenario_code in (
+        CCKP_SCENARIOS.items()
+    ):
+
+        try:
+            trajectory = (
+                cached_country_scenario_trajectory(
+                    country_iso3,
+                    scenario_code,
+                )
+            )
+        except Exception:
+            trajectory = None
+
+        if (
+            trajectory is None
+            or trajectory.empty
+        ):
+            continue
+
+        scenario_fig.add_trace(
+            go.Scatter(
+                x=trajectory[
+                    "period"
+                ],
+                y=trajectory[
+                    "median_c"
+                ],
+                mode="lines+markers",
+                name=scenario_label,
+                customdata=trajectory[
+                    [
+                        "p10_c",
+                        "p90_c",
+                    ]
+                ].values,
+                hovertemplate=(
+                    "<b>%{fullData.name}</b><br>"
+                    "%{x}<br>"
+                    "Median warming: %{y:.2f}°C<br>"
+                    "P10–P90: %{customdata[0]:.2f}–"
+                    "%{customdata[1]:.2f}°C"
+                    "<extra></extra>"
+                ),
+            )
+        )
+
+        for _, row in (
+            trajectory.iterrows()
+        ):
+            scenario_rows.append(
+                {
+                    "Scenario": scenario_label,
+                    "Period": row[
+                        "period"
+                    ],
+                    "Median warming (°C)": row[
+                        "median_c"
+                    ],
+                    "P10 (°C)": row[
+                        "p10_c"
+                    ],
+                    "P90 (°C)": row[
+                        "p90_c"
+                    ],
+                }
+            )
+
+    if scenario_fig.data:
+        style_plotly(
+            scenario_fig,
+            height=420,
+            y_title=(
+                "Temperature anomaly vs "
+                "1995–2014 (°C)"
+            ),
+        )
+
+        scenario_fig.update_layout(
+            hovermode="x unified",
+        )
+
+        st.plotly_chart(
+            scenario_fig,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
+
+        with st.expander(
+            "Future scenario data table",
+            expanded=False,
+        ):
+            st.dataframe(
+                pd.DataFrame(
+                    scenario_rows
+                ),
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Median warming (°C)": st.column_config.NumberColumn(
+                        "Median warming",
+                        format="%.2f °C",
+                    ),
+                    "P10 (°C)": st.column_config.NumberColumn(
+                        "P10",
+                        format="%.2f °C",
+                    ),
+                    "P90 (°C)": st.column_config.NumberColumn(
+                        "P90",
+                        format="%.2f °C",
+                    ),
+                },
+            )
+
+    # -----------------------------------------------------
+    # NATIONAL DATA TABLE
+    # -----------------------------------------------------
+
+    with st.expander(
+        "National historical data 1901–2024",
+        expanded=False,
+    ):
+        st.dataframe(
+            national,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "year": st.column_config.NumberColumn(
+                    "Year",
+                    format="%d",
+                ),
+                "mean_temperature_c": st.column_config.NumberColumn(
+                    "Mean temperature",
+                    format="%.2f °C",
+                ),
+                "annual_precipitation_mm": st.column_config.NumberColumn(
+                    "Annual precipitation",
+                    format="%.0f mm",
+                ),
+            },
+        )
+
+    st.markdown(
+        """<div class="cp-method-box">
+<b>Country methodology:</b> historical national values use World Bank
+CCKP spatially aggregated CRU time series. Future values use CCKP
+country-aggregated CMIP6 multi-model ensembles. Live weather shown
+elsewhere for a country is only the search centroid and is never treated
+as a national current-weather average.
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    return True
+
+
 
 if city is not None:
     title = f"{city['city_name']}, {city['country_name']}"
