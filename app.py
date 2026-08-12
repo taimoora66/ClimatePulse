@@ -15,6 +15,7 @@ from streamlit_searchbox import st_searchbox
 from src.api.air_quality import get_current_air_quality
 from src.api.current_weather import get_current_weather
 from src.api.today_forecast import get_today_forecast
+from src.api.point_history import get_point_history
 from src.api.future_climate import (
     CLIMATE_MODELS,
     get_midcentury_ensemble,
@@ -41,6 +42,15 @@ from src.profile import (
     PROFILE_PHOTO_PATH,
 )
 from src.about_page import render_about_page
+from src.home_page import (
+    render_home_page,
+    render_dashboard_page,
+    render_climate_timeline_page,
+)
+from src.ai_assistant import (
+    render_ai_page,
+    render_persistent_ai,
+)
 
 from src.queries.climate import (
     get_annual_climate_summary,
@@ -106,7 +116,14 @@ html, body, [class*="css"] {
 }
 [data-testid="stSidebar"] * { color: #dce7ef; }
 [data-testid="stHeader"] { background: transparent; }
-[data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer { display: none !important; }
+[data-testid="stDecoration"], #MainMenu, footer { display: none !important; }
+[data-testid="stSidebarCollapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 999999 !important;
+}
+
 [data-baseweb="input"] {
     background: #0b1724 !important;
     border: 1px solid var(--cp-border) !important;
@@ -1094,6 +1111,34 @@ html, body, [class*="css"] {
     }
 }
 
+
+/* V22 readability fixes */
+div[data-testid="stTextArea"] textarea,
+div[data-testid="stTextInput"] input,
+div[data-testid="stChatInput"] textarea,
+div[data-testid="stChatInput"] input {
+    color: #f4fbff !important;
+    -webkit-text-fill-color: #f4fbff !important;
+    caret-color: #ffffff !important;
+    background: #0a1d2a !important;
+}
+
+div[data-testid="stTextArea"] textarea::placeholder,
+div[data-testid="stTextInput"] input::placeholder,
+div[data-testid="stChatInput"] textarea::placeholder,
+div[data-testid="stChatInput"] input::placeholder {
+    color: #7f9baa !important;
+    -webkit-text-fill-color: #7f9baa !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stExpander"] {
+    border-color: rgba(73, 214, 246, .14) !important;
+}
+
+[data-testid="stExpander"] details {
+    background: rgba(4, 17, 27, .82) !important;
+}
 </style>
     """,
     unsafe_allow_html=True,
@@ -1110,11 +1155,13 @@ DEFAULT_STATE = {
     "recent_searches": [],
     "history_status": None,
     "history_retry_after_seconds": None,
-    "main_navigation": "Dashboard",
+    "main_navigation": "Home",
 }
 for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value
+
+# V20: Dashboard was merged into Home.
 
 
 def safe_float(value):
@@ -2992,8 +3039,10 @@ with st.sidebar:
     nav_view = st.radio(
         "Navigation",
         options=[
+            "Home",
             "Dashboard",
             "Map Explorer",
+            "Climate Timeline",
             "Climate Trends",
             "Data & Methods",
             "Compare Places",
@@ -3005,8 +3054,10 @@ with st.sidebar:
         label_visibility="collapsed",
         width="stretch",
         format_func=lambda value: {
+            "Home": "✦   Home",
             "Dashboard": "⌂   Dashboard",
             "Map Explorer": "▧   Map Explorer",
+            "Climate Timeline": "⟶   Climate Timeline",
             "Climate Trends": "↗   Climate Trends",
             "Data & Methods": "▤   Data & Methods",
             "Compare Places": "⇄   Compare Places",
@@ -3179,20 +3230,33 @@ if pending_location:
 
     if pending_id != current_loaded_id:
 
+        # Critical V21 behavior:
+        # keep the searched point immediately, BEFORE historical import.
+        # This prevents a previous country selection from remaining active
+        # when a small/local place has slow or unavailable ERA5 history.
+        st.session_state.selected_location = (
+            pending_location
+        )
+
+        st.session_state.selected_country = None
+        st.session_state.selected_city_id = None
+
+        st.session_state.history_status = (
+            "loading"
+        )
+
+        st.session_state.history_retry_after_seconds = None
+
         try:
             result = ensure_city_history(
                 pending_location
             )
 
             st.session_state.selected_city_id = (
-                result["city_id"]
+                result.get(
+                    "city_id"
+                )
             )
-
-            st.session_state.selected_location = (
-                pending_location
-            )
-
-            st.session_state.selected_country = None
 
             st.session_state.history_status = (
                 result.get(
@@ -3201,18 +3265,17 @@ if pending_location:
                 )
             )
 
-            st.session_state.history_retry_after_seconds = None
-
-            st.rerun()
-
         except Exception:
+            # Live weather should still work from selected_location.
             st.session_state.history_status = (
                 "unavailable"
             )
 
+        st.rerun()
+
 
 # =========================================================
-# CITY DATA
+# CITY / PLACE DATA
 # =========================================================
 
 city = None
@@ -3221,6 +3284,14 @@ anomalies = None
 trend = None
 current_weather = {}
 current_air = {}
+
+# Keep the searched location useful immediately, even before a DB history job
+# finishes. If a DB-backed city exists later, it becomes the richer source.
+active_point_location = (
+    st.session_state.get(
+        "selected_location"
+    )
+)
 
 if st.session_state.selected_city_id is not None:
     city_id = st.session_state.selected_city_id
@@ -3234,130 +3305,227 @@ if st.session_state.selected_city_id is not None:
         ) = cached_dashboard_data(
             city_id
         )
-    except Exception as error:
-        st.error(
-            "Unable to load climate analytics: "
-            f"{error}"
-        )
+
+    except Exception:
         city = None
         summary = None
         anomalies = None
         trend = None
 
     if city is not None:
+        active_point_location = city
 
-        if summary is not None and not summary.empty:
-            for column in [
-                "avg_temperature_c",
-                "avg_max_temperature_c",
-                "avg_min_temperature_c",
-                "hottest_day_c",
-                "coldest_day_c",
-                "annual_precipitation_mm",
-                "hot_days_30c",
-                "extreme_hot_days_35c",
-            ]:
-                if column in summary.columns:
-                    summary[column] = pd.to_numeric(
-                        summary[column],
-                        errors="coerce",
-                    )
-
-        if anomalies is not None and not anomalies.empty:
-            for column in [
-                "annual_temperature_c",
-                "baseline_temperature_c",
-                "anomaly_c",
-            ]:
-                if column in anomalies.columns:
-                    anomalies[column] = pd.to_numeric(
-                        anomalies[column],
-                        errors="coerce",
-                    )
-
-        try:
-            live_environment = cached_live_environment(
-                city["latitude"],
-                city["longitude"],
-                city["timezone"],
+# Normalize numeric historical columns when DB history exists.
+if (
+    summary is not None
+    and not summary.empty
+):
+    for column in [
+        "avg_temperature_c",
+        "avg_max_temperature_c",
+        "avg_min_temperature_c",
+        "hottest_day_c",
+        "coldest_day_c",
+        "annual_precipitation_mm",
+        "hot_days_30c",
+        "extreme_hot_days_35c",
+    ]:
+        if column in summary.columns:
+            summary[column] = pd.to_numeric(
+                summary[column],
+                errors="coerce",
             )
 
-            current_weather = (
-                live_environment
-                .get("weather", {})
-                .get("current", {})
+if (
+    anomalies is not None
+    and not anomalies.empty
+):
+    for column in [
+        "annual_temperature_c",
+        "baseline_temperature_c",
+        "anomaly_c",
+    ]:
+        if column in anomalies.columns:
+            anomalies[column] = pd.to_numeric(
+                anomalies[column],
+                errors="coerce",
             )
 
-            current_air = (
-                live_environment
-                .get("air", {})
-                .get("current", {})
+# Live point weather should not depend on database history.
+if active_point_location:
+    try:
+        live_environment = cached_live_environment(
+            active_point_location[
+                "latitude"
+            ],
+            active_point_location[
+                "longitude"
+            ],
+            active_point_location.get(
+                "timezone",
+                "auto",
+            ),
+        )
+
+        current_weather = (
+            live_environment
+            .get(
+                "weather",
+                {},
+            )
+            .get(
+                "current",
+                {},
+            )
+        )
+
+        current_air = (
+            live_environment
+            .get(
+                "air",
+                {},
+            )
+            .get(
+                "current",
+                {},
+            )
+        )
+
+    except Exception:
+        current_weather = {}
+        current_air = {}
+
+# Historical fallback for a point when DB history is missing.
+@st.cache_data(
+    ttl=21600,
+    max_entries=64,
+    show_spinner=False,
+)
+def cached_point_history(
+    latitude,
+    longitude,
+):
+    return get_point_history(
+        float(latitude),
+        float(longitude),
+    )
+
+history_required_views = {
+    "Dashboard",
+    "Climate Timeline",
+    "Climate Trends",
+    "Compare Places",
+    "Climate Passport",
+}
+
+if (
+    nav_view in history_required_views
+    and active_point_location
+    and (
+        summary is None
+        or summary.empty
+    )
+):
+    try:
+        point_history = cached_point_history(
+            active_point_location[
+                "latitude"
+            ],
+            active_point_location[
+                "longitude"
+            ],
+        )
+
+        summary = point_history[
+            "summary"
+        ]
+
+        anomalies = point_history[
+            "anomalies"
+        ]
+
+        if trend is None:
+            trend = point_history[
+                "trend"
+            ]
+
+        if isinstance(
+            active_point_location,
+            dict,
+        ):
+            active_point_location[
+                "scope_note"
+            ] = (
+                active_point_location.get(
+                    "scope_note"
+                )
+                or (
+                    "Historical fallback is point-based reanalysis at the "
+                    "selected coordinates."
+                )
             )
 
-        except Exception:
-            current_weather = {}
-            current_air = {}
+    except Exception:
+        # Live data remains useful even if the large archive request fails.
+        pass
 
-
-
+# Forecast uses whichever active point is available.
 today_forecast = {}
 today_context = None
 
-if city is not None:
-
+if active_point_location is not None:
     try:
-        today_forecast = (
-            cached_today_forecast(
-                city["latitude"],
-                city["longitude"],
-                city["timezone"],
-            )
+        today_forecast = cached_today_forecast(
+            active_point_location[
+                "latitude"
+            ],
+            active_point_location[
+                "longitude"
+            ],
+            active_point_location.get(
+                "timezone",
+                "auto",
+            ),
         )
 
     except Exception:
         today_forecast = {}
 
-    forecast_high_c = (
-        today_forecast.get(
-            "temperature_max_c"
-        )
+    forecast_high_c = today_forecast.get(
+        "temperature_max_c"
     )
 
-    forecast_low_c = (
-        today_forecast.get(
-            "temperature_min_c"
-        )
+    forecast_low_c = today_forecast.get(
+        "temperature_min_c"
     )
 
-    forecast_date = (
-        today_forecast.get(
-            "date"
-        )
+    forecast_date = today_forecast.get(
+        "date"
     )
 
+    # The DB-based percentile context needs a real city_id.
     if (
-        forecast_date
+        city is not None
+        and forecast_date
         and forecast_high_c is not None
         and forecast_low_c is not None
     ):
-
         try:
-            today_context = (
-                cached_today_climate_context(
-                    city["city_id"],
-                    forecast_date,
-                    float(
-                        forecast_high_c
-                    ),
-                    float(
-                        forecast_low_c
-                    ),
-                )
+            today_context = cached_today_climate_context(
+                city[
+                    "city_id"
+                ],
+                forecast_date,
+                float(
+                    forecast_high_c
+                ),
+                float(
+                    forecast_low_c
+                ),
             )
 
         except Exception:
             today_context = None
-
 
 
 # =========================================================
@@ -3413,7 +3581,18 @@ if country_feature:
     country_data_error = None
     country_future_error = None
 
-    if country_iso3:
+    country_heavy_views = {
+        "Dashboard",
+        "Climate Timeline",
+        "Climate Trends",
+        "Compare Places",
+        "Climate Passport",
+    }
+
+    if (
+        country_iso3
+        and nav_view in country_heavy_views
+    ):
         try:
             country_national = (
                 cached_country_historical_climate(
@@ -3484,6 +3663,47 @@ if country_feature:
         except Exception:
             country_live_weather = {}
             country_live_air = {}
+
+
+# If national CCKP/CRU data are temporarily unavailable, provide a clearly
+# labelled centroid-point historical fallback instead of an empty country page.
+if (
+    nav_view in {
+        "Dashboard",
+        "Climate Timeline",
+        "Climate Trends",
+        "Compare Places",
+        "Climate Passport",
+    }
+    and country_feature
+    and country_location
+    and (
+        country_national is None
+        or country_national.empty
+    )
+):
+    try:
+        fallback = cached_point_history(
+            country_location[
+                "latitude"
+            ],
+            country_location[
+                "longitude"
+            ],
+        )
+
+        country_national = fallback[
+            "country_frame"
+        ]
+
+        country_data_error = (
+            "National spatial-average source unavailable; "
+            "showing point-based historical fallback at the country centroid."
+        )
+
+    except Exception:
+        pass
+
 
 
 @st.fragment(
@@ -4181,6 +4401,75 @@ as a national current-weather average.
 
 
 
+# =========================================================
+# GLOBAL ASSISTANT CONTEXT
+# =========================================================
+
+if country_feature:
+    ai_selected_name = (
+        maptiler_result_label(
+            country_feature
+        )
+    )
+
+    ai_weather = country_live_weather
+    ai_air = country_live_air
+    ai_scope = (
+        "Country search. Live weather is a centroid point proxy; "
+        "historical country climate uses national spatial averages."
+    )
+
+elif active_point_location:
+    ai_selected_name = (
+        active_point_location.get(
+            "city_name"
+        )
+        or active_point_location.get(
+            "name"
+        )
+        or "Selected location"
+    )
+
+    ai_weather = current_weather
+    ai_air = current_air
+    ai_scope = (
+        active_point_location.get(
+            "scope_note"
+        )
+        if isinstance(
+            active_point_location,
+            dict,
+        )
+        else None
+    )
+
+else:
+    ai_selected_name = None
+    ai_weather = {}
+    ai_air = {}
+    ai_scope = None
+
+global_ai_context = {
+    "selected_location": ai_selected_name,
+    "scope": ai_scope,
+    "current_weather": ai_weather,
+    "current_air_quality": ai_air,
+    "history_status": st.session_state.get(
+        "history_status"
+    ),
+    "historical_trend": trend,
+    "country_iso3": country_iso3,
+    "country_data_loaded": bool(
+        country_national is not None
+        and not country_national.empty
+    ),
+}
+
+render_persistent_ai(
+    global_ai_context
+)
+
+
 if city is not None:
     title = f"{city['city_name']}, {city['country_name']}"
 
@@ -4252,18 +4541,23 @@ elif st.session_state.selected_country:
         f"<span>{country_source_label}</span>"
     )
 else:
-    title = "Global Climate Intelligence"
-    meta = "Search any city, place or country to explore climate conditions and long-term trends"
+    if nav_view == "Home":
+        title = "Live Earth Intelligence"
+        meta = "Current conditions, forecast, health context, compound signals and climate change"
+    else:
+        title = "Global Climate Intelligence"
+        meta = "Search any city, place or country to explore climate conditions and long-term trends"
 
-st.markdown(
-    f"""
+if nav_view != "Home":
+    st.markdown(
+        f"""
 <div class="cp-topline"><div>
 <div class="cp-place-title">{title}</div>
 <div class="cp-place-meta">{meta}</div>
 </div></div>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # =========================================================
@@ -4313,6 +4607,75 @@ if (
         )
     )
 
+
+
+# =========================================================
+# FUTURISTIC HOME
+# =========================================================
+
+if nav_view == "Home":
+    render_home_page(
+        city=city,
+        point_location=(
+            st.session_state.get(
+                "selected_location"
+            )
+        ),
+        summary=summary,
+        anomalies=anomalies,
+        trend=trend,
+        country_feature=country_feature,
+        country_location=country_location,
+        country_national=country_national,
+        country_iso3=country_iso3,
+    )
+    st.stop()
+
+
+if nav_view == "Dashboard":
+    render_dashboard_page(
+        city=city,
+        point_location=(
+            st.session_state.get(
+                "selected_location"
+            )
+        ),
+        summary=summary,
+        anomalies=anomalies,
+        trend=trend,
+        country_feature=country_feature,
+        country_location=country_location,
+        country_national=country_national,
+    )
+    st.stop()
+
+
+if nav_view == "AI Assistant":
+    render_ai_page(
+        global_ai_context
+    )
+    st.stop()
+
+
+# =========================================================
+# CLIMATE TIMELINE
+# =========================================================
+
+if nav_view == "Climate Timeline":
+    render_climate_timeline_page(
+        city=city,
+        point_location=(
+            st.session_state.get(
+                "selected_location"
+            )
+        ),
+        summary=summary,
+        anomalies=anomalies,
+        country_feature=country_feature,
+        country_national=country_national,
+        country_iso3=country_iso3,
+    )
+    st.stop()
 
 
 # =========================================================
@@ -6229,7 +6592,7 @@ if nav_view == "About":
     st.stop()
 
 
-if nav_view in {"Dashboard", "Map Explorer"}:
+if nav_view in {"Home", "Map Explorer"}:
     st.markdown('<div id="map-explorer"></div>', unsafe_allow_html=True)
     map_col, current_col = st.columns([1.55, 1], gap="medium")
     with map_col:
@@ -6411,7 +6774,7 @@ reference point, not a national-average current temperature.
 
 
 if (
-    nav_view == "Dashboard"
+    nav_view == "Home"
     and city is not None
     and today_forecast
     and today_context
@@ -6802,7 +7165,7 @@ centroid rather than a boundary-wide average.
 if (
     country_feature
     and nav_view in {
-        "Dashboard",
+        "Home",
         "Climate Trends",
     }
 ):
@@ -6895,7 +7258,7 @@ st.markdown(
 # =========================================================
 
 if (
-    nav_view == "Dashboard"
+    nav_view == "Home"
     and climate_fingerprint
 ):
 
@@ -7131,7 +7494,7 @@ with secondary2:
             unsafe_allow_html=True,
         )
 
-if nav_view == "Dashboard":
+if nav_view == "Home":
     st.markdown('<div id="data-methods"></div>', unsafe_allow_html=True)
     with st.expander("Technical Details & Data"):
         st.markdown(

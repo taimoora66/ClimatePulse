@@ -9,8 +9,14 @@ BUILDER_HEADLINE = (
 )
 
 BUILDER_BIO = (
-    "Interested in climate data, environmental analysis and digital "
-    "tools for making environmental change easier to understand."
+    """
+Interests:
+- Climate data,
+- Environmental Risk analysis,
+- Digital tools for understanding environmental change,
+- Intelligent, data-driven decision-making.
+"""
+
 )
 
 PROJECT_MOTIVATION = (
