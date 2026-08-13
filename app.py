@@ -133,20 +133,84 @@ html, body, [class*="css"] {
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 .stApp { background: var(--cp-bg); color: var(--cp-text); }
+
+/* =========================================================
+   APP SHELL / TOP-SPACING FIX
+   =========================================================
+   Streamlit reserves a header band even when its background is transparent.
+   Collapse that reservation so every ClimatePulse page starts near the top.
+   Keep the toolbar available as a small floating control at the top-right.
+*/
+[data-testid="stHeader"] {
+    height: 0 !important;
+    min-height: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+}
+
+[data-testid="stToolbar"] {
+    position: fixed !important;
+    top: .35rem !important;
+    right: .45rem !important;
+    z-index: 1000000 !important;
+}
+
+[data-testid="stAppViewContainer"] > .main {
+    padding-top: 0 !important;
+}
+
 .block-container {
     max-width: 1540px;
-    padding-top: 1rem;
+    padding-top: .35rem !important;
     padding-bottom: 2.4rem;
     padding-left: 1.1rem;
     padding-right: 1.1rem;
 }
+
 [data-testid="stSidebar"] {
     background: #050d16;
     border-right: 1px solid var(--cp-border);
+    padding-top: 0 !important;
 }
+
+[data-testid="stSidebarContent"] {
+    padding-top: .55rem !important;
+}
+
 [data-testid="stSidebar"] * { color: #dce7ef; }
-[data-testid="stHeader"] { background: transparent; }
-[data-testid="stDecoration"], #MainMenu, footer { display: none !important; }
+
+[data-testid="stDecoration"],
+#MainMenu,
+footer {
+    display: none !important;
+}
+
+/* =========================================================
+   HOME CLEANUP
+   =========================================================
+   The large ClimatePulse Home hero repeated information already communicated
+   by the navigation/search and pushed the live globe below the fold.
+   Hide it globally by its dedicated V19 wrapper. The globe and Global Pulse
+   columns then move upward automatically without changing any weather/data logic.
+*/
+.cp-v19-wrap {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* Tighten the first Home content section after the location control. */
+.cp-v19-wrap + div,
+.cp-v19-wrap + [data-testid="stVerticalBlock"] {
+    margin-top: 0 !important;
+}
+
+h3 {
+    scroll-margin-top: .5rem;
+}
 [data-testid="stSidebarCollapsedControl"] {
     display: flex !important;
     visibility: visible !important;
@@ -229,7 +293,7 @@ html, body, [class*="css"] {
 .cp-footer { color: #6f8496; font-size: .76rem; text-align: center; padding: 1.2rem 0 .2rem; }
 @media (max-width: 1100px) { .cp-kpi-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media (max-width: 700px) {
-    .block-container { padding-left: .65rem; padding-right: .65rem; padding-top: .55rem; }
+    .block-container { padding-left: .65rem; padding-right: .65rem; padding-top: .20rem !important; }
     .cp-place-title { font-size: 1.38rem; }
     .cp-place-meta { gap: 8px; font-size: .76rem; }
     .cp-kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
@@ -3572,64 +3636,105 @@ GLOBAL_SEARCHBOX_STYLE = {
 # =========================================================
 # TOP SEARCH BAR
 # =========================================================
+#
+# Global Place Search is intentionally limited to the two
+# location-discovery views:
+#
+#   • Home
+#   • Map Explorer
+#
+# Other pages keep their own page-specific controls and do
+# not inherit this large search/header block.
+# =========================================================
 
-st.markdown(
-    '<div id="dashboard"></div>',
-    unsafe_allow_html=True,
-)
+selected_search_result = None
 
-search_col, status_col = st.columns(
-    [5.0, 1.35],
-    gap="medium",
-    vertical_alignment="center",
-)
+if nav_view in {"Home", "Map Explorer"}:
 
-with search_col:
     st.markdown(
-        """
+        '<div id="dashboard"></div>',
+        unsafe_allow_html=True,
+    )
+
+    search_col, status_col = st.columns(
+        [5.0, 1.35],
+        gap="medium",
+        vertical_alignment="center",
+    )
+
+    with search_col:
+        st.markdown(
+            """
 <div class="cp-search-panel">
 <div class="cp-search-kicker">GLOBAL PLACE SEARCH</div>
 <div class="cp-search-title">Explore any city, place or country</div>
 <div class="cp-search-help">Search globally to move ClimatePulse, load live conditions and connect historical climate context.</div>
 </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
-    selected_search_result = st_searchbox(
-        global_search,
-        key="global_place_search",
-        label=None,
-        placeholder="Search Milan, Islamabad, Tokyo, Pakistan...",
-        debounce=300,
-        edit_after_submit="option",
-        clear_on_submit=False,
-        style_overrides=GLOBAL_SEARCHBOX_STYLE,
-    )
+        selected_search_result = st_searchbox(
+            global_search,
+            key="global_place_search",
+            label=None,
+            placeholder="Search Milan, Islamabad, Tokyo, Pakistan...",
+            debounce=300,
+            edit_after_submit="option",
+            clear_on_submit=False,
+            style_overrides=GLOBAL_SEARCHBOX_STYLE,
+        )
 
-with status_col:
-    # Public visitors see only system status. Audience numbers remain private
-    # and are shown here only after the developer has authenticated.
-    developer_authenticated = bool(
-        st.session_state.get("cp_analytics_authenticated", False)
-    )
-
-    if developer_authenticated and ANALYTICS_READY:
-        try:
-            active_visitors = int(
-                get_analytics_summary().get("active_now", 0)
+    with status_col:
+        # Public visitors see only system status. Audience numbers remain
+        # private and are shown here only after developer authentication.
+        developer_authenticated = bool(
+            st.session_state.get(
+                "cp_analytics_authenticated",
+                False,
             )
-            audience_text = f"{active_visitors:,} active now"
-            audience_sub = "Developer view"
-        except Exception:
-            audience_text = "Analytics unavailable"
-            audience_sub = "Developer view"
-    else:
-        audience_text = "All systems normal"
-        audience_sub = "Live Earth online"
+        )
 
-    st.markdown(
-        f"""
+        if (
+            developer_authenticated
+            and ANALYTICS_READY
+        ):
+            try:
+                active_visitors = int(
+                    get_analytics_summary().get(
+                        "active_now",
+                        0,
+                    )
+                )
+
+                audience_text = (
+                    f"{active_visitors:,} active now"
+                )
+
+                audience_sub = (
+                    "Developer view"
+                )
+
+            except Exception:
+                audience_text = (
+                    "Analytics unavailable"
+                )
+
+                audience_sub = (
+                    "Developer view"
+                )
+
+        else:
+            audience_text = (
+                "All systems normal"
+            )
+
+            audience_sub = (
+                "Live Earth online"
+            )
+
+        st.markdown(
+            f"""
 <div class="cp-audience-wrap">
     <div class="cp-audience-pill">
         <span class="cp-audience-dot"></span>
@@ -3637,9 +3742,10 @@ with status_col:
         <span class="cp-audience-sub">· {audience_sub}</span>
     </div>
 </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
+
 
 # =========================================================
 # HANDLE SEARCH RESULT
