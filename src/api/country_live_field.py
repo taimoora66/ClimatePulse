@@ -18,11 +18,9 @@ REST_COUNTRIES_URL = (
     "https://restcountries.com/v3.1/all"
 )
 
-# Keep the URL comfortably below common proxy/server limits.
+# Keep request URLs practical while still using Open-Meteo's documented
+# multi-coordinate endpoint.
 COUNTRY_CHUNK_SIZE = 55
-
-# This is deliberately NOT an aggressive retry client.
-# A 429 means the provider is asking us to slow down; retry storms make it worse.
 REQUEST_TIMEOUT_SECONDS = 75
 
 
@@ -59,11 +57,7 @@ WMO_TEXT = {
 
 
 class OpenMeteoRateLimitError(RuntimeError):
-    """Raised when Open-Meteo responds with HTTP 429."""
-
-    def __init__(self, message, retry_after=None):
-        super().__init__(message)
-        self.retry_after = retry_after
+    pass
 
 
 def weather_text(code):
@@ -133,11 +127,9 @@ def _country_catalog_rest():
     )
     response.raise_for_status()
 
-    payload = response.json()
-
     rows = []
 
-    for item in payload:
+    for item in response.json():
         latlng = item.get(
             "latlng"
         ) or []
@@ -145,22 +137,20 @@ def _country_catalog_rest():
         if len(latlng) < 2:
             continue
 
-        name = (
-            item.get(
-                "name",
-                {},
-            ).get(
-                "common"
-            )
-            or ""
-        )
-
         rows.append(
             {
                 "cca2": item.get(
                     "cca2"
                 ),
-                "country": name,
+                "country": (
+                    item.get(
+                        "name",
+                        {},
+                    ).get(
+                        "common"
+                    )
+                    or ""
+                ),
                 "latitude": latlng[0],
                 "longitude": latlng[1],
                 "capital": ", ".join(
@@ -169,14 +159,18 @@ def _country_catalog_rest():
                     )
                     or []
                 ),
-                "region": item.get(
-                    "region"
-                )
-                or "",
-                "subregion": item.get(
-                    "subregion"
-                )
-                or "",
+                "region": (
+                    item.get(
+                        "region"
+                    )
+                    or ""
+                ),
+                "subregion": (
+                    item.get(
+                        "subregion"
+                    )
+                    or ""
+                ),
             }
         )
 
@@ -189,14 +183,8 @@ def get_country_catalog():
     """
     Country representative coordinates.
 
-    Primary:
-        Google canonical country-coordinate dataset.
-
-    Fallback:
-        REST Countries.
-
-    These are representative country points for live weather lookup.
-    They are NOT national spatial-average weather values.
+    These are points for current-weather visualization, not national
+    spatial-average weather values.
     """
     errors = []
 
@@ -270,12 +258,10 @@ def _coordinate_params(frame):
 
 def _open_meteo_json(params):
     """
-    Make one Open-Meteo request.
+    One provider request. 429 is never retried in a loop.
 
-    Important:
-    - HTTP 429 is NOT retried automatically.
-    - The Streamlit layer keeps a last-known-good snapshot and controls
-      the refresh cadence instead.
+    The persistent Neon cache is the retry/fallback strategy; repeatedly
+    retrying a rate-limited provider would only consume more capacity.
     """
     response = requests.get(
         OPEN_METEO_URL,
@@ -287,18 +273,12 @@ def _open_meteo_json(params):
     )
 
     if response.status_code == 429:
-        retry_after = response.headers.get(
-            "Retry-After"
-        )
-
         raise OpenMeteoRateLimitError(
             (
                 "Open-Meteo rate limit reached (HTTP 429). "
-                "ClimatePulse will keep the last successful country snapshot "
-                "when one is available and will wait for the normal cache "
-                "refresh interval before requesting the provider again."
-            ),
-            retry_after=retry_after,
+                "The persisted Neon snapshot remains the source served "
+                "to ClimatePulse visitors."
+            )
         )
 
     response.raise_for_status()
@@ -310,11 +290,6 @@ def _normalise_multi_location_payload(
     payload,
     expected_count,
 ):
-    """
-    Open-Meteo returns a list for multiple coordinates and a dict for one.
-    Validate the response length so countries cannot silently receive another
-    country's weather after an upstream/response-shape problem.
-    """
     if isinstance(
         payload,
         dict,
@@ -346,7 +321,7 @@ def _normalise_multi_location_payload(
 
 
 # =========================================================
-# FAST-CHANGING CURRENT CONDITIONS
+# CURRENT CONDITIONS
 # =========================================================
 
 def _request_current_chunk(
@@ -358,24 +333,22 @@ def _request_current_chunk(
         )
     )
 
-    params = {
-        "latitude": latitudes,
-        "longitude": longitudes,
-        "timezone": "GMT",
-        "current": (
-            "temperature_2m,"
-            "apparent_temperature,"
-            "relative_humidity_2m,"
-            "precipitation,"
-            "cloud_cover,"
-            "wind_speed_10m,"
-            "weather_code,"
-            "is_day"
-        ),
-    }
-
     payload = _open_meteo_json(
-        params
+        {
+            "latitude": latitudes,
+            "longitude": longitudes,
+            "timezone": "GMT",
+            "current": (
+                "temperature_2m,"
+                "apparent_temperature,"
+                "relative_humidity_2m,"
+                "precipitation,"
+                "cloud_cover,"
+                "wind_speed_10m,"
+                "weather_code,"
+                "is_day"
+            ),
+        }
     )
 
     payload = (
@@ -454,12 +427,12 @@ def _request_current_chunk(
                         "is_day"
                     ),
 
-                "current_source_time":
+                "provider_time":
                     current.get(
                         "time"
                     ),
 
-                "current_fetched_at_utc":
+                "provider_fetch_utc":
                     fetched_at,
             }
         )
@@ -468,13 +441,6 @@ def _request_current_chunk(
 
 
 def get_live_country_current():
-    """
-    Fetch current representative-point weather for every country.
-
-    All current variables from the previous ClimatePulse implementation are
-    retained. The only change is that they are fetched independently from the
-    slower 24-hour/daily context so each group can use an appropriate cache.
-    """
     catalog = get_country_catalog()
 
     rows = []
@@ -499,16 +465,14 @@ def get_live_country_current():
         rows
     )
 
-    numeric = [
+    for column in [
         "temperature_c",
         "feels_like_c",
         "humidity_pct",
         "precipitation_mm",
         "cloud_pct",
         "wind_kmh",
-    ]
-
-    for column in numeric:
+    ]:
         if column in frame.columns:
             frame[column] = pd.to_numeric(
                 frame[column],
@@ -519,7 +483,7 @@ def get_live_country_current():
 
 
 # =========================================================
-# SLOWER 24-HOUR + DAILY CONTEXT
+# 24-HOUR / DAILY CONTEXT
 # =========================================================
 
 def _request_context_chunk(
@@ -531,27 +495,23 @@ def _request_context_chunk(
         )
     )
 
-    # Same scientific fields as the previous implementation:
-    # - hourly temperature for the previous 24 h + one current/forecast hour
-    # - today's max/min temperature
-    # - today's maximum precipitation probability
-    params = {
-        "latitude": latitudes,
-        "longitude": longitudes,
-        "timezone": "GMT",
-        "hourly": "temperature_2m",
-        "past_hours": 24,
-        "forecast_hours": 1,
-        "daily": (
-            "temperature_2m_max,"
-            "temperature_2m_min,"
-            "precipitation_probability_max"
-        ),
-        "forecast_days": 1,
-    }
-
+    # Keep the exact existing product features. They are simply refreshed much
+    # less often and persisted independently.
     payload = _open_meteo_json(
-        params
+        {
+            "latitude": latitudes,
+            "longitude": longitudes,
+            "timezone": "GMT",
+            "hourly": "temperature_2m",
+            "past_hours": 24,
+            "forecast_hours": 1,
+            "daily": (
+                "temperature_2m_max,"
+                "temperature_2m_min,"
+                "precipitation_probability_max"
+            ),
+            "forecast_days": 1,
+        }
     )
 
     payload = (
@@ -603,7 +563,8 @@ def _request_context_chunk(
                     float(
                         hourly_temperature[-1]
                     )
-                    - float(
+                    -
+                    float(
                         hourly_temperature[0]
                     )
                 )
@@ -647,7 +608,7 @@ def _request_context_chunk(
                         or [None]
                     )[0],
 
-                "context_fetched_at_utc":
+                "context_provider_fetch_utc":
                     fetched_at,
             }
         )
@@ -656,15 +617,6 @@ def _request_context_chunk(
 
 
 def get_live_country_context():
-    """
-    Fetch the 24-hour and daily context used by the globe.
-
-    No data field is removed:
-    - 24 h temperature change
-    - today's high
-    - today's low
-    - maximum precipitation probability
-    """
     catalog = get_country_catalog()
 
     rows = []
@@ -689,14 +641,12 @@ def get_live_country_context():
         rows
     )
 
-    numeric = [
+    for column in [
         "temperature_change_24h_c",
         "today_high_c",
         "today_low_c",
         "precip_probability_pct",
-    ]
-
-    for column in numeric:
+    ]:
         if column in frame.columns:
             frame[column] = pd.to_numeric(
                 frame[column],
@@ -706,20 +656,10 @@ def get_live_country_context():
     return frame
 
 
-# =========================================================
-# FULL RICH DATASET
-# =========================================================
-
 def merge_live_country_field(
     current_frame,
     context_frame,
 ):
-    """
-    Reconstruct the exact rich dataframe expected by ClimatePulse.
-
-    Current data are required. Context can temporarily fall back to NaN only
-    when no historical last-known-good context exists yet.
-    """
     if (
         current_frame is None
         or current_frame.empty
@@ -733,7 +673,7 @@ def merge_live_country_field(
         "today_high_c",
         "today_low_c",
         "precip_probability_pct",
-        "context_fetched_at_utc",
+        "context_provider_fetch_utc",
     ]
 
     if (
@@ -745,7 +685,7 @@ def merge_live_country_field(
 
         return result
 
-    available_context = [
+    columns = [
         "cca2",
         *[
             column
@@ -757,7 +697,7 @@ def merge_live_country_field(
 
     return result.merge(
         context_frame[
-            available_context
+            columns
         ],
         on="cca2",
         how="left",
@@ -767,21 +707,11 @@ def merge_live_country_field(
 
 def get_live_country_field():
     """
-    Backwards-compatible full fetch.
+    Backwards compatibility for older ClimatePulse imports.
 
-    Existing imports elsewhere in ClimatePulse will keep working. The
-    production globe itself uses separate Streamlit caches for current and
-    context data so this function normally is not called on every rerun.
+    Production Home uses the Neon-backed orchestration in src/live_globe.py.
     """
-    current = (
-        get_live_country_current()
-    )
-
-    context = (
-        get_live_country_context()
-    )
-
     return merge_live_country_field(
-        current,
-        context,
+        get_live_country_current(),
+        get_live_country_context(),
     )

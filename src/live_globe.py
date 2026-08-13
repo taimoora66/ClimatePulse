@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import math
-import threading
-import time
+from datetime import datetime, timezone
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -12,6 +11,13 @@ from src.api.country_live_field import (
     get_live_country_context,
     get_live_country_current,
     merge_live_country_field,
+)
+from src.services.country_weather_store import (
+    finish_global_weather_refresh,
+    load_global_weather_snapshot,
+    save_global_weather_snapshot,
+    snapshot_age_seconds,
+    try_claim_global_weather_refresh,
 )
 
 
@@ -63,319 +69,336 @@ LAYER_CONFIG = {
 
 
 # =========================================================
-# RATE-SAFE SERVER CACHE
+# GLOBAL WEATHER POLICY
 # =========================================================
 #
-# The free Open-Meteo service has request limits. A global country layer
-# represents hundreds of coordinate lookups, so treating it like a single
-# selected-city request is unnecessarily expensive.
+# IMPORTANT:
+# Open-Meteo's rate accounting can scale with number of locations/data volume.
+# The global field is therefore intentionally much more conservative than a
+# one-city request.
 #
-# No data field or country is removed. We simply refresh each data family at
-# a cadence that matches how quickly that family changes.
+# Current country field:
+#     refresh every 2 hours
 #
-# Current model weather: 60 minutes
-# 24h/daily context:    3 hours
+# 24h/daily context:
+#     refresh every 6 hours
 #
-# st.cache_data is shared by sessions within the Streamlit process, so normal
-# page reruns and layer switches reuse the same server-side snapshot.
+# Visitors normally read Neon + Streamlit cache. Only one cross-session caller
+# can own a provider refresh lease for a cache key at a time.
 
-CURRENT_CACHE_TTL_SECONDS = 3600
-CONTEXT_CACHE_TTL_SECONDS = 10800
-MANUAL_REFRESH_COOLDOWN_SECONDS = 3600
+CURRENT_KEY = "country_current_v1"
+CONTEXT_KEY = "country_context_v1"
+
+CURRENT_MAX_AGE_SECONDS = 2 * 60 * 60
+CONTEXT_MAX_AGE_SECONDS = 6 * 60 * 60
+
+REFRESH_LEASE_SECONDS = 4 * 60
+
+# A short Streamlit DB-read cache prevents every widget rerun from querying
+# Neon. st.cache_data is shared across Streamlit users/sessions for the process.
+NEON_READ_CACHE_SECONDS = 5 * 60
 
 
 @st.cache_data(
-    ttl=CURRENT_CACHE_TTL_SECONDS,
-    max_entries=2,
+    ttl=NEON_READ_CACHE_SECONDS,
+    max_entries=8,
     show_spinner=False,
 )
-def cached_country_current():
-    return get_live_country_current()
-
-
-@st.cache_data(
-    ttl=CONTEXT_CACHE_TTL_SECONDS,
-    max_entries=2,
-    show_spinner=False,
-)
-def cached_country_context():
-    return get_live_country_context()
-
-
-@st.cache_resource
-def _country_live_store():
-    """
-    Process-wide last-known-good snapshot.
-
-    This is NOT synthetic data. It contains only previous successful
-    Open-Meteo responses. It prevents a temporary 429 from blanking the globe.
-    """
-    return {
-        "lock": threading.Lock(),
-        "current": None,
-        "context": None,
-        "current_stale": False,
-        "context_stale": False,
-        "current_error": None,
-        "context_error": None,
-        "last_manual_refresh_monotonic": 0.0,
-    }
-
-
-def _copy_frame(
-    value,
+def _cached_neon_snapshot(
+    cache_key,
 ):
-    if (
-        isinstance(
-            value,
-            pd.DataFrame,
-        )
-        and not value.empty
-    ):
-        return value.copy()
-
-    return None
-
-
-def cached_country_field():
-    """
-    Return the complete globe dataframe with last-known-good protection.
-
-    Existing home_page.py imports this function, so its public interface is
-    intentionally preserved.
-    """
-    store = _country_live_store()
-
-    current = None
-    context = None
-
-    current_error = None
-    context_error = None
-
-    current_stale = False
-    context_stale = False
-
-    # Current conditions
-    try:
-        current = (
-            cached_country_current()
-        )
-
-        if (
-            current is None
-            or current.empty
-        ):
-            raise RuntimeError(
-                "No current country-weather rows were returned."
-            )
-
-        with store[
-            "lock"
-        ]:
-            store[
-                "current"
-            ] = current.copy()
-            store[
-                "current_stale"
-            ] = False
-            store[
-                "current_error"
-            ] = None
-
-    except Exception as error:
-        current_error = str(
-            error
-        )
-
-        with store[
-            "lock"
-        ]:
-            current = _copy_frame(
-                store.get(
-                    "current"
-                )
-            )
-
-            store[
-                "current_stale"
-            ] = current is not None
-            store[
-                "current_error"
-            ] = current_error
-
-        if current is None:
-            raise
-
-        current_stale = True
-
-    # 24h + daily context
-    try:
-        context = (
-            cached_country_context()
-        )
-
-        if (
-            context is None
-            or context.empty
-        ):
-            raise RuntimeError(
-                "No country 24h/daily context rows were returned."
-            )
-
-        with store[
-            "lock"
-        ]:
-            store[
-                "context"
-            ] = context.copy()
-            store[
-                "context_stale"
-            ] = False
-            store[
-                "context_error"
-            ] = None
-
-    except Exception as error:
-        context_error = str(
-            error
-        )
-
-        with store[
-            "lock"
-        ]:
-            context = _copy_frame(
-                store.get(
-                    "context"
-                )
-            )
-
-            store[
-                "context_stale"
-            ] = context is not None
-            store[
-                "context_error"
-            ] = context_error
-
-        # Context is useful but current conditions are the essential dataset.
-        # If this is the first-ever load and context is unavailable, the globe
-        # can still render current conditions rather than failing completely.
-        context_stale = (
-            context is not None
-        )
-
-    with store[
-        "lock"
-    ]:
-        if current_stale:
-            store[
-                "current_stale"
-            ] = True
-
-        if context_stale:
-            store[
-                "context_stale"
-            ] = True
-
-        if current_error:
-            store[
-                "current_error"
-            ] = current_error
-
-        if context_error:
-            store[
-                "context_error"
-            ] = context_error
-
-    return merge_live_country_field(
-        current,
-        context,
+    return load_global_weather_snapshot(
+        cache_key
     )
 
 
-def _country_live_status():
-    store = _country_live_store()
-
-    with store[
-        "lock"
-    ]:
-        return {
-            "current_stale":
-                bool(
-                    store.get(
-                        "current_stale"
-                    )
-                ),
-            "context_stale":
-                bool(
-                    store.get(
-                        "context_stale"
-                    )
-                ),
-            "current_error":
-                store.get(
-                    "current_error"
-                ),
-            "context_error":
-                store.get(
-                    "context_error"
-                ),
-        }
+def _force_reload_neon(
+    cache_key,
+):
+    _cached_neon_snapshot.clear()
+    return _cached_neon_snapshot(
+        cache_key
+    )
 
 
-def _manual_refresh_current():
-    """
-    Rate-safe global manual refresh.
+def _snapshot_is_fresh(
+    snapshot,
+    max_age_seconds,
+):
+    if not snapshot:
+        return False
 
-    The guard is process-wide rather than browser-session-only, so multiple
-    visitors cannot independently clear the shared current-weather cache.
-    """
-    store = _country_live_store()
+    frame = snapshot.get(
+        "frame"
+    )
 
-    now = time.monotonic()
+    if (
+        frame is None
+        or frame.empty
+    ):
+        return False
 
-    with store[
-        "lock"
-    ]:
-        last_refresh = float(
-            store.get(
-                "last_manual_refresh_monotonic",
-                0.0,
-            )
-            or 0.0
+    age = snapshot_age_seconds(
+        snapshot.get(
+            "fetched_at"
         )
-
-        elapsed = (
-            now
-            - last_refresh
-        )
-
-        if (
-            last_refresh > 0
-            and elapsed
-            < MANUAL_REFRESH_COOLDOWN_SECONDS
-        ):
-            remaining = int(
-                MANUAL_REFRESH_COOLDOWN_SECONDS
-                - elapsed
-            )
-
-            return (
-                False,
-                remaining,
-            )
-
-        store[
-            "last_manual_refresh_monotonic"
-        ] = now
-
-    # Refresh only fast-changing current conditions.
-    # The 24h/daily context keeps its independent 3-hour cache.
-    cached_country_current.clear()
+    )
 
     return (
-        True,
-        0,
+        age is not None
+        and age <= max_age_seconds
     )
+
+
+def _refresh_snapshot(
+    cache_key,
+    provider_loader,
+):
+    """
+    Refresh one global dataset only if this process/session wins the Neon lease.
+
+    Returns:
+        (snapshot, attempted, error_message)
+    """
+    claimed = (
+        try_claim_global_weather_refresh(
+            cache_key,
+            lease_seconds=REFRESH_LEASE_SECONDS,
+        )
+    )
+
+    if not claimed:
+        return (
+            _cached_neon_snapshot(
+                cache_key
+            ),
+            False,
+            None,
+        )
+
+    try:
+        fresh_frame = provider_loader()
+
+        if (
+            fresh_frame is None
+            or fresh_frame.empty
+        ):
+            raise RuntimeError(
+                "Provider returned an empty global-weather dataset."
+            )
+
+        fetched_at = datetime.now(
+            timezone.utc
+        )
+
+        save_global_weather_snapshot(
+            cache_key,
+            fresh_frame,
+            fetched_at=fetched_at,
+        )
+
+        finish_global_weather_refresh(
+            cache_key,
+            success=True,
+        )
+
+        snapshot = _force_reload_neon(
+            cache_key
+        )
+
+        return (
+            snapshot,
+            True,
+            None,
+        )
+
+    except Exception as error:
+        try:
+            finish_global_weather_refresh(
+                cache_key,
+                success=False,
+                error=str(
+                    error
+                ),
+            )
+        except Exception:
+            pass
+
+        # Preserve and serve the previous successful Neon snapshot.
+        snapshot = _force_reload_neon(
+            cache_key
+        )
+
+        return (
+            snapshot,
+            True,
+            str(
+                error
+            ),
+        )
+
+
+def _get_or_refresh_snapshot(
+    cache_key,
+    provider_loader,
+    max_age_seconds,
+    force=False,
+):
+    """
+    Read Neon first.
+
+    Fresh:
+        serve immediately; no provider call.
+
+    Stale:
+        one caller refreshes through a DB lease; other callers keep serving the
+        previous snapshot.
+
+    Missing:
+        one caller attempts initial bootstrap.
+    """
+    snapshot = _cached_neon_snapshot(
+        cache_key
+    )
+
+    if (
+        not force
+        and _snapshot_is_fresh(
+            snapshot,
+            max_age_seconds,
+        )
+    ):
+        return (
+            snapshot,
+            False,
+            None,
+        )
+
+    refreshed, attempted, error = (
+        _refresh_snapshot(
+            cache_key,
+            provider_loader,
+        )
+    )
+
+    # If another session owns the lease, reload Neon once. The old snapshot is
+    # still perfectly valid as a last-known-good dataset.
+    if not attempted:
+        latest = _force_reload_neon(
+            cache_key
+        )
+
+        if (
+            latest
+            and latest.get(
+                "frame"
+            ) is not None
+            and not latest[
+                "frame"
+            ].empty
+        ):
+            refreshed = latest
+
+    return (
+        refreshed,
+        attempted,
+        error,
+    )
+
+
+def cached_country_field(
+    force_current=False,
+):
+    """
+    Public compatibility function used by home_page.py.
+
+    The browser/session does NOT directly own the global provider cache.
+    Neon is the persistent source of truth for the latest successful snapshots.
+    """
+    current_snapshot, _, current_error = (
+        _get_or_refresh_snapshot(
+            CURRENT_KEY,
+            get_live_country_current,
+            CURRENT_MAX_AGE_SECONDS,
+            force=force_current,
+        )
+    )
+
+    context_snapshot, _, context_error = (
+        _get_or_refresh_snapshot(
+            CONTEXT_KEY,
+            get_live_country_context,
+            CONTEXT_MAX_AGE_SECONDS,
+            force=False,
+        )
+    )
+
+    current_frame = (
+        current_snapshot.get(
+            "frame"
+        )
+        if current_snapshot
+        else pd.DataFrame()
+    )
+
+    context_frame = (
+        context_snapshot.get(
+            "frame"
+        )
+        if context_snapshot
+        else pd.DataFrame()
+    )
+
+    if (
+        current_frame is None
+        or current_frame.empty
+    ):
+        message = (
+            current_error
+            or (
+                "No persisted global current-weather snapshot exists yet. "
+                "The first successful provider fetch will bootstrap Neon."
+            )
+        )
+
+        raise RuntimeError(
+            message
+        )
+
+    frame = merge_live_country_field(
+        current_frame,
+        context_frame,
+    )
+
+    frame.attrs[
+        "current_fetched_at"
+    ] = (
+        current_snapshot.get(
+            "fetched_at"
+        )
+        if current_snapshot
+        else None
+    )
+
+    frame.attrs[
+        "context_fetched_at"
+    ] = (
+        context_snapshot.get(
+            "fetched_at"
+        )
+        if context_snapshot
+        else None
+    )
+
+    frame.attrs[
+        "current_error"
+    ] = current_error
+
+    frame.attrs[
+        "context_error"
+    ] = context_error
+
+    return frame
 
 
 def _fmt(
@@ -403,15 +426,32 @@ def _fmt(
     )
 
 
+def _age_text(
+    timestamp,
+):
+    age = snapshot_age_seconds(
+        timestamp
+    )
+
+    if age is None:
+        return "unknown age"
+
+    if age < 90:
+        return "under 2 min old"
+
+    if age < 3600:
+        return (
+            f"{int(age // 60)} min old"
+        )
+
+    return (
+        f"{age / 3600:.1f} h old"
+    )
+
+
 def _globe_focus(
     selected_location,
 ):
-    """
-    Return orthographic projection rotation/scale for the current selection.
-
-    Searching a country/city rotates the live globe to that place instead of
-    leaving the camera fixed over Europe/Africa.
-    """
     default = {
         "lon": 10.0,
         "lat": 12.0,
@@ -424,22 +464,17 @@ def _globe_focus(
     ):
         return default
 
-    latitude = selected_location.get(
-        "latitude"
-    )
-
-    longitude = selected_location.get(
-        "longitude"
-    )
-
     try:
         latitude = float(
-            latitude
+            selected_location.get(
+                "latitude"
+            )
         )
         longitude = float(
-            longitude
+            selected_location.get(
+                "longitude"
+            )
         )
-
     except (
         TypeError,
         ValueError,
@@ -453,19 +488,14 @@ def _globe_focus(
         )
     ).lower()
 
-    scale = (
-        1.22
-        if kind == "country"
-        else 1.38
-    )
-
     return {
-        "lon":
-            longitude,
-        "lat":
-            latitude,
-        "scale":
-            scale,
+        "lon": longitude,
+        "lat": latitude,
+        "scale": (
+            1.22
+            if kind == "country"
+            else 1.38
+        ),
     }
 
 
@@ -478,20 +508,24 @@ def _map_figure(
         layer_name
     ]
 
-    # Guarantee optional context columns exist even during the first temporary
-    # context outage, so hover rendering never crashes.
+    local_frame = frame.copy()
+
     for column in [
         "temperature_change_24h_c",
         "today_high_c",
         "today_low_c",
         "precip_probability_pct",
+        "capital",
+        "region",
+        "condition",
+        "is_day",
     ]:
-        if column not in frame.columns:
-            frame[
+        if column not in local_frame.columns:
+            local_frame[
                 column
             ] = None
 
-    custom = frame[
+    custom = local_frame[
         [
             "country",
             "capital",
@@ -515,11 +549,11 @@ def _map_figure(
 
     figure.add_trace(
         go.Choropleth(
-            locations=frame[
+            locations=local_frame[
                 "country"
             ],
             locationmode="country names",
-            z=frame[
+            z=local_frame[
                 config[
                     "column"
                 ]
@@ -704,7 +738,9 @@ def _country_card(
     )
 
     subtitle = " · ".join(
-        value
+        str(
+            value
+        )
         for value in [
             row.get(
                 "capital"
@@ -717,7 +753,16 @@ def _country_card(
             ),
             daylight,
         ]
-        if value
+        if (
+            value is not None
+            and str(
+                value
+            ).strip()
+            and str(
+                value
+            ).lower()
+            != "nan"
+        )
     )
 
     if subtitle:
@@ -820,14 +865,14 @@ def render_live_weather_globe(
     height=620,
 ):
     """
-    Country-first live global weather globe.
+    Persistent Neon-backed global country weather globe.
 
-    Every rendered country is colored by weather at a representative country
-    point. Hover/tap reveals the complete current + 24h/daily snapshot.
+    Normal visitor path:
+        Streamlit cache -> Neon snapshot -> render.
 
-    Important:
-    these are representative-point weather values, not national spatial
-    averages.
+    Provider path:
+        only when the stored snapshot is stale, and only after winning a
+        PostgreSQL refresh lease.
     """
     control_1, control_2 = st.columns(
         [
@@ -853,6 +898,8 @@ def render_live_weather_globe(
         if layer is None:
             layer = "Temperature"
 
+    force_refresh = False
+
     with control_2:
         if st.button(
             "↻ Refresh live countries",
@@ -860,51 +907,28 @@ def render_live_weather_globe(
             key=(
                 "refresh_country_live_field"
             ),
+            help=(
+                "Refreshes the global current-weather snapshot only when "
+                "ClimatePulse can safely claim the shared Neon refresh lease."
+            ),
         ):
-            refreshed, remaining = (
-                _manual_refresh_current()
-            )
-
-            if refreshed:
-                st.toast(
-                    (
-                        "Refreshing current country conditions. "
-                        "24h/daily context keeps its independent cache."
-                    )
-                )
-                st.rerun()
-
-            else:
-                minutes = max(
-                    1,
-                    math.ceil(
-                        remaining
-                        / 60
-                    ),
-                )
-
-                st.toast(
-                    (
-                        "The global live field was refreshed recently. "
-                        f"Manual refresh is available again in about "
-                        f"{minutes} min."
-                    )
-                )
+            # Clearing only the local DB-read cache is safe. The distributed
+            # lease prevents multiple public sessions from hammering Open-Meteo.
+            _cached_neon_snapshot.clear()
+            force_refresh = True
 
     try:
         with st.spinner(
-            "Loading live country weather…"
+            "Loading global weather snapshot…"
         ):
-            frame = cached_country_field()
+            frame = cached_country_field(
+                force_current=force_refresh,
+            )
 
         if frame.empty:
             raise RuntimeError(
-                "No live country rows were returned."
+                "No global country weather rows are available."
             )
-
-        status = (
-            _country_live_status()
-        )
 
         figure = _map_figure(
             frame,
@@ -929,27 +953,42 @@ def render_live_weather_globe(
             ),
         )
 
+        current_time = frame.attrs.get(
+            "current_fetched_at"
+        )
+
+        context_time = frame.attrs.get(
+            "context_fetched_at"
+        )
+
+        current_error = frame.attrs.get(
+            "current_error"
+        )
+
+        context_error = frame.attrs.get(
+            "context_error"
+        )
+
         if (
-            status[
-                "current_stale"
-            ]
-            or status[
-                "context_stale"
-            ]
+            current_error
+            or context_error
         ):
             st.caption(
                 (
-                    "Open-Meteo is temporarily rate-limiting or unavailable. "
-                    "ClimatePulse is showing the last successful provider "
-                    "snapshot rather than replacing it with estimated data."
+                    "Showing the latest successful Neon-backed Open-Meteo "
+                    f"snapshot ({_age_text(current_time)}). "
+                    "A provider refresh is temporarily unavailable; no "
+                    "estimated replacement values were inserted."
                 )
             )
         else:
             st.caption(
                 (
-                    "Drag to rotate · scroll/pinch to zoom · hover/tap a country "
-                    "for current conditions. Country colors use live weather at "
-                    "a representative country point, not a national-area average."
+                    "Drag to rotate · scroll/pinch to zoom · hover/tap a country. "
+                    f"Current global snapshot: {_age_text(current_time)}. "
+                    f"24h/daily context: {_age_text(context_time)}. "
+                    "Country colors use representative-point weather, not a "
+                    "national-area average."
                 )
             )
 
@@ -1026,46 +1065,48 @@ def render_live_weather_globe(
             )
 
         if (
-            status[
-                "current_error"
-            ]
-            or status[
-                "context_error"
-            ]
+            current_error
+            or context_error
         ):
             with st.expander(
                 "Provider status",
                 expanded=False,
             ):
-                if status[
-                    "current_error"
-                ]:
+                if current_error:
                     st.code(
                         (
-                            "Current field: "
-                            + status[
-                                "current_error"
-                            ]
+                            "Current field refresh: "
+                            + str(
+                                current_error
+                            )
                         )
                     )
 
-                if status[
-                    "context_error"
-                ]:
+                if context_error:
                     st.code(
                         (
-                            "24h/daily context: "
-                            + status[
-                                "context_error"
-                            ]
+                            "24h/daily context refresh: "
+                            + str(
+                                context_error
+                            )
                         )
                     )
 
     except Exception as error:
         st.error(
             (
-                "Live country weather could not be loaded. "
-                "Local ClimatePulse pages remain available."
+                "The global weather snapshot is not available yet. "
+                "ClimatePulse's selected-location, historical and climate "
+                "tools remain available."
+            )
+        )
+
+        st.info(
+            (
+                "Once Open-Meteo accepts one successful global refresh, "
+                "ClimatePulse will persist it in Neon. Future Streamlit "
+                "restarts and temporary provider 429 errors can then serve "
+                "that last successful snapshot."
             )
         )
 
@@ -1073,5 +1114,7 @@ def render_live_weather_globe(
             "Technical detail"
         ):
             st.code(
-                str(error)
+                str(
+                    error
+                )
             )
