@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import math
+import threading
+import time
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 from src.api.country_live_field import (
-    get_live_country_field,
+    get_live_country_context,
+    get_live_country_current,
+    merge_live_country_field,
 )
 
 
@@ -58,13 +62,320 @@ LAYER_CONFIG = {
 }
 
 
+# =========================================================
+# RATE-SAFE SERVER CACHE
+# =========================================================
+#
+# The free Open-Meteo service has request limits. A global country layer
+# represents hundreds of coordinate lookups, so treating it like a single
+# selected-city request is unnecessarily expensive.
+#
+# No data field or country is removed. We simply refresh each data family at
+# a cadence that matches how quickly that family changes.
+#
+# Current model weather: 60 minutes
+# 24h/daily context:    3 hours
+#
+# st.cache_data is shared by sessions within the Streamlit process, so normal
+# page reruns and layer switches reuse the same server-side snapshot.
+
+CURRENT_CACHE_TTL_SECONDS = 3600
+CONTEXT_CACHE_TTL_SECONDS = 10800
+MANUAL_REFRESH_COOLDOWN_SECONDS = 3600
+
+
 @st.cache_data(
-    ttl=900,
+    ttl=CURRENT_CACHE_TTL_SECONDS,
     max_entries=2,
     show_spinner=False,
 )
+def cached_country_current():
+    return get_live_country_current()
+
+
+@st.cache_data(
+    ttl=CONTEXT_CACHE_TTL_SECONDS,
+    max_entries=2,
+    show_spinner=False,
+)
+def cached_country_context():
+    return get_live_country_context()
+
+
+@st.cache_resource
+def _country_live_store():
+    """
+    Process-wide last-known-good snapshot.
+
+    This is NOT synthetic data. It contains only previous successful
+    Open-Meteo responses. It prevents a temporary 429 from blanking the globe.
+    """
+    return {
+        "lock": threading.Lock(),
+        "current": None,
+        "context": None,
+        "current_stale": False,
+        "context_stale": False,
+        "current_error": None,
+        "context_error": None,
+        "last_manual_refresh_monotonic": 0.0,
+    }
+
+
+def _copy_frame(
+    value,
+):
+    if (
+        isinstance(
+            value,
+            pd.DataFrame,
+        )
+        and not value.empty
+    ):
+        return value.copy()
+
+    return None
+
+
 def cached_country_field():
-    return get_live_country_field()
+    """
+    Return the complete globe dataframe with last-known-good protection.
+
+    Existing home_page.py imports this function, so its public interface is
+    intentionally preserved.
+    """
+    store = _country_live_store()
+
+    current = None
+    context = None
+
+    current_error = None
+    context_error = None
+
+    current_stale = False
+    context_stale = False
+
+    # Current conditions
+    try:
+        current = (
+            cached_country_current()
+        )
+
+        if (
+            current is None
+            or current.empty
+        ):
+            raise RuntimeError(
+                "No current country-weather rows were returned."
+            )
+
+        with store[
+            "lock"
+        ]:
+            store[
+                "current"
+            ] = current.copy()
+            store[
+                "current_stale"
+            ] = False
+            store[
+                "current_error"
+            ] = None
+
+    except Exception as error:
+        current_error = str(
+            error
+        )
+
+        with store[
+            "lock"
+        ]:
+            current = _copy_frame(
+                store.get(
+                    "current"
+                )
+            )
+
+            store[
+                "current_stale"
+            ] = current is not None
+            store[
+                "current_error"
+            ] = current_error
+
+        if current is None:
+            raise
+
+        current_stale = True
+
+    # 24h + daily context
+    try:
+        context = (
+            cached_country_context()
+        )
+
+        if (
+            context is None
+            or context.empty
+        ):
+            raise RuntimeError(
+                "No country 24h/daily context rows were returned."
+            )
+
+        with store[
+            "lock"
+        ]:
+            store[
+                "context"
+            ] = context.copy()
+            store[
+                "context_stale"
+            ] = False
+            store[
+                "context_error"
+            ] = None
+
+    except Exception as error:
+        context_error = str(
+            error
+        )
+
+        with store[
+            "lock"
+        ]:
+            context = _copy_frame(
+                store.get(
+                    "context"
+                )
+            )
+
+            store[
+                "context_stale"
+            ] = context is not None
+            store[
+                "context_error"
+            ] = context_error
+
+        # Context is useful but current conditions are the essential dataset.
+        # If this is the first-ever load and context is unavailable, the globe
+        # can still render current conditions rather than failing completely.
+        context_stale = (
+            context is not None
+        )
+
+    with store[
+        "lock"
+    ]:
+        if current_stale:
+            store[
+                "current_stale"
+            ] = True
+
+        if context_stale:
+            store[
+                "context_stale"
+            ] = True
+
+        if current_error:
+            store[
+                "current_error"
+            ] = current_error
+
+        if context_error:
+            store[
+                "context_error"
+            ] = context_error
+
+    return merge_live_country_field(
+        current,
+        context,
+    )
+
+
+def _country_live_status():
+    store = _country_live_store()
+
+    with store[
+        "lock"
+    ]:
+        return {
+            "current_stale":
+                bool(
+                    store.get(
+                        "current_stale"
+                    )
+                ),
+            "context_stale":
+                bool(
+                    store.get(
+                        "context_stale"
+                    )
+                ),
+            "current_error":
+                store.get(
+                    "current_error"
+                ),
+            "context_error":
+                store.get(
+                    "context_error"
+                ),
+        }
+
+
+def _manual_refresh_current():
+    """
+    Rate-safe global manual refresh.
+
+    The guard is process-wide rather than browser-session-only, so multiple
+    visitors cannot independently clear the shared current-weather cache.
+    """
+    store = _country_live_store()
+
+    now = time.monotonic()
+
+    with store[
+        "lock"
+    ]:
+        last_refresh = float(
+            store.get(
+                "last_manual_refresh_monotonic",
+                0.0,
+            )
+            or 0.0
+        )
+
+        elapsed = (
+            now
+            - last_refresh
+        )
+
+        if (
+            last_refresh > 0
+            and elapsed
+            < MANUAL_REFRESH_COOLDOWN_SECONDS
+        ):
+            remaining = int(
+                MANUAL_REFRESH_COOLDOWN_SECONDS
+                - elapsed
+            )
+
+            return (
+                False,
+                remaining,
+            )
+
+        store[
+            "last_manual_refresh_monotonic"
+        ] = now
+
+    # Refresh only fast-changing current conditions.
+    # The 24h/daily context keeps its independent 3-hour cache.
+    cached_country_current.clear()
+
+    return (
+        True,
+        0,
+    )
 
 
 def _fmt(
@@ -92,17 +403,15 @@ def _fmt(
     )
 
 
-
 def _globe_focus(
     selected_location,
 ):
     """
     Return orthographic projection rotation/scale for the current selection.
 
-    Searching a country/city now rotates the live globe to that place instead
-    of leaving the camera fixed over Europe/Africa.
+    Searching a country/city rotates the live globe to that place instead of
+    leaving the camera fixed over Europe/Africa.
     """
-
     default = {
         "lon": 10.0,
         "lat": 12.0,
@@ -144,8 +453,6 @@ def _globe_focus(
         )
     ).lower()
 
-    # Country searches should show the country in regional context.
-    # Local/city/browser selections may zoom slightly closer.
     scale = (
         1.22
         if kind == "country"
@@ -162,7 +469,6 @@ def _globe_focus(
     }
 
 
-
 def _map_figure(
     frame,
     layer_name,
@@ -171,6 +477,19 @@ def _map_figure(
     config = LAYER_CONFIG[
         layer_name
     ]
+
+    # Guarantee optional context columns exist even during the first temporary
+    # context outage, so hover rendering never crashes.
+    for column in [
+        "temperature_change_24h_c",
+        "today_high_c",
+        "today_low_c",
+        "precip_probability_pct",
+    ]:
+        if column not in frame.columns:
+            frame[
+                column
+            ] = None
 
     custom = frame[
         [
@@ -503,8 +822,8 @@ def render_live_weather_globe(
     """
     Country-first live global weather globe.
 
-    Every rendered country is colored by current weather at a representative
-    country point. Hover/tap reveals a full current snapshot.
+    Every rendered country is colored by weather at a representative country
+    point. Hover/tap reveals the complete current + 24h/daily snapshot.
 
     Important:
     these are representative-point weather values, not national spatial
@@ -542,8 +861,35 @@ def render_live_weather_globe(
                 "refresh_country_live_field"
             ),
         ):
-            cached_country_field.clear()
-            st.rerun()
+            refreshed, remaining = (
+                _manual_refresh_current()
+            )
+
+            if refreshed:
+                st.toast(
+                    (
+                        "Refreshing current country conditions. "
+                        "24h/daily context keeps its independent cache."
+                    )
+                )
+                st.rerun()
+
+            else:
+                minutes = max(
+                    1,
+                    math.ceil(
+                        remaining
+                        / 60
+                    ),
+                )
+
+                st.toast(
+                    (
+                        "The global live field was refreshed recently. "
+                        f"Manual refresh is available again in about "
+                        f"{minutes} min."
+                    )
+                )
 
     try:
         with st.spinner(
@@ -555,6 +901,10 @@ def render_live_weather_globe(
             raise RuntimeError(
                 "No live country rows were returned."
             )
+
+        status = (
+            _country_live_status()
+        )
 
         figure = _map_figure(
             frame,
@@ -579,13 +929,29 @@ def render_live_weather_globe(
             ),
         )
 
-        st.caption(
-            (
-                "Drag to rotate · scroll/pinch to zoom · hover/tap a country "
-                "for current conditions. Country colors use live weather at "
-                "a representative country point, not a national-area average."
+        if (
+            status[
+                "current_stale"
+            ]
+            or status[
+                "context_stale"
+            ]
+        ):
+            st.caption(
+                (
+                    "Open-Meteo is temporarily rate-limiting or unavailable. "
+                    "ClimatePulse is showing the last successful provider "
+                    "snapshot rather than replacing it with estimated data."
+                )
             )
-        )
+        else:
+            st.caption(
+                (
+                    "Drag to rotate · scroll/pinch to zoom · hover/tap a country "
+                    "for current conditions. Country colors use live weather at "
+                    "a representative country point, not a national-area average."
+                )
+            )
 
         country_names = sorted(
             frame[
@@ -658,6 +1024,42 @@ def render_live_weather_globe(
             _country_card(
                 row
             )
+
+        if (
+            status[
+                "current_error"
+            ]
+            or status[
+                "context_error"
+            ]
+        ):
+            with st.expander(
+                "Provider status",
+                expanded=False,
+            ):
+                if status[
+                    "current_error"
+                ]:
+                    st.code(
+                        (
+                            "Current field: "
+                            + status[
+                                "current_error"
+                            ]
+                        )
+                    )
+
+                if status[
+                    "context_error"
+                ]:
+                    st.code(
+                        (
+                            "24h/daily context: "
+                            + status[
+                                "context_error"
+                            ]
+                        )
+                    )
 
     except Exception as error:
         st.error(
