@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+from time import perf_counter
 from typing import Any
 
 import requests
 import streamlit as st
+
+from src.analytics import record_ai_usage, record_error, record_performance
 
 
 # ============================================================
@@ -235,150 +238,157 @@ RULES
 """.strip()
 
 
+def _ai_request_category(question: str) -> str:
+    """Coarse category only; the analytics layer never stores prompt text."""
+    q = (question or "").lower()
+    rules = (
+        (("forecast", "tomorrow", "next week", "weather"), "weather_forecast"),
+        (("trend", "warming", "historical", "history", "anomaly"), "climate_trends"),
+        (("projection", "future climate", "cmip", "scenario"), "climate_projections"),
+        (("air quality", "aqi", "pm2.5", "pm2_5", "pollution"), "air_quality"),
+        (("compare", "versus", " vs "), "location_comparison"),
+        (("risk", "heat stress", "health", "hazard"), "risk_interpretation"),
+        (("method", "source", "data", "era5", "cru"), "methods_and_data"),
+        (("orbidence", "platform", "website", "creator"), "platform_help"),
+    )
+    for needles, label in rules:
+        if any(n in q for n in needles):
+            return label
+    return "general"
+
+
 def ask_huggingface(
     question: str,
     context: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    token = _secret_or_env(
-        "HF_TOKEN"
-    )
-
-    if not token:
-        return {
-            "ok":
-                False,
-            "answer": (
-                "ORBIDENSE AI Assistant is not connected. Add a Hugging Face token "
-                "with Inference Providers permission to HF_TOKEN, then reload."
-            ),
-            "model":
-                None,
-            "error":
-                "HF_TOKEN missing",
-        }
-
-    clean_question = (
-        question
-        or ""
-    ).strip()
+    started = perf_counter()
+    token = _secret_or_env("HF_TOKEN")
+    clean_question = (question or "").strip()
+    category = _ai_request_category(clean_question)
 
     if not clean_question:
         return {
-            "ok":
-                False,
-            "answer":
-                "Please enter a question.",
-            "model":
-                None,
-            "error":
-                "Empty question",
+            "ok": False,
+            "answer": "Please enter a question.",
+            "model": None,
+            "error": "Empty question",
         }
 
-    context = _compact_context(
-        context
-    )
+    if not token:
+        elapsed = (perf_counter() - started) * 1000.0
+        exc = RuntimeError("HF_TOKEN missing")
+        record_ai_usage(
+            request_category=category,
+            model_name=None,
+            duration_ms=elapsed,
+            success=False,
+            input_chars=len(clean_question),
+            output_chars=0,
+            error_type=type(exc).__name__,
+        )
+        record_error(exc, component="ai_assistant", operation="huggingface_inference", severity="error")
+        return {
+            "ok": False,
+            "answer": "ORBIDENSE AI Assistant is temporarily unavailable. Please try again later.",
+            "model": None,
+            "error": "HF_TOKEN missing",
+        }
 
-    last_error = None
+    compact_context = _compact_context(context)
+    last_exception: Exception | None = None
+    attempted_models: list[str] = []
 
     for model in _models():
+        attempted_models.append(model)
         try:
             response = requests.post(
                 HF_ROUTER_URL,
                 headers={
-                    "Authorization":
-                        f"Bearer {token}",
-                    "Content-Type":
-                        "application/json",
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
                 },
                 json={
-                    "model":
-                        model,
+                    "model": model,
                     "messages": [
-                        {
-                            "role":
-                                "system",
-                            "content":
-                                _system_prompt(
-                                    context
-                                ),
-                        },
-                        {
-                            "role":
-                                "user",
-                            "content":
-                                clean_question,
-                        },
+                        {"role": "system", "content": _system_prompt(compact_context)},
+                        {"role": "user", "content": clean_question},
                     ],
-                    "temperature":
-                        0.25,
-                    "max_tokens":
-                        900,
-                    "stream":
-                        False,
+                    "temperature": 0.25,
+                    "max_tokens": 900,
+                    "stream": False,
                 },
                 timeout=90,
             )
-
             if not response.ok:
-                raise RuntimeError(
-                    (
-                        f"HTTP {response.status_code}: "
-                        f"{response.text[:500]}"
-                    )
-                )
+                raise RuntimeError(f"HTTP {response.status_code}: {response.text[:500]}")
 
             payload = response.json()
-
-            answer = (
-                payload
-                .get(
-                    "choices",
-                    [{}],
-                )[0]
-                .get(
-                    "message",
-                    {},
-                )
-                .get(
-                    "content"
-                )
-            )
-
+            answer = payload.get("choices", [{}])[0].get("message", {}).get("content")
             if not answer:
-                raise RuntimeError(
-                    "Inference provider returned no message content."
-                )
+                raise RuntimeError("Inference provider returned no message content.")
 
-            return {
-                "ok":
-                    True,
-                "answer":
-                    str(
-                        answer
-                    ).strip(),
-                "model":
-                    model,
-                "error":
-                    None,
-            }
+            answer_text = str(answer).strip()
+            elapsed = (perf_counter() - started) * 1000.0
+            record_performance(
+                "ai_assistant.huggingface_inference",
+                elapsed,
+                success=True,
+                metadata={"model": model, "attempts": len(attempted_models)},
+            )
+            record_ai_usage(
+                request_category=category,
+                model_name=model,
+                duration_ms=elapsed,
+                success=True,
+                input_chars=len(clean_question),
+                output_chars=len(answer_text),
+                metadata={"attempts": len(attempted_models)},
+            )
+            return {"ok": True, "answer": answer_text, "model": model, "error": None}
 
         except Exception as exc:
-            last_error = str(
-                exc
+            last_exception = exc
+            # Individual provider/model failures are retained privately. The user
+            # gets only the generic final availability message below.
+            record_error(
+                exc,
+                component="ai_assistant",
+                operation="huggingface_model_attempt",
+                severity="warning",
+                metadata={"model": model, "attempt": len(attempted_models)},
             )
 
+    elapsed = (perf_counter() - started) * 1000.0
+    record_performance(
+        "ai_assistant.huggingface_inference",
+        elapsed,
+        success=False,
+        metadata={"attempts": len(attempted_models)},
+    )
+    record_ai_usage(
+        request_category=category,
+        model_name=attempted_models[-1] if attempted_models else None,
+        duration_ms=elapsed,
+        success=False,
+        input_chars=len(clean_question),
+        output_chars=0,
+        error_type=type(last_exception).__name__ if last_exception else "InferenceUnavailable",
+        metadata={"attempts": len(attempted_models)},
+    )
+    if last_exception is not None:
+        record_error(
+            last_exception,
+            component="ai_assistant",
+            operation="huggingface_inference",
+            severity="error",
+            metadata={"attempts": len(attempted_models)},
+        )
+
     return {
-        "ok":
-            False,
-        "answer": (
-            "ORBIDENSE AI Assistant could not reach an available inference model. "
-            "Please verify the Hugging Face token, model access and inference "
-            "credits, then try again."
-        ),
-        "model":
-            None,
-        "error":
-            last_error,
+        "ok": False,
+        "answer": "ORBIDENSE AI Assistant is temporarily unavailable. Please try again later.",
+        "model": None,
+        "error": str(last_exception) if last_exception is not None else "Inference unavailable",
     }
 
 

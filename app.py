@@ -23,6 +23,8 @@ from src.analytics import (
     track_event_once,
     track_local_sessions_enabled,
     track_pageview,
+    record_error,
+    record_data_quality,
 )
 from dotenv import load_dotenv
 from streamlit_searchbox import st_searchbox
@@ -4278,6 +4280,22 @@ def developer_mode_requested():
 
 DEVELOPER_MODE = bool(developer_mode_requested())
 
+# Public visitors never receive Streamlit exception/traceback surfaces.
+# Developer mode retains full diagnostics inside the private console.
+if not DEVELOPER_MODE:
+    st.html(
+        """
+<style>
+[data-testid="stException"],
+[data-testid="stExceptionDetails"],
+div[data-testid="stAlert"] pre,
+div[data-testid="stAlert"] code {
+    display: none !important;
+}
+</style>
+        """
+    )
+
 # A stale authentication flag from an older app session must never bypass the
 # secret developer gate.
 if not DEVELOPER_MODE:
@@ -4840,9 +4858,12 @@ if selected_search_result:
             )
 
         except Exception as error:
-            st.error(
-                "Location conversion failed: "
-                f"{error}"
+            record_error(
+                error,
+                component="location_search",
+                operation="maptiler_to_climate_location",
+                page_name=nav_view,
+                severity="warning",
             )
 
 
@@ -5558,21 +5579,21 @@ def render_country_national_dashboard(
         country_national is None
         or country_national.empty
     ):
-        st.warning(
-            "National historical climate could not be loaded from "
-            "the World Bank CCKP aggregate service. Live map and "
-            "centroid conditions remain available."
+        record_data_quality(
+            "world_bank_cckp",
+            "national_historical_climate",
+            "unavailable",
+            metadata={"country": country_name},
         )
-
         if country_data_error:
-            with st.expander(
-                "Technical data-source detail",
-                expanded=False,
-            ):
-                st.code(
-                    country_data_error
-                )
-
+            record_error(
+                RuntimeError(str(country_data_error)),
+                component="world_bank_cckp",
+                operation="national_historical_climate",
+                page_name=nav_view,
+                severity="warning",
+                metadata={"country": country_name},
+            )
         return False
 
     national = country_national.copy()
@@ -7506,30 +7527,24 @@ Unlike centroid-based country views, these are national spatial averages.
             period_code,
         )
     except Exception as error:
-        st.error(
-            "Unable to load World Bank CCKP country projections."
+        record_error(
+            error,
+            component="global_rankings",
+            operation="load_world_bank_cckp_projections",
+            page_name=nav_view,
+            metadata={"scenario": scenario_code, "period": period_code},
         )
-
-        with st.expander(
-            "Technical data-source detail",
-            expanded=False,
-        ):
-            st.code(
-                str(error)
-            )
-
+        st.caption("No ranking data is available for this selection right now.")
         st.stop()
 
     if ranking_df is None or ranking_df.empty:
-        st.error(
-            "Country ranking data could not be parsed from the "
-            "World Bank CCKP response. ORBIDENSE AI did not "
-            "substitute estimated or invented values."
+        record_data_quality(
+            "world_bank_cckp",
+            "country_projection_rankings",
+            "empty",
+            metadata={"scenario": scenario_code, "period": period_code},
         )
-        st.caption(
-            "Try another SSP/period once. If the message persists, "
-            "the World Bank endpoint may be temporarily unavailable."
-        )
+        st.caption("No ranking data is available for this selection right now.")
         st.stop()
 
     ranking_df = ranking_df.copy()

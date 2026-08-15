@@ -1,4 +1,5 @@
 import requests
+from src.observability import observe_operation
 
 
 AIR_QUALITY_URL = (
@@ -6,6 +7,7 @@ AIR_QUALITY_URL = (
 )
 
 
+@observe_operation("open_meteo_air_quality", quality_source="Open-Meteo Air Quality")
 def get_current_air_quality(
     latitude,
     longitude,

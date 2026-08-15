@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pycountry
 import requests
+from src.observability import observe_operation
 
 
 # World Bank CCKP currently exposes spatial aggregates through API routes.
@@ -436,6 +437,7 @@ def _trend_per_decade(
     return float(slope * 10.0)
 
 
+@observe_operation("world_bank_historical", quality_source="World Bank CCKP")
 def get_country_historical_climate(
     iso3_code: str,
 ) -> pd.DataFrame:

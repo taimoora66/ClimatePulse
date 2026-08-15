@@ -4,6 +4,7 @@ from functools import lru_cache
 import requests
 
 from rapidfuzz import fuzz
+from src.observability import observe_operation
 
 
 GEOCODING_URL = (
@@ -159,6 +160,7 @@ def fuzzy_score(
     )
 
 
+@observe_operation("open_meteo_geocoding", quality_source="Open-Meteo Geocoding")
 def search_locations(
     city_name,
     count=12,

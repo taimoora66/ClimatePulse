@@ -4,6 +4,7 @@ import urllib.parse
 import requests
 import streamlit as st
 from dotenv import load_dotenv
+from src.observability import observe_operation
 
 
 # =========================================================
@@ -59,6 +60,7 @@ SEARCH_TYPES = ",".join(
 )
 
 
+@observe_operation("maptiler_geocoding", quality_source="MapTiler Geocoding")
 def search_maptiler_places(
     query,
     limit=10,

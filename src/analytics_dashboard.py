@@ -6,536 +6,205 @@ import streamlit as st
 
 from src.analytics import (
     get_analytics_summary,
+    get_ai_category_breakdown,
+    get_ai_usage_summary,
     get_browser_breakdown,
     get_campaign_breakdown,
     get_country_hint_breakdown,
     get_daily_traffic,
-    get_entry_pages,
+    get_data_quality_latest,
     get_device_breakdown,
+    get_entry_pages,
+    get_error_summary,
+    get_exit_pages,
+    get_feature_usage,
     get_hourly_activity,
+    get_journey_edges,
     get_language_breakdown,
     get_live_sessions,
     get_os_breakdown,
+    get_performance_summary,
     get_popular_pages,
+    get_privacy_summary,
     get_recent_activity,
+    get_recent_errors,
     get_recent_events,
     get_referrer_breakdown,
     get_search_destinations,
+    get_session_depth_distribution,
     get_theme_breakdown,
     get_timezone_breakdown,
     get_top_events,
 )
 
 
-def _style_figure(fig, height=360):
+def _style_figure(fig, height=350):
     fig.update_layout(
         height=height,
-        margin=dict(l=25, r=20, t=28, b=34),
+        margin=dict(l=24, r=18, t=38, b=34),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#cfe0ea"),
-        xaxis=dict(
-            gridcolor="rgba(139,179,208,.08)",
-            zerolinecolor="rgba(139,179,208,.10)",
-        ),
-        yaxis=dict(
-            gridcolor="rgba(139,179,208,.08)",
-            zerolinecolor="rgba(139,179,208,.10)",
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.01,
-            xanchor="left",
-            x=0,
-        ),
-        hoverlabel=dict(
-            bgcolor="#081722",
-            font_color="#f5fbff",
-        ),
+        font=dict(color="#d6e6ef"),
+        xaxis=dict(gridcolor="rgba(139,179,208,.08)", zeroline=False),
+        yaxis=dict(gridcolor="rgba(139,179,208,.08)", zeroline=False),
+        hoverlabel=dict(bgcolor="#061520", font_color="#f7fbff"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
     )
     return fig
 
 
-def _bar_from_rows(
-    rows,
-    *,
-    label_column: str = "label",
-    value_column: str = "sessions",
-    title: str,
-    height: int = 330,
-) -> None:
+def _bar(rows, label, value, title, height=330):
     if not rows:
-        st.info("No data recorded yet.")
+        st.caption("No records yet.")
         return
-
-    frame = pd.DataFrame(rows)
-    fig = go.Figure(
-        go.Bar(
-            x=frame[value_column],
-            y=frame[label_column],
-            orientation="h",
-            hovertemplate="<b>%{y}</b><br>%{x}<extra></extra>",
-        )
-    )
-    fig.update_layout(
-        title=title,
-        yaxis=dict(autorange="reversed"),
-        showlegend=False,
-    )
-    _style_figure(fig, height=height)
-    st.plotly_chart(
-        fig,
-        width="stretch",
-        config={"displayModeBar": False, "responsive": True},
-    )
+    df = pd.DataFrame(rows)
+    fig = go.Figure(go.Bar(x=df[value], y=df[label], orientation="h"))
+    fig.update_layout(title=title, yaxis=dict(autorange="reversed"), showlegend=False)
+    st.plotly_chart(_style_figure(fig, height), width="stretch", config={"displayModeBar": False})
 
 
-def _analytics_css() -> None:
-    st.html(
-        """
+def _console_css():
+    st.html("""
 <style>
-.cp-admin-hero {
-    background:
-        radial-gradient(circle at 88% 14%, rgba(61, 210, 237, .12), transparent 27%),
-        linear-gradient(135deg, rgba(13, 38, 55, .98), rgba(5, 19, 30, .99));
-    border: 1px solid rgba(73, 214, 246, .18);
-    border-radius: 18px;
-    padding: 23px 24px;
-    margin: 7px 0 16px;
-}
-.cp-admin-kicker {
-    color: #58d7f3;
-    font-size: .66rem;
-    font-weight: 850;
-    letter-spacing: .15em;
-}
-.cp-admin-title {
-    color: #fff;
-    font-size: 1.7rem;
-    font-weight: 850;
-    margin-top: 6px;
-}
-.cp-admin-copy {
-    color: #8fa8b8;
-    font-size: .78rem;
-    line-height: 1.55;
-    max-width: 900px;
-    margin-top: 8px;
-}
-.cp-admin-live {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    margin-top: 13px;
-    padding: 7px 11px;
-    border-radius: 999px;
-    border: 1px solid rgba(83, 225, 160, .22);
-    background: rgba(83, 225, 160, .08);
-    color: #8cf0bd;
-    font-size: .72rem;
-    font-weight: 750;
-}
-.cp-admin-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #59e7a1;
-    box-shadow: 0 0 10px rgba(89,231,161,.8);
-}
-.cp-admin-note {
-    margin-top: 12px;
-    color: #6f899a;
-    font-size: .69rem;
-    line-height: 1.55;
-}
-.cp-admin-section {
-    color: #ffffff;
-    font-size: 1.02rem;
-    font-weight: 780;
-    margin: 4px 0 10px;
-}
+.orb-admin-hero{background:radial-gradient(circle at 88% 10%,rgba(47,225,198,.13),transparent 29%),linear-gradient(135deg,#0a2231,#05131e);border:1px solid rgba(73,214,246,.18);border-radius:20px;padding:24px 26px;margin:4px 0 16px;box-shadow:0 18px 48px rgba(0,0,0,.22)}
+.orb-admin-kicker{font-size:.65rem;font-weight:900;letter-spacing:.17em;color:#54e3d2;text-transform:uppercase}
+.orb-admin-title{font-size:1.75rem;font-weight:900;color:#fff;margin-top:5px}.orb-admin-copy{font-size:.76rem;line-height:1.55;color:#8fa8b8;max-width:980px;margin-top:8px}
+.orb-admin-private{display:inline-flex;align-items:center;gap:7px;margin-top:12px;border:1px solid rgba(84,227,210,.18);background:rgba(84,227,210,.06);color:#a3f3e7;border-radius:999px;padding:7px 11px;font-size:.68rem;font-weight:800}
+.orb-admin-section{font-size:1rem;font-weight:850;color:#fff;margin:4px 0 10px}.orb-admin-note{font-size:.69rem;line-height:1.55;color:#7892a3}
+[data-testid="stMetric"]{background:linear-gradient(145deg,rgba(9,31,44,.88),rgba(5,18,28,.92));border:1px solid rgba(114,175,207,.12);padding:12px 14px;border-radius:15px}
 </style>
-        """
-    )
+""")
 
 
 def render_analytics_dashboard() -> None:
-    _analytics_css()
+    _console_css()
     summary = get_analytics_summary()
 
-    st.html(
-        f"""
-<div class="cp-admin-hero">
-    <div class="cp-admin-kicker">CLIMATEPULSE / DEVELOPER ANALYTICS</div>
-    <div class="cp-admin-title">Audience & Product Intelligence</div>
-    <div class="cp-admin-copy">
-        Private first-party analytics stored in PostgreSQL / Neon. This dashboard
-        is designed for the developer and is not exposed in the normal public navigation.
-    </div>
-    <div class="cp-admin-live">
-        <span class="cp-admin-dot"></span>
-        {summary['active_now']:,} active now
-    </div>
-    <div class="cp-admin-note">
-        Privacy mode: session-scoped anonymous identifiers. Native Streamlit session
-        context is used instead of a custom browser component. The tracker avoids names,
-        email addresses, raw IP addresses, precise GPS coordinates, raw user-agent
-        strings, advertising IDs and AI message contents.
-    </div>
+    st.html("""
+<div class="orb-admin-hero">
+  <div class="orb-admin-kicker">ORBIDENSE AI / PRIVATE DEVELOPER CONSOLE</div>
+  <div class="orb-admin-title">Product Intelligence & Observability</div>
+  <div class="orb-admin-copy">Private first-party analytics, user-journey intelligence, performance telemetry, technical errors, AI usage and data-quality monitoring. This console is available only after the developer gate and password are validated.</div>
+  <div class="orb-admin-private">● Developer-only · no public system status or technical diagnostics</div>
 </div>
-        """
-    )
+""")
 
-    row1 = st.columns(5, gap="small")
-    row1[0].metric("Active now", f"{summary['active_now']:,}")
-    row1[1].metric("Visitors today", f"{summary['visitors_today']:,}")
-    row1[2].metric("Last 7 days", f"{summary['visitors_7d']:,}")
-    row1[3].metric("Last 30 days", f"{summary['visitors_30d']:,}")
-    row1[4].metric("Anonymous visitors", f"{summary['unique_visitors']:,}")
+    c = st.columns(6, gap="small")
+    c[0].metric("Active now", f"{summary['active_now']:,}")
+    c[1].metric("Sessions", f"{summary['total_sessions']:,}")
+    c[2].metric("Page views", f"{summary['total_pageviews']:,}")
+    c[3].metric("Events", f"{summary['total_events']:,}")
+    c[4].metric("Avg session", f"{summary['avg_session_minutes']:.1f} min")
+    c[5].metric("Pages / session", f"{summary['avg_pages_per_session']:.2f}")
 
-    row2 = st.columns(5, gap="small")
-    row2[0].metric("Sessions", f"{summary['total_sessions']:,}")
-    row2[1].metric("Page views", f"{summary['total_pageviews']:,}")
-    row2[2].metric("Tracked events", f"{summary['total_events']:,}")
-    row2[3].metric("Avg session", f"{summary['avg_session_minutes']:.1f} min")
-    row2[4].metric("Pages / session", f"{summary['avg_pages_per_session']:.2f}")
+    tabs = st.tabs([
+        "Overview", "Live", "Journeys", "Features", "Search", "Audience",
+        "AI", "Performance", "Errors", "Data Quality", "Privacy"
+    ])
 
-    row3 = st.columns(3, gap="small")
-    row3[0].metric("Events / session", f"{summary['avg_events_per_session']:.2f}")
-    row3[1].metric("Single-page sessions", f"{summary['single_page_rate_pct']:.1f}%")
-    row3[2].metric("Identity model", "Session-scoped")
-
-    overview_tab, acquisition_tab, audience_tab, engagement_tab, live_tab, data_tab = st.tabs(
-        [
-            "Overview",
-            "Acquisition",
-            "Audience",
-            "Engagement",
-            "Live",
-            "Data dictionary",
-        ]
-    )
-
-    with overview_tab:
-        st.markdown("### Traffic over time")
-        period = st.segmented_control(
-            "Period",
-            options=[7, 30, 90, 365],
-            default=30,
-            format_func=lambda value: f"{value} days",
-            key="analytics_period_selector_v36",
-            label_visibility="collapsed",
-        ) or 30
-
+    with tabs[0]:
+        period = st.segmented_control("Period", [7, 30, 90, 365], default=30, format_func=lambda x:f"{x} days", label_visibility="collapsed", key="orb_analytics_period_v2") or 30
         traffic = get_daily_traffic(period)
         if traffic:
-            frame = pd.DataFrame(traffic)
-            frame["date"] = pd.to_datetime(frame["date"])
+            df = pd.DataFrame(traffic); df['date']=pd.to_datetime(df['date'])
+            fig=go.Figure()
+            for col,name in [("visitors","Visitors"),("sessions","Sessions"),("pageviews","Page views"),("events","Events")]:
+                fig.add_trace(go.Scatter(x=df['date'], y=df[col], mode='lines', name=name))
+            st.plotly_chart(_style_figure(fig,390), width="stretch", config={"displayModeBar":False})
+        a,b=st.columns(2)
+        with a: _bar(get_popular_pages(12), 'page_name','pageviews','Most viewed pages')
+        with b: _bar(get_session_depth_distribution(period),'label','sessions','Session depth')
+        st.markdown("#### Exit pages")
+        st.dataframe(pd.DataFrame(get_exit_pages(period,15)), width="stretch", hide_index=True)
 
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=frame["date"], y=frame["visitors"], mode="lines+markers", name="Visitors"))
-            fig.add_trace(go.Scatter(x=frame["date"], y=frame["sessions"], mode="lines+markers", name="Sessions"))
-            fig.add_trace(go.Scatter(x=frame["date"], y=frame["pageviews"], mode="lines+markers", name="Page views"))
-            fig.add_trace(go.Scatter(x=frame["date"], y=frame["events"], mode="lines+markers", name="Events"))
-            fig.update_layout(hovermode="x unified")
-            _style_figure(fig, height=410)
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "responsive": True})
-        else:
-            st.info("Traffic history will appear as visitors use ClimatePulse.")
+    with tabs[1]:
+        live=get_live_sessions(100)
+        st.metric("Active sessions", len(live))
+        st.dataframe(pd.DataFrame(live), width="stretch", hide_index=True)
+        st.markdown("#### Recent activity")
+        st.dataframe(pd.DataFrame(get_recent_activity(100)), width="stretch", hide_index=True)
 
-        left, right = st.columns(2, gap="medium")
-        with left:
-            st.markdown("### Most viewed pages")
-            pages = get_popular_pages(15)
-            if pages:
-                page_df = pd.DataFrame(pages)
-                fig = go.Figure(
-                    go.Bar(
-                        x=page_df["pageviews"],
-                        y=page_df["page_name"],
-                        orientation="h",
-                        customdata=page_df[["visitors", "sessions"]].values,
-                        hovertemplate=(
-                            "<b>%{y}</b><br>Views: %{x}<br>"
-                            "Visitors: %{customdata[0]}<br>"
-                            "Sessions: %{customdata[1]}<extra></extra>"
-                        ),
-                    )
-                )
-                fig.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
-                _style_figure(fig, height=390)
-                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-            else:
-                st.info("No page views yet.")
+    with tabs[2]:
+        days=st.selectbox("Journey window", [7,30,90,365], index=1, key="journey_window_v2")
+        edges=get_journey_edges(days,50)
+        if edges:
+            df=pd.DataFrame(edges)
+            labels=list(dict.fromkeys(df['source'].tolist()+df['target'].tolist()))
+            ix={v:i for i,v in enumerate(labels)}
+            fig=go.Figure(go.Sankey(node=dict(label=labels,pad=16,thickness=14),link=dict(source=[ix[x] for x in df['source']],target=[ix[x] for x in df['target']],value=df['transitions'].tolist())))
+            fig.update_layout(title="Common navigation paths")
+            st.plotly_chart(_style_figure(fig,520), width="stretch", config={"displayModeBar":False})
+            st.dataframe(df, width="stretch", hide_index=True)
+        else: st.caption("Journey data will appear as page-view history accumulates.")
 
-        with right:
-            st.markdown("### Activity by hour")
-            hourly = get_hourly_activity()
-            if hourly:
-                hourly_df = pd.DataFrame(hourly)
-                fig = go.Figure()
-                fig.add_trace(go.Bar(x=hourly_df["hour"], y=hourly_df["pageviews"], name="Page views"))
-                fig.add_trace(go.Scatter(x=hourly_df["hour"], y=hourly_df["visitors"], mode="lines+markers", name="Visitors"))
-                fig.update_xaxes(dtick=1, title="Hour of day (database timezone)")
-                _style_figure(fig, height=390)
-                st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-            else:
-                st.info("No hourly activity yet.")
+    with tabs[3]:
+        days=st.selectbox("Feature window", [7,30,90,365], index=1, key="feature_window_v2")
+        usage=get_feature_usage(days,50)
+        _bar(usage,'feature','events','Feature / event adoption',420)
+        st.markdown("#### Event taxonomy")
+        st.dataframe(pd.DataFrame(get_top_events(100)), width="stretch", hide_index=True)
+        st.markdown("#### Recent events")
+        st.dataframe(pd.DataFrame(get_recent_events(100)), width="stretch", hide_index=True)
 
-        st.markdown("### Entry pages")
-        _bar_from_rows(
-            get_entry_pages(15),
-            title="Sessions by entry page",
-        )
+    with tabs[4]:
+        _bar(get_search_destinations(30),'label','selections','Most selected destinations',430)
+        st.caption("Search analytics store selected destination labels/types, not typed private messages.")
 
-    with acquisition_tab:
-        left, right = st.columns(2, gap="medium")
-
-        with left:
-            st.markdown("### Referrers")
-            _bar_from_rows(
-                get_referrer_breakdown(15),
-                title="Sessions by referring domain",
-            )
-
-        with right:
-            st.markdown("### Campaign attribution")
-            campaigns = get_campaign_breakdown(30)
-            if campaigns:
-                campaign_df = pd.DataFrame(campaigns)
-                st.dataframe(
-                    campaign_df.rename(
-                        columns={
-                            "source": "Source",
-                            "medium": "Medium",
-                            "campaign": "Campaign",
-                            "sessions": "Sessions",
-                            "visitors": "Visitors",
-                        }
-                    ),
-                    hide_index=True,
-                    width="stretch",
-                )
-            else:
-                st.info("No campaign/UTM traffic yet.")
-
-        st.markdown("### Most selected search destinations")
-        destinations = get_search_destinations(30)
-        if destinations:
-            st.dataframe(
-                pd.DataFrame(destinations).rename(
-                    columns={
-                        "label": "Selected place",
-                        "result_type": "Type",
-                        "selections": "Selections",
-                    }
-                ),
-                hide_index=True,
-                width="stretch",
-            )
-        else:
-            st.info("Search selections will appear after visitors use global search.")
-
-    with audience_tab:
-        c1, c2 = st.columns(2, gap="medium")
+    with tabs[5]:
+        c1,c2=st.columns(2)
         with c1:
-            st.markdown("### Device category")
-            _bar_from_rows(get_device_breakdown(), title="Sessions by device")
+            _bar(get_device_breakdown(),'label','sessions','Device classes')
+            _bar(get_os_breakdown(),'label','sessions','Operating systems')
+            _bar(get_language_breakdown(),'label','sessions','Languages')
         with c2:
-            st.markdown("### Browser family")
-            _bar_from_rows(get_browser_breakdown(), title="Sessions by browser")
+            _bar(get_browser_breakdown(),'label','sessions','Browsers')
+            _bar(get_country_hint_breakdown(),'label','sessions','Coarse infrastructure country hints')
+            _bar(get_timezone_breakdown(),'label','sessions','Time zones')
+        st.markdown("#### Acquisition")
+        ac1,ac2=st.columns(2)
+        with ac1: _bar(get_referrer_breakdown(),'label','sessions','Referrers')
+        with ac2: _bar(get_entry_pages(),'label','sessions','Entry pages')
+        st.dataframe(pd.DataFrame(get_campaign_breakdown(50)), width="stretch", hide_index=True)
 
-        c3, c4 = st.columns(2, gap="medium")
-        with c3:
-            st.markdown("### Operating system")
-            _bar_from_rows(get_os_breakdown(), title="Sessions by OS")
-        with c4:
-            st.markdown("### Browser language")
-            _bar_from_rows(get_language_breakdown(), title="Sessions by language")
+    with tabs[6]:
+        ai=get_ai_usage_summary(30)
+        c=st.columns(5)
+        c[0].metric("Requests", int(ai.get('requests') or 0)); c[1].metric("Successful", int(ai.get('successful') or 0)); c[2].metric("Failed", int(ai.get('failed') or 0)); c[3].metric("Avg latency", f"{float(ai.get('avg_ms') or 0):.0f} ms"); c[4].metric("P95 latency", f"{float(ai.get('p95_ms') or 0):.0f} ms")
+        _bar(get_ai_category_breakdown(30,30),'label','requests','AI request categories',420)
+        st.caption("Prompts and assistant responses are not stored by this analytics layer.")
 
-        geo_col, theme_col = st.columns(2, gap="medium")
-        with geo_col:
-            st.markdown("### Country hint")
-            _bar_from_rows(
-                get_country_hint_breakdown(20),
-                title="Sessions by hosting-provided country hint",
-            )
+    with tabs[7]:
+        perf=get_performance_summary(7,100)
+        if perf:
+            st.dataframe(pd.DataFrame(perf), width="stretch", hide_index=True)
+            _bar(perf,'operation','p95_ms','Slowest operations by P95 latency',430)
+        else: st.caption("Performance telemetry will appear after instrumented operations run.")
 
-        with theme_col:
-            st.markdown("### Theme")
-            _bar_from_rows(
-                get_theme_breakdown(),
-                title="Sessions by Streamlit theme",
-            )
+    with tabs[8]:
+        errs=get_error_summary(7,100)
+        e1,e2,e3=st.columns(3)
+        total=sum(int(x.get('occurrences') or 0) for x in errs)
+        e1.metric("Errors / 7d", total); e2.metric("Unique signatures", len(errs)); e3.metric("Public technical errors", "Hidden")
+        st.dataframe(pd.DataFrame(errs), width="stretch", hide_index=True)
+        with st.expander("Recent redacted diagnostics", expanded=False):
+            st.dataframe(pd.DataFrame(get_recent_errors(200)), width="stretch", hide_index=True)
 
-        st.markdown("### Timezone distribution")
-        timezone_rows = get_timezone_breakdown(20)
-        if timezone_rows:
-            st.dataframe(
-                pd.DataFrame(timezone_rows).rename(
-                    columns={"label": "Timezone", "sessions": "Sessions"}
-                ),
-                hide_index=True,
-                width="stretch",
-            )
+    with tabs[9]:
+        dq=get_data_quality_latest(200)
+        if dq: st.dataframe(pd.DataFrame(dq), width="stretch", hide_index=True)
+        else: st.caption("No data-quality checks recorded yet.")
 
-    with engagement_tab:
-        left, right = st.columns(2, gap="medium")
-
-        with left:
-            st.markdown("### Top product events")
-            events = get_top_events(30)
-            if events:
-                st.dataframe(
-                    pd.DataFrame(events).rename(
-                        columns={
-                            "event_name": "Event",
-                            "event_category": "Category",
-                            "event_count": "Count",
-                            "visitors": "Visitors",
-                            "sessions": "Sessions",
-                        }
-                    ),
-                    hide_index=True,
-                    width="stretch",
-                )
-            else:
-                st.info("No product events recorded yet.")
-
-        with right:
-            st.markdown("### Popular pages")
-            pages = get_popular_pages(20)
-            if pages:
-                st.dataframe(
-                    pd.DataFrame(pages).rename(
-                        columns={
-                            "page_name": "Page",
-                            "pageviews": "Views",
-                            "visitors": "Visitors",
-                            "sessions": "Sessions",
-                        }
-                    ),
-                    hide_index=True,
-                    width="stretch",
-                )
-
-        st.markdown("### Recent product events")
-        recent_events = get_recent_events(75)
-        if recent_events:
-            event_df = pd.DataFrame(recent_events)
-            event_df = event_df.rename(
-                columns={
-                    "event_at": "Time",
-                    "page_name": "Page",
-                    "event_name": "Event",
-                    "event_category": "Category",
-                    "metadata": "Metadata",
-                }
-            )
-            st.dataframe(event_df, hide_index=True, width="stretch")
-        else:
-            st.info("No event stream yet.")
-
-    with live_tab:
-        st.markdown("### Active sessions")
-        live_rows = get_live_sessions(75)
-        if live_rows:
-            live_df = pd.DataFrame(live_rows).rename(
-                columns={
-                    "current_page": "Current page",
-                    "started_at": "Started",
-                    "last_seen": "Last active",
-                    "pageviews": "Views",
-                    "events": "Events",
-                    "device_category": "Device",
-                    "browser_family": "Browser",
-                    "os_family": "OS",
-                    "language": "Language",
-                    "timezone": "Timezone",
-                    "country_hint": "Country hint",
-                }
-            )
-            st.dataframe(live_df, hide_index=True, width="stretch")
-        else:
-            st.info("No sessions are active in the last two minutes.")
-
-        st.markdown("### Recent sessions")
-        recent = get_recent_activity(100)
-        if recent:
-            recent_df = pd.DataFrame(recent)
-            # Session IDs are internal identifiers; do not surface them in the UI.
-            recent_df = recent_df.drop(columns=["session_id"], errors="ignore")
-            recent_df = recent_df.rename(
-                columns={
-                    "current_page": "Current page",
-                    "entry_page": "Entry page",
-                    "started_at": "Started",
-                    "last_seen": "Last active",
-                    "duration_minutes": "Duration (min)",
-                    "pageviews": "Views",
-                    "events": "Events",
-                    "device_category": "Device",
-                    "browser_family": "Browser",
-                    "os_family": "OS",
-                    "language": "Language",
-                    "timezone": "Timezone",
-                    "timezone_offset_minutes": "TZ offset (min)",
-                    "theme_type": "Theme",
-                    "is_embedded": "Embedded",
-                    "app_host": "App host",
-                    "country_hint": "Country hint",
-                    "referrer_domain": "Referrer",
-                    "utm_source": "UTM source",
-                    "utm_medium": "UTM medium",
-                    "utm_campaign": "UTM campaign",
-                }
-            )
-            st.dataframe(recent_df, hide_index=True, width="stretch")
-
-    with data_tab:
-        st.markdown("### What ClimatePulse tracks")
-        st.markdown(
-            """
-**Audience / session**
-- Anonymous visitor and session identifiers
-- First seen / last active
-- Session count, page views, event count
-- Entry page, current page, approximate session duration
-- Active-now heartbeat
-
-**Acquisition**
-- Referring domain only (not the full referring URL)
-- UTM source, medium, campaign, content and term
-
-**Browser / environment context**
-- Coarse device category: desktop / tablet / mobile
-- Browser family and operating-system family (parsed without storing raw user-agent text)
-- Browser locale, timezone and timezone offset from Streamlit's native session context
-- Streamlit light/dark theme and embedded-app status
-- App host/domain
-- Optional coarse country hint only when the hosting/CDN already supplies one
-
-**Product usage**
-- Navigation/page views
-- Selected search destinations and result type
-- Browser-location feature usage without storing the coordinates
-- Compare Places configuration
-- Global Rankings scenario/period selections
-- Climate Passport generation
-- Additional events can be added with `track_event()` without changing the database schema
-
-**Intentionally not collected**
-- Names, email addresses or account identities
-- Raw IP addresses
-- Exact GPS coordinates
-- Raw user-agent strings or device fingerprints
-- AI prompts / conversation text
-- Passwords, API keys or other secrets
-            """
-        )
-
-        st.warning(
-            "Analytics configuration is not a substitute for a privacy notice or legal review. "
-            "This build deliberately does not create a persistent cross-visit fingerprint."
-        )
+    with tabs[10]:
+        p=get_privacy_summary()
+        c=st.columns(4)
+        c[0].metric("Sessions", p.get('sessions',0)); c[1].metric("DNT", p.get('dnt_sessions',0)); c[2].metric("GPC", p.get('gpc_sessions',0)); c[3].metric("Persistent IDs", p.get('persistent_sessions',0))
+        st.markdown("""
+#### Privacy architecture
+- First-party PostgreSQL / Neon storage.
+- Session-scoped anonymous identifiers; no cross-site fingerprinting.
+- No names, emails, raw IP addresses, exact GPS coordinates, advertising IDs or raw user-agent strings.
+- AI prompt/response text is not stored by analytics.
+- DNT/GPC requests disable audience tracking.
+- Technical errors are redacted before storage and are visible only here.
+- Public users do not see analytics, system-health cards, stack traces or developer diagnostics.
+""")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import requests
+from src.observability import observe_operation
 
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -56,6 +57,7 @@ def _request_json(
     return response.json()
 
 
+@observe_operation("home_environment", quality_source="Open-Meteo Home")
 def get_home_environment(
     latitude: float,
     longitude: float,
@@ -160,6 +162,7 @@ def get_home_environment(
     }
 
 
+@observe_operation("global_weather_pulse", quality_source="Open-Meteo Global Pulse")
 def get_global_weather_pulse():
     """
     Two batched requests for a small set of global reference cities:
@@ -300,6 +303,7 @@ def is_probably_us_point(
     )
 
 
+@observe_operation("nws_alerts", quality_source="NWS Alerts")
 def get_official_alerts(
     latitude: float,
     longitude: float,

@@ -5,6 +5,8 @@ import json
 import os
 import re
 import uuid
+import traceback
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -14,7 +16,7 @@ from src.db import get_connection
 
 
 # =========================================================
-# CLIMATEPULSE FIRST-PARTY ANALYTICS
+# ORBIDENSE AI FIRST-PARTY ANALYTICS
 # =========================================================
 #
 # Design goals
@@ -81,7 +83,7 @@ def persistent_visitor_id_enabled() -> bool:
     """
     Backwards-compatible analytics API.
 
-    ClimatePulse V37+ intentionally uses session-scoped anonymous visitor IDs
+    ORBIDENSE AI V2 intentionally uses session-scoped anonymous visitor IDs
     and does not implement persistent browser fingerprinting. Older dashboard
     builds imported this function, so it remains available and always returns
     False. Keeping this compatibility shim prevents mixed-version deployments
@@ -175,7 +177,7 @@ def _referrer_domain(value: str | None) -> str | None:
 
 def _country_hint(headers: Any) -> str | None:
     # Hosting/CDN country hints are accepted only when already supplied by
-    # infrastructure. ClimatePulse never geolocates or stores the raw IP.
+    # infrastructure. ORBIDENSE AI never geolocates or stores the raw IP.
     for name in (
         "cf-ipcountry",
         "cloudfront-viewer-country",
@@ -394,6 +396,61 @@ def initialize_analytics() -> None:
             event_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         """,
+        """
+        CREATE TABLE IF NOT EXISTS analytics_errors (
+            error_id BIGSERIAL PRIMARY KEY,
+            session_id TEXT,
+            page_name TEXT,
+            component TEXT NOT NULL,
+            operation TEXT,
+            severity TEXT NOT NULL DEFAULT 'error',
+            error_type TEXT NOT NULL,
+            error_hash TEXT NOT NULL,
+            message_redacted TEXT,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS analytics_performance (
+            performance_id BIGSERIAL PRIMARY KEY,
+            session_id TEXT,
+            page_name TEXT,
+            operation TEXT NOT NULL,
+            duration_ms DOUBLE PRECISION NOT NULL,
+            success BOOLEAN NOT NULL DEFAULT TRUE,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS analytics_ai_usage (
+            ai_usage_id BIGSERIAL PRIMARY KEY,
+            session_id TEXT,
+            page_name TEXT,
+            request_category TEXT,
+            model_name TEXT,
+            duration_ms DOUBLE PRECISION,
+            success BOOLEAN NOT NULL DEFAULT TRUE,
+            input_chars INTEGER,
+            output_chars INTEGER,
+            error_type TEXT,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS analytics_data_quality (
+            quality_id BIGSERIAL PRIMARY KEY,
+            source_name TEXT NOT NULL,
+            check_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            affected_records BIGINT,
+            freshness_seconds BIGINT,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
         # Safe migrations for older analytics tables already created.
         "ALTER TABLE analytics_visitors ADD COLUMN IF NOT EXISTS total_events BIGINT NOT NULL DEFAULT 0;",
         "ALTER TABLE analytics_visitors ADD COLUMN IF NOT EXISTS first_entry_page TEXT;",
@@ -452,6 +509,13 @@ def initialize_analytics() -> None:
         "CREATE INDEX IF NOT EXISTS idx_analytics_events_event_name ON analytics_events(event_name);",
         "CREATE INDEX IF NOT EXISTS idx_analytics_events_session ON analytics_events(session_id);",
         "CREATE INDEX IF NOT EXISTS idx_analytics_events_visitor ON analytics_events(visitor_id);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_errors_recorded_at ON analytics_errors(recorded_at);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_errors_component ON analytics_errors(component);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_errors_hash ON analytics_errors(error_hash);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_performance_recorded_at ON analytics_performance(recorded_at);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_performance_operation ON analytics_performance(operation);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_ai_usage_recorded_at ON analytics_ai_usage(recorded_at);",
+        "CREATE INDEX IF NOT EXISTS idx_analytics_data_quality_recorded_at ON analytics_data_quality(recorded_at);",
     ]
 
     with get_connection() as conn:
@@ -855,7 +919,7 @@ def render_analytics_heartbeat(page_name: str) -> None:
     try:
         heartbeat(page_name)
     except Exception as error:
-        print("ClimatePulse analytics heartbeat error:", error)
+        print("ORBIDENSE AI analytics heartbeat error:", error)
 
 
 # =========================================================
@@ -1255,3 +1319,401 @@ def get_live_sessions(limit: int = 50) -> list[dict[str, Any]]:
         """,
         (ACTIVE_WINDOW_MINUTES, limit),
     )
+
+
+# =========================================================
+# ORBIDENSE AI V2 — DEVELOPER OBSERVABILITY
+# =========================================================
+# These functions intentionally keep technical details out of the public UI.
+# Error messages are redacted before storage. No traceback is stored by default.
+
+_SENSITIVE_PATTERNS = (
+    (re.compile(r"(?i)(api[_-]?key|token|secret|password|authorization)\s*[:=]\s*[^\s,;]+"), r"\1=[REDACTED]"),
+    (re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+\-/=]+"), "Bearer [REDACTED]"),
+    (re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "[REDACTED_EMAIL]"),
+    (re.compile(r"(?i)(postgres(?:ql)?://)[^\s]+"), r"\1[REDACTED]"),
+)
+
+
+def _redact_text(value: Any, max_len: int = 900) -> str:
+    text = str(value or "")
+    for pattern, replacement in _SENSITIVE_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text[:max_len]
+
+
+def _optional_session_id() -> str | None:
+    # Respect privacy opt-out. Operational errors can still be counted without
+    # attaching them to a visitor/session identity.
+    if not analytics_tracking_allowed():
+        return None
+    try:
+        return str(st.session_state.get(SESSION_KEY) or "") or None
+    except Exception:
+        return None
+
+
+def record_error(
+    error: BaseException,
+    *,
+    component: str,
+    operation: str | None = None,
+    page_name: str | None = None,
+    severity: str = "error",
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Persist a redacted technical error for the private developer console."""
+    try:
+        error_type = type(error).__name__
+        redacted = _redact_text(error)
+        digest_source = f"{component}|{operation or ''}|{error_type}|{redacted}"
+        error_hash = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:24]
+        clean_metadata = _json_safe_metadata(metadata)
+        session_id = _optional_session_id()
+        current_page = str(page_name or st.session_state.get("main_navigation") or "Unknown")[:160]
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_errors (
+                        session_id, page_name, component, operation, severity,
+                        error_type, error_hash, message_redacted, metadata, recorded_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, NOW());
+                    """,
+                    (
+                        session_id,
+                        current_page,
+                        str(component)[:160],
+                        str(operation or "")[:160] or None,
+                        str(severity or "error")[:32],
+                        error_type[:120],
+                        error_hash,
+                        redacted,
+                        json.dumps(clean_metadata),
+                    ),
+                )
+    except Exception as logging_error:
+        # Observability must never break the public application.
+        print("ORBIDENSE AI observability logging failure:", logging_error)
+
+
+def record_performance(
+    operation: str,
+    duration_ms: float,
+    *,
+    success: bool = True,
+    page_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    if not analytics_tracking_allowed():
+        return
+    try:
+        session_id = _optional_session_id()
+        current_page = str(page_name or st.session_state.get("main_navigation") or "Unknown")[:160]
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_performance (
+                        session_id, page_name, operation, duration_ms, success,
+                        metadata, recorded_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s::jsonb, NOW());
+                    """,
+                    (
+                        session_id,
+                        current_page,
+                        str(operation)[:180],
+                        float(duration_ms),
+                        bool(success),
+                        json.dumps(_json_safe_metadata(metadata)),
+                    ),
+                )
+    except Exception as logging_error:
+        print("ORBIDENSE AI performance logging failure:", logging_error)
+
+
+def record_ai_usage(
+    *,
+    request_category: str | None = None,
+    model_name: str | None = None,
+    duration_ms: float | None = None,
+    success: bool = True,
+    input_chars: int | None = None,
+    output_chars: int | None = None,
+    error_type: str | None = None,
+    page_name: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Store AI usage telemetry without storing prompt or response text."""
+    if not analytics_tracking_allowed():
+        return
+    try:
+        session_id = _optional_session_id()
+        current_page = str(page_name or st.session_state.get("main_navigation") or "Unknown")[:160]
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_ai_usage (
+                        session_id, page_name, request_category, model_name,
+                        duration_ms, success, input_chars, output_chars, error_type,
+                        metadata, recorded_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, NOW());
+                    """,
+                    (
+                        session_id,
+                        current_page,
+                        str(request_category or "uncategorized")[:120],
+                        str(model_name or "unknown")[:160],
+                        float(duration_ms) if duration_ms is not None else None,
+                        bool(success),
+                        int(input_chars) if input_chars is not None else None,
+                        int(output_chars) if output_chars is not None else None,
+                        str(error_type or "")[:120] or None,
+                        json.dumps(_json_safe_metadata(metadata)),
+                    ),
+                )
+    except Exception as logging_error:
+        print("ORBIDENSE AI AI-usage logging failure:", logging_error)
+
+
+def record_data_quality(
+    source_name: str,
+    check_name: str,
+    status: str,
+    *,
+    affected_records: int | None = None,
+    freshness_seconds: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """System-level data-quality telemetry; contains no user identity."""
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analytics_data_quality (
+                        source_name, check_name, status, affected_records,
+                        freshness_seconds, metadata, recorded_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s::jsonb, NOW());
+                    """,
+                    (
+                        str(source_name)[:160],
+                        str(check_name)[:160],
+                        str(status)[:64],
+                        int(affected_records) if affected_records is not None else None,
+                        int(freshness_seconds) if freshness_seconds is not None else None,
+                        json.dumps(_json_safe_metadata(metadata)),
+                    ),
+                )
+    except Exception as logging_error:
+        print("ORBIDENSE AI data-quality logging failure:", logging_error)
+
+
+# =========================================================
+# ORBIDENSE AI V2 — ADVANCED DEVELOPER QUERIES
+# =========================================================
+
+def get_journey_edges(days: int = 30, limit: int = 40) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    limit = max(1, min(int(limit), 200))
+    return _fetchall(
+        """
+        WITH ordered AS (
+            SELECT session_id, page_name, viewed_at,
+                   LAG(page_name) OVER (
+                       PARTITION BY session_id ORDER BY viewed_at, pageview_id
+                   ) AS previous_page
+            FROM analytics_pageviews
+            WHERE viewed_at >= NOW() - (%s * INTERVAL '1 day')
+        )
+        SELECT previous_page AS source, page_name AS target,
+               COUNT(*) AS transitions,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM ordered
+        WHERE previous_page IS NOT NULL AND previous_page <> page_name
+        GROUP BY previous_page, page_name
+        ORDER BY transitions DESC
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_exit_pages(days: int = 30, limit: int = 15) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        WITH ranked AS (
+            SELECT session_id, page_name, viewed_at,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY session_id ORDER BY viewed_at DESC, pageview_id DESC
+                   ) AS rn
+            FROM analytics_pageviews
+            WHERE viewed_at >= NOW() - (%s * INTERVAL '1 day')
+        )
+        SELECT page_name AS label, COUNT(*) AS sessions
+        FROM ranked
+        WHERE rn = 1
+        GROUP BY page_name
+        ORDER BY sessions DESC
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_session_depth_distribution(days: int = 30) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        SELECT
+            CASE
+                WHEN pageviews <= 1 THEN '1 page'
+                WHEN pageviews <= 3 THEN '2–3 pages'
+                WHEN pageviews <= 6 THEN '4–6 pages'
+                ELSE '7+ pages'
+            END AS label,
+            COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1
+        ORDER BY MIN(pageviews);
+        """,
+        (days,),
+    )
+
+
+def get_feature_usage(days: int = 30, limit: int = 30) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        SELECT event_name AS feature,
+               event_category AS category,
+               COUNT(*) AS events,
+               COUNT(DISTINCT session_id) AS sessions
+        FROM analytics_events
+        WHERE event_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY event_name, event_category
+        ORDER BY events DESC
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_performance_summary(days: int = 7, limit: int = 30) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        SELECT operation,
+               COUNT(*) AS samples,
+               ROUND(AVG(duration_ms)::numeric, 1) AS avg_ms,
+               ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY duration_ms)::numeric, 1) AS p50_ms,
+               ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::numeric, 1) AS p95_ms,
+               ROUND(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms)::numeric, 1) AS p99_ms,
+               ROUND((100.0 * AVG(CASE WHEN success THEN 1 ELSE 0 END))::numeric, 2) AS success_pct
+        FROM analytics_performance
+        WHERE recorded_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY operation
+        ORDER BY p95_ms DESC NULLS LAST
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_error_summary(days: int = 7, limit: int = 30) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        SELECT component, operation, error_type, error_hash, severity,
+               COUNT(*) AS occurrences,
+               MAX(recorded_at) AS last_seen
+        FROM analytics_errors
+        WHERE recorded_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY component, operation, error_type, error_hash, severity
+        ORDER BY occurrences DESC, last_seen DESC
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_recent_errors(limit: int = 100) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit), 500))
+    return _fetchall(
+        """
+        SELECT recorded_at, page_name, component, operation, severity,
+               error_type, error_hash, message_redacted, metadata
+        FROM analytics_errors
+        ORDER BY recorded_at DESC
+        LIMIT %s;
+        """,
+        (limit,),
+    )
+
+
+def get_ai_usage_summary(days: int = 30) -> dict[str, Any]:
+    days = max(1, min(int(days), 3650))
+    return _fetchone(
+        """
+        SELECT COUNT(*) AS requests,
+               COUNT(*) FILTER (WHERE success) AS successful,
+               COUNT(*) FILTER (WHERE NOT success) AS failed,
+               ROUND(COALESCE(AVG(duration_ms), 0)::numeric, 1) AS avg_ms,
+               ROUND(COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms), 0)::numeric, 1) AS p95_ms,
+               COALESCE(SUM(input_chars), 0) AS input_chars,
+               COALESCE(SUM(output_chars), 0) AS output_chars
+        FROM analytics_ai_usage
+        WHERE recorded_at >= NOW() - (%s * INTERVAL '1 day');
+        """,
+        (days,),
+    )
+
+
+def get_ai_category_breakdown(days: int = 30, limit: int = 20) -> list[dict[str, Any]]:
+    days = max(1, min(int(days), 3650))
+    return _fetchall(
+        """
+        SELECT COALESCE(request_category, 'uncategorized') AS label,
+               COUNT(*) AS requests,
+               COUNT(*) FILTER (WHERE success) AS successful
+        FROM analytics_ai_usage
+        WHERE recorded_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1
+        ORDER BY requests DESC
+        LIMIT %s;
+        """,
+        (days, limit),
+    )
+
+
+def get_data_quality_latest(limit: int = 100) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit), 500))
+    return _fetchall(
+        """
+        SELECT DISTINCT ON (source_name, check_name)
+               source_name, check_name, status, affected_records,
+               freshness_seconds, metadata, recorded_at
+        FROM analytics_data_quality
+        ORDER BY source_name, check_name, recorded_at DESC
+        LIMIT %s;
+        """,
+        (limit,),
+    )
+
+
+def get_privacy_summary() -> dict[str, Any]:
+    row = _fetchone(
+        """
+        SELECT
+            COUNT(*) AS sessions,
+            COUNT(*) FILTER (WHERE do_not_track IS TRUE) AS dnt_sessions,
+            COUNT(*) FILTER (WHERE global_privacy_control IS TRUE) AS gpc_sessions,
+            COUNT(*) FILTER (WHERE persistent_id IS TRUE) AS persistent_sessions
+        FROM analytics_sessions;
+        """
+    )
+    return {k: int(v or 0) for k, v in row.items()}

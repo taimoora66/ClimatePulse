@@ -11,6 +11,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+try:
+    from src.analytics import record_error
+except Exception:
+    record_error = None
+
 from src.api.home_environment import (
     get_global_weather_pulse,
     get_home_environment,
@@ -3934,10 +3939,15 @@ def render_home_page(
                             "v19_home_future"
                         ] = future_points
 
-                    except Exception:
-                        st.warning(
-                            "Future projection preview could not be loaded."
-                        )
+                    except Exception as error:
+                        if record_error is not None:
+                            record_error(
+                                error,
+                                component="home_timeline",
+                                operation="future_projection_preview",
+                                page_name="Home",
+                                severity="warning",
+                            )
 
         if (
             history is not None
@@ -4245,13 +4255,18 @@ def render_dashboard_page(
             ),
         )
 
-    except Exception:
+    except Exception as error:
         environment = None
+        if record_error is not None:
+            record_error(
+                error,
+                component="home_environment",
+                operation="load_live_conditions",
+                page_name="Home",
+                severity="warning",
+            )
 
     if not environment:
-        st.warning(
-            "Live conditions are temporarily unavailable for this point."
-        )
         return
 
     weather = environment[
@@ -4639,10 +4654,15 @@ def render_climate_timeline_page(
                     "v19_timeline_city_future"
                 ] = future
 
-            except Exception:
-                st.warning(
-                    "Future projection could not be loaded."
-                )
+            except Exception as error:
+                if record_error is not None:
+                    record_error(
+                        error,
+                        component="climate_timeline",
+                        operation="future_projection",
+                        page_name="Climate Timeline",
+                        severity="warning",
+                    )
 
         st.plotly_chart(
             _timeline_figure(

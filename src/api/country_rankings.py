@@ -4,6 +4,7 @@ from typing import Any
 import pandas as pd
 import pycountry
 import requests
+from src.observability import observe_operation
 
 
 CCKP_API_BASES = (
@@ -437,6 +438,7 @@ def _fetch_percentile_table(
     return frame
 
 
+@observe_operation("world_bank_rankings", quality_source="World Bank CCKP")
 def get_country_projection_rankings(
     scenario: str = "ssp245",
     period: str = "2040-2059",
@@ -542,6 +544,7 @@ def get_country_projection_rankings(
     ]
 
 
+@observe_operation("world_bank_trajectory", quality_source="World Bank CCKP")
 def get_country_scenario_trajectory(
     iso3_code: str,
     scenario: str = "ssp245",

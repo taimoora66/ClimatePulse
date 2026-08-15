@@ -6,6 +6,7 @@ import pandas as pd
 from psycopg.types.json import Jsonb
 
 from src.db import get_connection
+from src.observability import observe_operation
 
 
 CACHE_TABLE = "climatepulse_global_weather_cache"
@@ -81,6 +82,7 @@ def records_to_dataframe(records):
     )
 
 
+@observe_operation("weather_cache_write", quality_source="Global Weather Cache")
 def save_global_weather_snapshot(
     cache_key,
     frame,
@@ -145,6 +147,7 @@ def save_global_weather_snapshot(
             )
 
 
+@observe_operation("weather_cache_read", quality_source="Global Weather Cache")
 def load_global_weather_snapshot(
     cache_key,
 ):

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import requests
+from src.observability import observe_operation
 
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -142,6 +143,7 @@ def _request_chunk(points):
     return rows
 
 
+@observe_operation("global_live_field", quality_source="Open-Meteo Global Field")
 def get_global_current_field(
     spec: GridSpec = DEFAULT_GRID,
 ):

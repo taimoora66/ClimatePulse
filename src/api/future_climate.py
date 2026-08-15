@@ -7,6 +7,7 @@ from concurrent.futures import (
 
 import pandas as pd
 import requests
+from src.observability import observe_operation
 
 
 CLIMATE_URL = (
@@ -271,6 +272,7 @@ def _agreement_label(
     return "Low"
 
 
+@observe_operation("open_meteo_climate", quality_source="Open-Meteo Climate")
 def get_midcentury_ensemble(
     latitude,
     longitude,

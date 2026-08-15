@@ -5,6 +5,7 @@ from io import StringIO
 
 import pandas as pd
 import requests
+from src.observability import observe_operation
 
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
@@ -705,6 +706,7 @@ def merge_live_country_field(
     )
 
 
+@observe_operation("country_live_field", quality_source="Open-Meteo Country Field")
 def get_live_country_field():
     """
     Backwards compatibility for older ClimatePulse imports.

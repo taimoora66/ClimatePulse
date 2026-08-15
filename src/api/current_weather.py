@@ -1,4 +1,5 @@
 import requests
+from src.observability import observe_operation
 
 
 FORECAST_URL = (
@@ -6,6 +7,7 @@ FORECAST_URL = (
 )
 
 
+@observe_operation("open_meteo_current", quality_source="Open-Meteo Forecast")
 def get_current_weather(
     latitude,
     longitude,

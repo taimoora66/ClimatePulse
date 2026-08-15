@@ -5,11 +5,13 @@ from datetime import date
 import numpy as np
 import pandas as pd
 import requests
+from src.observability import observe_operation
 
 
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 
+@observe_operation("open_meteo_archive", quality_source="Open-Meteo Archive")
 def get_point_history(
     latitude: float,
     longitude: float,

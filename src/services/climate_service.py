@@ -13,6 +13,7 @@ from src.db import (
     insert_weather_daily,
     upsert_city,
 )
+from src.observability import observe_operation
 
 
 HISTORY_START_YEAR = 1990
@@ -338,6 +339,7 @@ def _download_history_job(
         )
 
 
+@observe_operation("era5_history_pipeline", quality_source="ERA5 History")
 def ensure_city_history(
     location,
 ):
