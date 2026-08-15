@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
+import streamlit as st
 from src.observability import observe_operation
 
 
@@ -34,7 +36,7 @@ GLOBAL_PULSE_LOCATIONS = (
 def _request_json(
     url: str,
     params: dict[str, Any],
-    timeout: int = 35,
+    timeout: int = 12,
     headers: dict[str, str] | None = None,
 ):
     request_headers = {
@@ -57,6 +59,7 @@ def _request_json(
     return response.json()
 
 
+@st.cache_data(ttl=600, max_entries=512, show_spinner=False)
 @observe_operation("home_environment", quality_source="Open-Meteo Home")
 def get_home_environment(
     latitude: float,
@@ -145,18 +148,21 @@ def get_home_environment(
         ),
     }
 
-    weather = _request_json(
-        FORECAST_URL,
-        weather_params,
-    )
-
-    try:
-        air = _request_json(
-            AIR_URL,
-            air_params,
+    # Weather and air quality are independent network calls. Run them
+    # concurrently so Home waits for the slower request instead of the sum
+    # of both request times. The returned payload is unchanged.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="home-live") as executor:
+        weather_future = executor.submit(
+            _request_json, FORECAST_URL, weather_params, 10
         )
-    except Exception:
-        air = {}
+        air_future = executor.submit(
+            _request_json, AIR_URL, air_params, 10
+        )
+        weather = weather_future.result()
+        try:
+            air = air_future.result()
+        except Exception:
+            air = {}
 
     return {
         "weather": weather,
@@ -164,6 +170,7 @@ def get_home_environment(
     }
 
 
+@st.cache_data(ttl=600, max_entries=8, show_spinner=False)
 @observe_operation("global_weather_pulse", quality_source="Open-Meteo Global Pulse")
 def get_global_weather_pulse():
     """
@@ -182,42 +189,41 @@ def get_global_weather_pulse():
         for item in GLOBAL_PULSE_LOCATIONS
     )
 
-    weather_payload = _request_json(
-        FORECAST_URL,
-        {
-            "latitude": latitudes,
-            "longitude": longitudes,
-            "current": (
-                "temperature_2m,"
-                "apparent_temperature,"
-                "weather_code,"
-                "wind_speed_10m,"
-                "cloud_cover,"
-                "precipitation,"
-                "is_day"
-            ),
-            "timezone": "GMT",
-        },
-        timeout=40,
-    )
+    weather_params = {
+        "latitude": latitudes,
+        "longitude": longitudes,
+        "current": (
+            "temperature_2m,"
+            "apparent_temperature,"
+            "weather_code,"
+            "wind_speed_10m,"
+            "cloud_cover,"
+            "precipitation,"
+            "is_day"
+        ),
+        "timezone": "GMT",
+    }
+    pulse_air_params = {
+        "latitude": latitudes,
+        "longitude": longitudes,
+        "current": "european_aqi,pm2_5,ozone",
+        "timezone": "GMT",
+    }
 
-    try:
-        air_payload = _request_json(
-            AIR_URL,
-            {
-                "latitude": latitudes,
-                "longitude": longitudes,
-                "current": (
-                    "european_aqi,"
-                    "pm2_5,"
-                    "ozone"
-                ),
-                "timezone": "GMT",
-            },
-            timeout=40,
+    # Both provider requests are independent and return the same payloads as
+    # before. Running them together cuts cold-load wall time substantially.
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="global-pulse") as executor:
+        weather_future = executor.submit(
+            _request_json, FORECAST_URL, weather_params, 12
         )
-    except Exception:
-        air_payload = []
+        air_future = executor.submit(
+            _request_json, AIR_URL, pulse_air_params, 12
+        )
+        weather_payload = weather_future.result()
+        try:
+            air_payload = air_future.result()
+        except Exception:
+            air_payload = []
 
     if isinstance(weather_payload, dict):
         weather_payload = [weather_payload]
@@ -305,6 +311,7 @@ def is_probably_us_point(
     )
 
 
+@st.cache_data(ttl=180, max_entries=256, show_spinner=False)
 @observe_operation("nws_alerts", quality_source="NWS Alerts")
 def get_official_alerts(
     latitude: float,

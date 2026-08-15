@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import streamlit as st
 from dataclasses import dataclass
 
 import numpy as np
@@ -143,6 +144,7 @@ def _request_chunk(points):
     return rows
 
 
+@st.cache_data(ttl=600, max_entries=8, show_spinner=False)
 @observe_operation("global_live_field", quality_source="Open-Meteo Global Field")
 def get_global_current_field(
     spec: GridSpec = DEFAULT_GRID,

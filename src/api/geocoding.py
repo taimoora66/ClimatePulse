@@ -1,7 +1,9 @@
 import unicodedata
 from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
+import streamlit as st
 
 from rapidfuzz import fuzz
 from src.observability import observe_operation
@@ -160,6 +162,7 @@ def fuzzy_score(
     )
 
 
+@st.cache_data(ttl=86400, max_entries=1024, show_spinner=False)
 @observe_operation("open_meteo_geocoding", quality_source="Open-Meteo Geocoding")
 def search_locations(
     city_name,
@@ -205,42 +208,32 @@ def search_locations(
 
     unique_results = {}
 
-    for query in queries:
-
-        for language in languages:
-
+    # The multilingual lookups are independent. Parallelizing them keeps the
+    # exact same result pool/ranking while avoiding up to 12 sequential HTTP
+    # round trips for a single search.
+    jobs = [(query, language) for query in queries for language in languages]
+    with ThreadPoolExecutor(
+        max_workers=min(6, len(jobs)),
+        thread_name_prefix="geocode",
+    ) as executor:
+        futures = {
+            executor.submit(_search_api, query, language, 15): (query, language)
+            for query, language in jobs
+        }
+        for future in as_completed(futures):
             try:
-
-                api_results = (
-                    _search_api(
-                        query=query,
-                        language=language,
-                        count=15,
-                    )
-                )
-
+                api_results = future.result()
             except requests.RequestException:
+                continue
+            except Exception:
                 continue
 
             for result in api_results:
-
-                location_id = (
-                    result.get(
-                        "id"
-                    )
-                )
-
+                location_id = result.get("id")
                 if location_id is None:
                     continue
-
-                if (
-                    location_id
-                    not in unique_results
-                ):
-
-                    unique_results[
-                        location_id
-                    ] = result
+                if location_id not in unique_results:
+                    unique_results[location_id] = result
 
     results = list(
         unique_results.values()

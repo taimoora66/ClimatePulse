@@ -1,3 +1,4 @@
+import streamlit as st
 import math
 from typing import Any
 
@@ -437,6 +438,7 @@ def _trend_per_decade(
     return float(slope * 10.0)
 
 
+@st.cache_data(ttl=21600, max_entries=128, show_spinner=False)
 @observe_operation("world_bank_historical", quality_source="World Bank CCKP")
 def get_country_historical_climate(
     iso3_code: str,

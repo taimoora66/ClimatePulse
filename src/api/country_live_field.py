@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import streamlit as st
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 
 import pandas as pd
@@ -180,6 +182,7 @@ def _country_catalog_rest():
     )
 
 
+@st.cache_data(ttl=86400, max_entries=4, show_spinner=False)
 def get_country_catalog():
     """
     Country representative coordinates.
@@ -441,26 +444,24 @@ def _request_current_chunk(
     return rows
 
 
+@st.cache_data(ttl=600, max_entries=4, show_spinner=False)
 def get_live_country_current():
     catalog = get_country_catalog()
 
-    rows = []
+    chunks = [
+        catalog.iloc[start:start + COUNTRY_CHUNK_SIZE].copy()
+        for start in range(0, len(catalog), COUNTRY_CHUNK_SIZE)
+    ]
 
-    for start in range(
-        0,
-        len(catalog),
-        COUNTRY_CHUNK_SIZE,
-    ):
-        chunk = catalog.iloc[
-            start:
-            start + COUNTRY_CHUNK_SIZE
-        ].copy()
+    # Country batches are independent. executor.map preserves chunk order while
+    # fetching them concurrently, so the returned dataset is unchanged.
+    with ThreadPoolExecutor(
+        max_workers=min(4, max(1, len(chunks))),
+        thread_name_prefix="country-current",
+    ) as executor:
+        chunk_rows = list(executor.map(_request_current_chunk, chunks))
 
-        rows.extend(
-            _request_current_chunk(
-                chunk
-            )
-        )
+    rows = [row for batch in chunk_rows for row in batch]
 
     frame = pd.DataFrame(
         rows
@@ -617,26 +618,22 @@ def _request_context_chunk(
     return rows
 
 
+@st.cache_data(ttl=21600, max_entries=4, show_spinner=False)
 def get_live_country_context():
     catalog = get_country_catalog()
 
-    rows = []
+    chunks = [
+        catalog.iloc[start:start + COUNTRY_CHUNK_SIZE].copy()
+        for start in range(0, len(catalog), COUNTRY_CHUNK_SIZE)
+    ]
 
-    for start in range(
-        0,
-        len(catalog),
-        COUNTRY_CHUNK_SIZE,
-    ):
-        chunk = catalog.iloc[
-            start:
-            start + COUNTRY_CHUNK_SIZE
-        ].copy()
+    with ThreadPoolExecutor(
+        max_workers=min(4, max(1, len(chunks))),
+        thread_name_prefix="country-context",
+    ) as executor:
+        chunk_rows = list(executor.map(_request_context_chunk, chunks))
 
-        rows.extend(
-            _request_context_chunk(
-                chunk
-            )
-        )
+    rows = [row for batch in chunk_rows for row in batch]
 
     frame = pd.DataFrame(
         rows
@@ -706,6 +703,7 @@ def merge_live_country_field(
     )
 
 
+@st.cache_data(ttl=600, max_entries=4, show_spinner=False)
 @observe_operation("country_live_field", quality_source="Open-Meteo Country Field")
 def get_live_country_field():
     """

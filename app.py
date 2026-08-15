@@ -31,6 +31,7 @@ from streamlit_searchbox import st_searchbox
 from src.api.air_quality import get_current_air_quality
 from src.api.current_weather import get_current_weather
 from src.api.today_forecast import get_today_forecast
+from src.api.home_environment import get_home_environment
 from src.api.point_history import get_point_history
 from src.api.future_climate import (
     CLIMATE_MODELS,
@@ -3907,6 +3908,16 @@ def cached_live_environment(
 
 
 @st.cache_data(
+    ttl=600,
+    max_entries=256,
+    show_spinner=False,
+)
+def cached_home_bundle_for_app(latitude, longitude, timezone):
+    """One consolidated Home request for live weather, forecast and AQI."""
+    return get_home_environment(latitude, longitude, timezone)
+
+
+@st.cache_data(
     ttl=1800,
     max_entries=128,
     show_spinner=False,
@@ -5114,44 +5125,27 @@ if (
             )
 
 # Live point weather should not depend on database history.
+# Home uses the same consolidated payload as its weather strip, avoiding
+# duplicate current-weather/AQI requests before the page renders.
+home_live_bundle = None
 if active_point_location:
     try:
-        live_environment = cached_live_environment(
-            active_point_location[
-                "latitude"
-            ],
-            active_point_location[
-                "longitude"
-            ],
-            active_point_location.get(
-                "timezone",
-                "auto",
-            ),
-        )
+        if nav_view == "Home":
+            home_live_bundle = cached_home_bundle_for_app(
+                active_point_location["latitude"],
+                active_point_location["longitude"],
+                active_point_location.get("timezone", "auto"),
+            )
+            live_environment = home_live_bundle
+        else:
+            live_environment = cached_live_environment(
+                active_point_location["latitude"],
+                active_point_location["longitude"],
+                active_point_location.get("timezone", "auto"),
+            )
 
-        current_weather = (
-            live_environment
-            .get(
-                "weather",
-                {},
-            )
-            .get(
-                "current",
-                {},
-            )
-        )
-
-        current_air = (
-            live_environment
-            .get(
-                "air",
-                {},
-            )
-            .get(
-                "current",
-                {},
-            )
-        )
+        current_weather = live_environment.get("weather", {}).get("current", {})
+        current_air = live_environment.get("air", {}).get("current", {})
 
     except Exception:
         current_weather = {}
@@ -5237,18 +5231,27 @@ today_context = None
 
 if active_point_location is not None:
     try:
-        today_forecast = cached_today_forecast(
-            active_point_location[
-                "latitude"
-            ],
-            active_point_location[
-                "longitude"
-            ],
-            active_point_location.get(
-                "timezone",
-                "auto",
-            ),
-        )
+        if nav_view == "Home" and home_live_bundle:
+            weather_payload = home_live_bundle.get("weather", {})
+            daily = weather_payload.get("daily", {})
+
+            def _first_daily(key):
+                values = daily.get(key, [])
+                return values[0] if values else None
+
+            today_forecast = {
+                "date": _first_daily("time"),
+                "temperature_max_c": _first_daily("temperature_2m_max"),
+                "temperature_min_c": _first_daily("temperature_2m_min"),
+                "precipitation_mm": _first_daily("precipitation_sum"),
+                "timezone": weather_payload.get("timezone"),
+            }
+        else:
+            today_forecast = cached_today_forecast(
+                active_point_location["latitude"],
+                active_point_location["longitude"],
+                active_point_location.get("timezone", "auto"),
+            )
 
     except Exception:
         today_forecast = {}

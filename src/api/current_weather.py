@@ -1,3 +1,4 @@
+import streamlit as st
 import requests
 from src.observability import observe_operation
 
@@ -7,6 +8,7 @@ FORECAST_URL = (
 )
 
 
+@st.cache_data(ttl=300, max_entries=512, show_spinner=False)
 @observe_operation("open_meteo_current", quality_source="Open-Meteo Forecast")
 def get_current_weather(
     latitude,

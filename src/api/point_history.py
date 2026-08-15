@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import streamlit as st
 from datetime import date
 
 import numpy as np
@@ -11,6 +12,7 @@ from src.observability import observe_operation
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 
+@st.cache_data(ttl=3600, max_entries=256, show_spinner=False)
 @observe_operation("open_meteo_archive", quality_source="Open-Meteo Archive")
 def get_point_history(
     latitude: float,

@@ -778,11 +778,16 @@ def track_pageview(page_name: str) -> None:
         return
 
     page_name = str(page_name or "Unknown").strip()[:160]
-    visitor_id, session_id = register_session(page_name)
 
+    # Streamlit reruns the script for many UI interactions. If the logical
+    # page did not change, there is no pageview to record, so avoid an
+    # unnecessary Neon round trip. The 60-second heartbeat still keeps the
+    # active session fresh.
     last_page = st.session_state.get(LAST_PAGE_KEY)
     if last_page == page_name:
         return
+
+    visitor_id, session_id = register_session(page_name)
 
     with get_connection() as conn:
         with conn.cursor() as cur:

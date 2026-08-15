@@ -60,6 +60,7 @@ SEARCH_TYPES = ",".join(
 )
 
 
+@st.cache_data(ttl=86400, max_entries=1024, show_spinner=False)
 @observe_operation("maptiler_geocoding", quality_source="MapTiler Geocoding")
 def search_maptiler_places(
     query,
