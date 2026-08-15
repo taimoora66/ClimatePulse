@@ -80,7 +80,9 @@ def get_home_environment(
             "precipitation,"
             "weather_code,"
             "wind_speed_10m,"
+            "wind_direction_10m,"
             "wind_gusts_10m,"
+            "surface_pressure,"
             "cloud_cover,"
             "is_day"
         ),

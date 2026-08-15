@@ -2247,7 +2247,7 @@ def _home_css():
         padding: 17px;
     }
     .cp-v19-brand {
-        font-size: 1.18rem;
+        font-size: 1.02rem;
     }
     .cp-v19-feed {
         grid-template-columns: 1fr;
@@ -3052,6 +3052,405 @@ def _global_pulse_panel():
 
 
 
+
+def _wind_compass(degrees):
+    value = _num(degrees)
+    if value is None:
+        return "—"
+    directions = (
+        "N", "NE", "E", "SE",
+        "S", "SW", "W", "NW",
+    )
+    return directions[int((value + 22.5) // 45) % 8]
+
+
+def _first_daily_value(daily, key):
+    values = daily.get(key, []) if isinstance(daily, dict) else []
+    if isinstance(values, (list, tuple)) and values:
+        return values[0]
+    return None
+
+
+def _local_advisory(official_alerts, context_alerts, guidance):
+    """Return one concise, honest local advisory for the Home weather strip."""
+    if official_alerts:
+        alert = official_alerts[0] or {}
+        title = alert.get("event") or "Official weather alert"
+        text = alert.get("headline") or alert.get("instruction") or alert.get("description") or "An official weather alert is active for this area."
+        return {
+            "kind": "official",
+            "label": "OFFICIAL ALERT",
+            "title": title,
+            "text": text,
+            "source": alert.get("source") or "Official warning service",
+        }
+
+    if context_alerts:
+        alert = context_alerts[0] or {}
+        return {
+            "kind": "context",
+            "label": "LOCAL WEATHER SIGNAL",
+            "title": alert.get("title") or "Weather context",
+            "text": alert.get("message") or "Conditions may warrant extra attention today.",
+            "source": "ORBIDENSE AI contextual screening",
+        }
+
+    if guidance:
+        item = guidance[0] or {}
+        return {
+            "kind": "guidance",
+            "label": "LOCAL GUIDANCE",
+            "title": item.get("title") or "Weather guidance",
+            "text": item.get("text") or "Conditions are generally suitable for normal activities.",
+            "source": item.get("source") or "Environmental guidance",
+        }
+
+    return {
+        "kind": "normal",
+        "label": "LOCAL CONDITIONS",
+        "title": "No significant weather-health signal",
+        "text": "Current conditions do not trigger a notable heat, air-quality or weather advisory in the available data.",
+        "source": "Current ORBIDENSE AI environmental context",
+    }
+
+
+def _render_local_weather_strip(
+    selected,
+    environment,
+    current,
+    air_current,
+    daily,
+    official_alerts,
+    context_alerts,
+    guidance,
+):
+    """Compact weather-app style conditions displayed beside Current location."""
+    if not selected:
+        return
+
+    if not environment:
+        st.html(
+            """
+<div class="orb-local-weather orb-local-weather-loading">
+  <div class="orb-local-loading-dot"></div>
+  <div>
+    <strong>Loading local conditions</strong>
+    <span>Weather, forecast and air quality are being prepared.</span>
+  </div>
+</div>
+            """
+        )
+        return
+
+    temp = _num(current.get("temperature_2m"))
+    feels = _num(current.get("apparent_temperature"))
+    humidity = _num(current.get("relative_humidity_2m"))
+    rain_now = _num(current.get("precipitation"))
+    wind = _num(current.get("wind_speed_10m"))
+    wind_dir = _wind_compass(current.get("wind_direction_10m"))
+    pressure = _num(current.get("surface_pressure"))
+
+    high = _num(_first_daily_value(daily, "temperature_2m_max"))
+    low = _num(_first_daily_value(daily, "temperature_2m_min"))
+    rain_prob = _num(_first_daily_value(daily, "precipitation_probability_max"))
+    weather_code = _first_daily_value(daily, "weather_code")
+    condition = weather_code_text(weather_code)
+
+    aqi = _num(air_current.get("european_aqi"))
+    aqi_label, aqi_class = aqi_level(aqi)
+
+    advisory = _local_advisory(
+        official_alerts,
+        context_alerts,
+        guidance,
+    )
+
+    def esc(value):
+        return html.escape(str(value), quote=True)
+
+    def metric(icon, label, value, note, tone="cyan"):
+        return f"""
+<div class="orb-weather-metric orb-tone-{tone}">
+  <div class="orb-weather-icon">{icon}</div>
+  <div class="orb-weather-copy">
+    <div class="orb-weather-label">{esc(label)}</div>
+    <div class="orb-weather-value">{esc(value)}</div>
+    <div class="orb-weather-note">{esc(note)}</div>
+  </div>
+</div>
+        """
+
+    temp_value = f"{temp:.1f}°C" if temp is not None else "—"
+    feels_note = f"Feels like {feels:.1f}°C" if feels is not None else "Current air temperature"
+    forecast_value = (
+        f"{high:.0f}° / {low:.0f}°"
+        if high is not None and low is not None
+        else "—"
+    )
+    forecast_note = condition
+    if rain_prob is not None:
+        forecast_note += f" · Rain {rain_prob:.0f}%"
+
+    aqi_value = f"{aqi:.0f} AQI" if aqi is not None else "—"
+    precip_value = f"{rain_now:.1f} mm" if rain_now is not None else "—"
+    humidity_value = f"{humidity:.0f}%" if humidity is not None else "—"
+    wind_value = f"{wind:.0f} km/h" if wind is not None else "—"
+    pressure_value = f"{pressure:.0f} hPa" if pressure is not None else "—"
+
+    aqi_tone = {
+        "good": "green",
+        "fair": "green",
+        "moderate": "amber",
+        "poor": "red",
+        "very-poor": "red",
+        "extreme": "red",
+    }.get(aqi_class, "cyan")
+
+    advisory_kind = advisory["kind"]
+    advisory_icon = {
+        "official": "⚠",
+        "context": "△",
+        "guidance": "◇",
+        "normal": "✓",
+    }.get(advisory_kind, "◇")
+
+    cards = "".join([
+        metric("♨", "Temperature", temp_value, feels_note, "cyan"),
+        metric("☀", "Today", forecast_value, forecast_note, "amber"),
+        metric("◉", "Air quality", aqi_value, aqi_label, aqi_tone),
+        metric("◌", "Precipitation", precip_value, "Current precipitation", "cyan"),
+        metric("◍", "Humidity", humidity_value, "Relative humidity", "blue"),
+        metric("≋", "Wind", wind_value, wind_dir, "cyan"),
+        metric("◴", "Pressure", pressure_value, "Surface pressure", "amber"),
+    ])
+
+    st.html(
+        f"""
+<style>
+.orb-local-weather-shell {{
+    width: 100%;
+    min-width: 0;
+}}
+.orb-local-weather-grid {{
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    align-items: stretch;
+    border: 1px solid rgba(57, 204, 222, .20);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(6, 28, 40, .92), rgba(4, 20, 31, .96));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 12px 32px rgba(0,0,0,.16);
+    overflow: hidden;
+}}
+.orb-weather-metric {{
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .42rem;
+    min-width: 0;
+    padding: .66rem .52rem;
+    border-right: 1px solid rgba(113, 157, 177, .13);
+}}
+.orb-weather-metric:last-child {{ border-right: 0; }}
+.orb-weather-icon {{
+    display: grid;
+    place-items: center;
+    flex: 0 0 1.88rem;
+    width: 1.88rem;
+    height: 1.88rem;
+    border-radius: 12px;
+    font-size: 1.18rem;
+    color: #5ce6f2;
+    background: rgba(13, 85, 108, .18);
+    border: 1px solid rgba(71, 218, 232, .10);
+}}
+.orb-tone-green .orb-weather-icon {{ color: #55e68c; background: rgba(29, 145, 85, .12); }}
+.orb-tone-amber .orb-weather-icon {{ color: #ffbd49; background: rgba(177, 119, 22, .12); }}
+.orb-tone-red .orb-weather-icon {{ color: #ff6b66; background: rgba(177, 54, 54, .12); }}
+.orb-tone-blue .orb-weather-icon {{ color: #63aaff; background: rgba(46, 97, 168, .13); }}
+.orb-weather-copy {{ min-width: 0; }}
+.orb-weather-label {{
+    color: #7896a8;
+    font-size: clamp(.49rem, .50vw, .57rem);
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}}
+.orb-weather-value {{
+    margin-top: .10rem;
+    color: #f3fbff;
+    font-size: clamp(.72rem, .78vw, .94rem);
+    line-height: 1.12;
+    font-weight: 850;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.orb-weather-note {{
+    margin-top: .22rem;
+    color: #8ba5b3;
+    font-size: clamp(.49rem, .50vw, .59rem);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}}
+.orb-local-advisory {{
+    margin-top: .42rem;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: .60rem;
+    padding: .48rem .70rem;
+    border-radius: 12px;
+    border: 1px solid rgba(65, 202, 222, .12);
+    background: rgba(6, 27, 38, .72);
+}}
+.orb-local-advisory.official {{ border-color: rgba(255, 105, 88, .30); background: rgba(91, 32, 29, .22); }}
+.orb-local-advisory.context {{ border-color: rgba(255, 187, 71, .25); background: rgba(93, 68, 21, .17); }}
+.orb-local-advisory.normal {{ border-color: rgba(64, 222, 132, .20); background: rgba(22, 86, 60, .13); }}
+.orb-advisory-icon {{
+    flex: 0 0 1.85rem;
+    width: 1.85rem;
+    height: 1.85rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(43, 206, 224, .10);
+    color: #55dfe9;
+    font-weight: 900;
+}}
+.orb-local-advisory.official .orb-advisory-icon {{ color:#ff776d; background:rgba(214,74,63,.12); }}
+.orb-local-advisory.context .orb-advisory-icon {{ color:#ffc25f; background:rgba(214,151,48,.12); }}
+.orb-local-advisory.normal .orb-advisory-icon {{ color:#55e68c; background:rgba(48,181,105,.10); }}
+.orb-advisory-body {{ min-width:0; flex:1; }}
+.orb-advisory-top {{
+    color:#7e9bab;
+    font-size:.55rem;
+    font-weight:850;
+    letter-spacing:.10em;
+    text-transform:uppercase;
+}}
+.orb-advisory-line {{
+    margin-top:.05rem;
+    color:#dcebf2;
+    font-size:.69rem;
+    line-height:1.30;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}}
+.orb-advisory-line strong {{ color:#f4fbff; }}
+.orb-advisory-source {{
+    flex:0 0 auto;
+    color:#668696;
+    font-size:.55rem;
+    white-space:nowrap;
+}}
+.orb-local-weather-loading {{
+    min-height: 72px;
+    display:flex;
+    align-items:center;
+    gap:.7rem;
+    padding:.75rem 1rem;
+    border:1px solid rgba(57,204,222,.18);
+    border-radius:16px;
+    background:rgba(6,28,40,.78);
+}}
+.orb-local-weather-loading strong {{ display:block;color:#f3fbff;font-size:.78rem; }}
+.orb-local-weather-loading span {{ display:block;color:#7e9bab;font-size:.64rem;margin-top:.12rem; }}
+.orb-local-loading-dot {{ width:.7rem;height:.7rem;border-radius:50%;background:#4fe1ed;box-shadow:0 0 16px rgba(79,225,237,.65); }}
+@media (max-width: 1250px) {{
+    .orb-local-weather-grid {{ grid-template-columns: repeat(4, minmax(110px, 1fr)); }}
+    .orb-weather-metric:nth-child(4) {{ border-right:0; }}
+}}
+@media (max-width: 860px) {{
+    .orb-local-weather-grid {{ grid-template-columns: repeat(2, minmax(130px, 1fr)); }}
+    .orb-weather-metric {{ border-bottom:1px solid rgba(113,157,177,.10); }}
+    .orb-advisory-source {{ display:none; }}
+}}
+</style>
+<div class="orb-local-weather-shell">
+  <div class="orb-local-weather-grid">{cards}</div>
+  <div class="orb-local-advisory {esc(advisory_kind)}">
+    <div class="orb-advisory-icon">{esc(advisory_icon)}</div>
+    <div class="orb-advisory-body">
+      <div class="orb-advisory-top">{esc(advisory['label'])}</div>
+      <div class="orb-advisory-line"><strong>{esc(advisory['title'])}</strong> · {esc(advisory['text'])}</div>
+    </div>
+    <div class="orb-advisory-source">{esc(advisory['source'])}</div>
+  </div>
+</div>
+        """
+    )
+
+
+
+def _locations_match(first, second, tolerance=0.0025):
+    """Return True when two location dictionaries represent the same point."""
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        return False
+    try:
+        return (
+            abs(float(first.get("latitude")) - float(second.get("latitude"))) <= tolerance
+            and abs(float(first.get("longitude")) - float(second.get("longitude"))) <= tolerance
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _render_selected_location_card(selected):
+    """Compact display for a manually searched/selected location."""
+    if not selected:
+        return
+
+    label = html.escape(str(selected.get("name") or "Selected location"), quote=True)
+    kind = str(selected.get("kind") or "place").replace("_", " ").title()
+
+    st.html(
+        f"""
+<style>
+.orb-selected-location {{
+    width:100%;
+    min-height:52px;
+    display:grid;
+    grid-template-columns:34px minmax(0,1fr) 18px;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:13px;
+    border:1px solid rgba(72,218,248,.26);
+    background:linear-gradient(135deg,rgba(10,39,54,.96),rgba(6,24,34,.98));
+    box-shadow:0 8px 26px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.025);
+    overflow:hidden;
+}}
+.orb-selected-location-icon {{
+    width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+    color:#55e7f2;background:rgba(13,102,126,.18);
+    border:1px solid rgba(82,224,241,.20);font-size:1rem;
+}}
+.orb-selected-location-copy {{min-width:0;}}
+.orb-selected-location-title {{
+    color:#f4fbff;font-size:.78rem;font-weight:820;line-height:1.15;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}}
+.orb-selected-location-sub {{
+    margin-top:.14rem;color:#7898a8;font-size:.58rem;font-weight:650;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}}
+.orb-selected-location-arrow {{color:#55dfea;font-size:1rem;text-align:right;}}
+</style>
+<div class="orb-selected-location" title="{label}">
+  <div class="orb-selected-location-icon">◎</div>
+  <div class="orb-selected-location-copy">
+    <div class="orb-selected-location-title">{label}</div>
+    <div class="orb-selected-location-sub">Selected {html.escape(kind.lower(), quote=True)} · live conditions</div>
+  </div>
+  <div class="orb-selected-location-arrow">→</div>
+</div>
+        """
+    )
+
 def render_home_page(
     city=None,
     point_location=None,
@@ -3075,27 +3474,70 @@ def render_home_page(
     )
 
     # =========================================================
-    # CURRENT LOCATION — ONE CLICK, NO POPOVER / CHECKBOX
+    # CURRENT LOCATION — AUTOMATIC FIRST-VISIT BOOTSTRAP
     # =========================================================
     #
-    # The browser component asks for permission only after the
-    # visitor presses the compact location button.
+    # On a visitor's first Home render, the browser component attempts
+    # geolocation immediately. The browser still controls permission: the
+    # application cannot bypass a denied permission. Once coordinates arrive:
+    # browser coordinates -> reverse geocode -> session state -> app-level
+    # location sync -> current weather/history/globe rerender.
     #
-    # Success flow:
-    # browser coordinates
-    # -> reverse-geocoded location
-    # -> session state
-    # -> app-level active-location sync
-    # -> immediate rerun
+    # If permission is denied/unavailable, the compact control remains as a
+    # manual retry and the global search remains the fallback.
     # =========================================================
 
     existing_browser_location = st.session_state.get(
         "v21_browser_location"
     )
 
-    detected_location = render_location_control(
-        active_location=existing_browser_location
+    # A manual search must take precedence over the previously detected
+    # browser location. Browser geolocation is only the automatic default.
+    manual_selection_active = bool(selected) and not _locations_match(
+        selected,
+        existing_browser_location,
     )
+
+    # Reserve one responsive row: active location on the left and weather
+    # intelligence on the right. The weather strip always follows `selected`.
+    location_col, local_weather_col = st.columns(
+        [1.42, 6.58],
+        gap="small",
+        vertical_alignment="top",
+    )
+
+    with location_col:
+        if manual_selection_active:
+            detected_location = None
+            _render_selected_location_card(selected)
+        else:
+            detected_location = render_location_control(
+                active_location=existing_browser_location
+            )
+
+    if (
+        not detected_location
+        and not existing_browser_location
+        and not selected
+    ):
+        st.html(
+            """
+<div style="
+    margin: .20rem 0 .75rem 0;
+    padding: .72rem .90rem;
+    border: 1px solid rgba(68, 218, 232, .16);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(8,31,43,.78), rgba(5,20,30,.88));
+    color: #a9c4cf;
+    font-size: .82rem;
+">
+    <strong style="color:#edfaff;">Preparing your local Earth view</strong><br>
+    Allow browser location when prompted. ORBIDENSE AI will automatically
+    load current weather, environmental context and center the live map on
+    your detected position. You can always use global search instead.
+</div>
+            """
+        )
 
     if detected_location:
         st.session_state[
@@ -3127,7 +3569,9 @@ def render_home_page(
         "v21_browser_location"
     )
 
-    if saved_browser:
+    # IMPORTANT: do not overwrite a location explicitly chosen through
+    # global search. Browser geolocation is a fallback/default only.
+    if saved_browser and not selected:
         selected = {
             "name": (
                 saved_browser.get(
@@ -3322,6 +3766,23 @@ def render_home_page(
         if environment
         else []
     )
+
+    # Weather-app style local conditions: intentionally uses the same detected
+    # coordinates as the Home globe so the location, weather and map remain
+    # synchronized. Official alerts are shown only where the configured
+    # authoritative warning service supports them; elsewhere the advisory is
+    # clearly labelled as contextual guidance rather than an official warning.
+    with local_weather_col:
+        _render_local_weather_strip(
+            selected=selected,
+            environment=environment,
+            current=current,
+            air_current=air_current,
+            daily=daily,
+            official_alerts=official_alerts,
+            context_alerts=context_alerts,
+            guidance=guidance,
+        )
 
     status_text = _status_text(
         environment,
