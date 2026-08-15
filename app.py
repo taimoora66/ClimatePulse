@@ -108,6 +108,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# =========================================================
+# ORBIDENSE AI — ACCESSIBILITY / VIEW SCALE
+# =========================================================
+# This controls the visual scale of the complete Streamlit application.
+# It changes presentation only; maps, data, calculations and routing are untouched.
+if "orbidense_ui_scale" not in st.session_state:
+    st.session_state["orbidense_ui_scale"] = 1.0
+
+UI_SCALE_MIN = 0.80
+UI_SCALE_MAX = 1.20
+UI_SCALE_STEP = 0.10
 # Analytics is useful, but it must never prevent the climate app from loading.
 try:
     ensure_analytics_database()
@@ -171,12 +183,33 @@ html, body, [class*="css"] {
     padding-top: 0 !important;
 }
 
-.block-container {
-    max-width: 1540px;
+.block-container,
+[data-testid="stMainBlockContainer"] {
+    max-width: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
     padding-top: .35rem !important;
-    padding-bottom: 2.4rem;
-    padding-left: 1.1rem;
-    padding-right: 1.1rem;
+    padding-bottom: 2.4rem !important;
+    padding-left: 1.1rem !important;
+    padding-right: 1.1rem !important;
+}
+
+/*
+   The main workspace must reflow whenever Streamlit opens/closes the sidebar.
+   No hard-coded left margin or fixed content width is retained.
+*/
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stMain"] {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stMain"] {
+    flex: 1 1 auto !important;
+    transition: width .22s ease, margin .22s ease !important;
 }
 
 [data-testid="stSidebar"] {
@@ -615,30 +648,308 @@ h3 {
     .cp-current-temp { font-size: 2rem; }
 }
 
-/* Functional sidebar navigation */
+/* =========================================================
+   ORBIDENSE AI — PROFESSIONAL COMMAND SIDEBAR
+   Visual-only redesign. Navigation values and page routing are unchanged.
+   ========================================================= */
+
+/* Command rail shell */
+[data-testid="stSidebar"] {
+    width: 318px !important;
+    min-width: 318px !important;
+    background:
+        radial-gradient(circle at 50% -8%, rgba(20, 108, 132, .12), transparent 30%),
+        linear-gradient(180deg, #06121d 0%, #040c14 58%, #050f18 100%) !important;
+    border-right: 1px solid rgba(70, 180, 211, .20) !important;
+    box-shadow: 14px 0 42px rgba(0, 0, 0, .24) !important;
+}
+
+[data-testid="stSidebarContent"] {
+    padding: 14px 18px 18px 18px !important;
+}
+
+/* Exact supplied ORBIDENSE AI artwork — prominent, never cropped. */
+[data-testid="stSidebar"] [data-testid="stImage"] {
+    margin: 12px auto 4px auto !important;
+    padding: 0 !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stImage"] img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 238px !important;
+    max-height: 228px !important;
+    margin: 0 auto !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 12px 28px rgba(15, 187, 219, .09));
+}
+
+/* Hide the old duplicate tagline; the supplied artwork already carries the brand. */
+.orbidense-sidebar-tagline {
+    display: none !important;
+}
+
+/* Section divider matching the reference design. */
+.orbidense-side-section {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 11px 2px 12px 2px;
+    color: #7690a7;
+    font-size: .69rem;
+    line-height: 1;
+    font-weight: 760;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.orbidense-side-section::before,
+.orbidense-side-section::after {
+    content: "";
+    height: 1px;
+    flex: 1 1 auto;
+    background: linear-gradient(90deg, transparent, rgba(102, 173, 202, .25));
+}
+
+.orbidense-side-section::after {
+    background: linear-gradient(90deg, rgba(102, 173, 202, .25), transparent);
+}
+
+/* Native Streamlit radio remains the functional navigation. */
 .st-key-main_navigation [role="radiogroup"] {
-    gap: 6px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 9px !important;
 }
 
-.st-key-main_navigation label {
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 9px;
-    padding: 8px 10px;
-    margin: 0;
+.st-key-main_navigation [role="radiogroup"] > label {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 57px !important;
+    margin: 0 !important;
+    padding: 0 42px 0 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(83, 157, 187, .13) !important;
+    background:
+        linear-gradient(135deg, rgba(10, 30, 44, .96), rgba(7, 20, 31, .96)) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.025),
+        0 7px 20px rgba(0,0,0,.10) !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+    transition:
+        transform .17s ease,
+        border-color .17s ease,
+        background .17s ease,
+        box-shadow .17s ease !important;
 }
 
-.st-key-main_navigation label:hover {
-    background: #0b1825;
+/* Remove the default radio circle without changing the radio itself. */
+.st-key-main_navigation [role="radiogroup"] > label > div:first-child {
+    display: none !important;
 }
 
-.st-key-main_navigation label:has(input:checked) {
-    background: #0b2236;
-    border-color: rgba(57,169,255,.36);
+.st-key-main_navigation [role="radiogroup"] > label p {
+    margin: 0 !important;
+    color: #dce8f0 !important;
+    font-size: .92rem !important;
+    line-height: 1.15 !important;
+    font-weight: 650 !important;
+    letter-spacing: -.005em !important;
+    white-space: nowrap !important;
 }
 
-.st-key-main_navigation label:has(input:checked) p {
-    color: #79c9ff !important;
+/* Right chevron: visual cue only. */
+.st-key-main_navigation [role="radiogroup"] > label::after {
+    content: "›";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-52%);
+    color: #c7d8e4;
+    font-size: 1.55rem;
+    line-height: 1;
+    font-weight: 300;
+    opacity: .88;
+    transition: transform .17s ease, color .17s ease;
+}
+
+.st-key-main_navigation [role="radiogroup"] > label:hover {
+    transform: translateY(-1px) !important;
+    border-color: rgba(48, 211, 226, .38) !important;
+    background:
+        linear-gradient(135deg, rgba(11, 41, 56, .98), rgba(7, 27, 40, .98)) !important;
+    box-shadow:
+        0 10px 26px rgba(0,0,0,.18),
+        0 0 0 1px rgba(42, 211, 226, .04) !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] > label:hover::after {
+    transform: translate(2px, -52%);
+    color: #52edf0;
+}
+
+/* Active state: teal edge, glow, stronger typography. */
+.st-key-main_navigation [role="radiogroup"] > label:has(input:checked) {
+    border-color: rgba(29, 222, 226, .72) !important;
+    background:
+        linear-gradient(105deg, rgba(7, 79, 94, .86), rgba(7, 34, 48, .97) 66%, rgba(6, 26, 38, .98)) !important;
+    box-shadow:
+        0 9px 28px rgba(0,0,0,.20),
+        inset 4px 0 0 #28e4e4,
+        0 0 23px rgba(24, 222, 226, .08) !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] > label:has(input:checked) p {
+    color: #69f3ef !important;
+    font-weight: 780 !important;
+}
+
+.st-key-main_navigation [role="radiogroup"] > label:has(input:checked)::after {
+    color: #55f0ed !important;
+}
+
+/* Private developer item gets a subtle restricted-access treatment. */
+.st-key-main_navigation [role="radiogroup"] > label:has(p:nth-child(1)) {
+    isolation: isolate;
+}
+
+/* Developer-only system card */
+.orbidense-dev-status {
+    position: relative;
+    margin: 9px 1px 8px 1px;
+    padding: 14px 15px;
+    border-radius: 13px;
+    border: 1px solid rgba(69, 214, 145, .20);
+    background:
+        linear-gradient(135deg, rgba(7, 33, 39, .94), rgba(6, 23, 32, .96));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.orbidense-dev-status-top {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #56e99a;
+    font-size: .85rem;
+    font-weight: 760;
+}
+
+.orbidense-dev-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #48e68f;
+    box-shadow: 0 0 0 5px rgba(72,230,143,.06), 0 0 13px rgba(72,230,143,.45);
+}
+
+.orbidense-dev-status-sub {
+    margin: 6px 0 0 18px;
+    color: #8aa2b4;
+    font-size: .70rem;
+    line-height: 1.55;
+}
+
+/* Native collapse control — small square in the upper-right of the rail. */
+[data-testid="stSidebarCollapseButton"] {
+    position: absolute !important;
+    top: 14px !important;
+    right: 13px !important;
+    width: 42px !important;
+    height: 42px !important;
+    z-index: 2147482000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button {
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(117, 177, 207, .31) !important;
+    background: rgba(7, 20, 31, .93) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.24) !important;
+    color: #e7f6fb !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button::after {
+    content: none !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button:hover {
+    border-color: rgba(51, 226, 229, .70) !important;
+    background: rgba(8, 38, 50, .98) !important;
+    box-shadow: 0 0 0 3px rgba(51,226,229,.06), 0 9px 25px rgba(0,0,0,.27) !important;
+}
+
+/* Closed-state restore control stays available at all times. */
+[data-testid="stExpandSidebarButton"] {
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 2147483001 !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(51, 226, 229, .55) !important;
+    background: rgba(7, 24, 35, .97) !important;
+    color: #e9fbff !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,.38), 0 0 18px rgba(51,226,229,.07) !important;
+    pointer-events: auto !important;
+}
+
+[data-testid="stExpandSidebarButton"]::after {
+    content: none !important;
+}
+
+[data-testid="stExpandSidebarButton"]:hover {
+    border-color: rgba(51, 226, 229, .90) !important;
+    background: rgba(8, 42, 54, .99) !important;
+}
+
+[data-testid="stHeader"] {
+    overflow: visible !important;
+}
+
+[data-testid="stHeader"] [data-testid="stExpandSidebarButton"] {
+    pointer-events: auto !important;
+}
+
+@media (max-width: 760px) {
+    [data-testid="stSidebar"] {
+        width: min(88vw, 318px) !important;
+        min-width: min(88vw, 318px) !important;
+    }
+
+    [data-testid="stSidebarContent"] {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    .st-key-main_navigation [role="radiogroup"] > label {
+        min-height: 54px !important;
+    }
 }
 
 
@@ -1638,6 +1949,226 @@ div[data-testid="stChatInput"] input::placeholder {
     }
 }
 
+
+/* FINAL SIDEBAR CONTROL OVERRIDE — no legacy Explore text */
+[data-testid="stSidebarCollapseButton"] button::after,
+[data-testid="stExpandSidebarButton"]::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* =========================================================
+   ORBIDENSE AI — RESPONSIVE WORKSPACE + VIEW CONTROLS
+   =========================================================
+   1) The dashboard must consume the released sidebar width immediately.
+   2) Zoom controls scale the complete interface, not Plotly/map camera zoom.
+   3) Uses Chromium/Edge-supported :has() to detect Streamlit's collapsed rail.
+*/
+
+/* Smooth layout transition while opening/closing the navigation rail. */
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+.block-container {
+    transition: width .22s ease, margin .22s ease, padding .22s ease !important;
+}
+
+/* When Streamlit exposes the restore-sidebar button, the rail is collapsed.
+   Force the content canvas to release every reserved sidebar pixel. */
+html:has([data-testid="stExpandSidebarButton"]) [data-testid="stAppViewContainer"],
+body:has([data-testid="stExpandSidebarButton"]) [data-testid="stAppViewContainer"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+}
+
+html:has([data-testid="stExpandSidebarButton"]) [data-testid="stAppViewContainer"] > .main,
+body:has([data-testid="stExpandSidebarButton"]) [data-testid="stAppViewContainer"] > .main,
+html:has([data-testid="stExpandSidebarButton"]) [data-testid="stMain"],
+body:has([data-testid="stExpandSidebarButton"]) [data-testid="stMain"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    flex: 1 1 100% !important;
+}
+
+html:has([data-testid="stExpandSidebarButton"]) [data-testid="stMainBlockContainer"],
+body:has([data-testid="stExpandSidebarButton"]) [data-testid="stMainBlockContainer"],
+html:has([data-testid="stExpandSidebarButton"]) .block-container,
+body:has([data-testid="stExpandSidebarButton"]) .block-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1.05rem !important;
+    padding-right: 1.05rem !important;
+}
+
+/* Extra fallback for Streamlit builds that retain a hidden sidebar shell. */
+body:has([data-testid="stExpandSidebarButton"]) [data-testid="stSidebar"] {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ---------- Professional whole-interface zoom controller ---------- */
+.st-key-orbidense_zoom_controls,
+[class*="st-key-orbidense_zoom_controls"] {
+    position: fixed !important;
+    top: 12px !important;
+    right: 74px !important;
+    z-index: 2147482500 !important;
+    width: 166px !important;
+    min-width: 166px !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    border: 1px solid rgba(49, 201, 220, .30) !important;
+    border-radius: 15px !important;
+    background: linear-gradient(145deg, rgba(7,26,39,.98), rgba(4,15,25,.96)) !important;
+    box-shadow: 0 14px 34px rgba(0,0,0,.38), 0 0 0 1px rgba(79,231,235,.03) inset !important;
+    backdrop-filter: blur(18px) saturate(135%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+}
+
+.st-key-orbidense_zoom_controls [data-testid="stHorizontalBlock"],
+[class*="st-key-orbidense_zoom_controls"] [data-testid="stHorizontalBlock"] {
+    gap: 6px !important;
+    align-items: center !important;
+}
+
+.st-key-orbidense_zoom_controls [data-testid="column"],
+[class*="st-key-orbidense_zoom_controls"] [data-testid="column"] {
+    min-width: 0 !important;
+    padding: 0 !important;
+}
+
+.st-key-orbidense_zoom_controls .stButton,
+[class*="st-key-orbidense_zoom_controls"] .stButton {
+    margin: 0 !important;
+}
+
+.st-key-orbidense_zoom_controls .stButton > button,
+[class*="st-key-orbidense_zoom_controls"] .stButton > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 7px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(70, 193, 218, .22) !important;
+    background: linear-gradient(180deg, rgba(14,42,58,.98), rgba(8,28,41,.98)) !important;
+    color: #eafaff !important;
+    font-size: .84rem !important;
+    line-height: 1 !important;
+    font-weight: 850 !important;
+    letter-spacing: .015em !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 3px 10px rgba(0,0,0,.18) !important;
+    cursor: pointer !important;
+    transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease !important;
+}
+
+/* Make +/- controls visually distinct from the reset indicator. */
+.st-key-orbidense_zoom_controls [data-testid="column"]:first-child button,
+.st-key-orbidense_zoom_controls [data-testid="column"]:last-child button,
+[class*="st-key-orbidense_zoom_controls"] [data-testid="column"]:first-child button,
+[class*="st-key-orbidense_zoom_controls"] [data-testid="column"]:last-child button {
+    font-size: 1.08rem !important;
+    color: #64edf0 !important;
+}
+
+.st-key-orbidense_zoom_controls [data-testid="column"]:nth-child(2) button,
+[class*="st-key-orbidense_zoom_controls"] [data-testid="column"]:nth-child(2) button {
+    background: rgba(8,24,36,.98) !important;
+    color: #a9cfdb !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.st-key-orbidense_zoom_controls .stButton > button:hover,
+[class*="st-key-orbidense_zoom_controls"] .stButton > button:hover {
+    transform: translateY(-1px) !important;
+    border-color: rgba(61, 232, 235, .72) !important;
+    background: linear-gradient(180deg, rgba(15,57,70,.99), rgba(8,37,50,.99)) !important;
+    color: #ffffff !important;
+    box-shadow: 0 7px 18px rgba(0,0,0,.26), 0 0 16px rgba(56,225,230,.08) !important;
+}
+
+.st-key-orbidense_zoom_controls .stButton > button:active,
+[class*="st-key-orbidense_zoom_controls"] .stButton > button:active {
+    transform: translateY(0) scale(.97) !important;
+}
+
+.st-key-orbidense_zoom_controls .stButton > button:focus-visible,
+[class*="st-key-orbidense_zoom_controls"] .stButton > button:focus-visible {
+    outline: 2px solid rgba(74,231,236,.68) !important;
+    outline-offset: 2px !important;
+}
+
+@media (max-width: 780px) {
+    .st-key-orbidense_zoom_controls,
+    [class*="st-key-orbidense_zoom_controls"] {
+        top: 10px !important;
+        right: 56px !important;
+        width: 150px !important;
+        min-width: 150px !important;
+        padding: 5px !important;
+    }
+}
+
+/* Exact Streamlit key selectors: these override the default white button theme. */
+.st-key-orbidense_zoom_out button,
+.st-key-orbidense_zoom_reset button,
+.st-key-orbidense_zoom_in button {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 .65rem !important;
+    border: 1px solid rgba(44, 211, 226, .38) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(180deg, #0c2636 0%, #071a27 100%) !important;
+    color: #dffbff !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 5px 14px rgba(0,0,0,.24) !important;
+    font-weight: 800 !important;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease !important;
+}
+
+.st-key-orbidense_zoom_out button,
+.st-key-orbidense_zoom_in button {
+    color: #55e8ee !important;
+    font-size: 1.08rem !important;
+}
+
+.st-key-orbidense_zoom_reset button {
+    min-width: 58px !important;
+    color: #f4fbff !important;
+    background: linear-gradient(180deg, #102f40 0%, #0a2231 100%) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.st-key-orbidense_zoom_out button:hover,
+.st-key-orbidense_zoom_reset button:hover,
+.st-key-orbidense_zoom_in button:hover {
+    transform: translateY(-1px) !important;
+    border-color: rgba(71, 238, 241, .85) !important;
+    background: linear-gradient(180deg, #123a4a 0%, #0a2837 100%) !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,.30), 0 0 16px rgba(52,225,231,.10) !important;
+}
+
+/* Make the controller itself compact and integrated into the app chrome. */
+.st-key-orbidense_zoom_controls {
+    width: 176px !important;
+    min-width: 176px !important;
+    padding: 6px !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(48, 202, 219, .28) !important;
+    background: rgba(4, 18, 29, .96) !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.025) !important;
+}
 </style>
     """,
     unsafe_allow_html=True,
@@ -1648,6 +2179,116 @@ div[data-testid="stChatInput"] input::placeholder {
 # Sidebar collapse/restore is handled entirely by Streamlit's native controls.
 # They are branded as “Explore” through CSS above, so no injected JavaScript
 # or deprecated components.html iframe is required.
+
+# =========================================================
+# RESPONSIVE INTERFACE DENSITY / ACCESSIBILITY SCALE
+# =========================================================
+# Do not CSS-zoom the .stApp canvas: scaling the root canvas can leave blank
+# viewport regions and visually split the application. Instead we scale the
+# root typographic/rem system. Streamlit's flex/grid containers remain 100%
+# fluid and Plotly/Map components continue to resize to the real viewport.
+_ui_scale = float(st.session_state.get("orbidense_ui_scale", 1.0))
+_ui_font_percent = int(round(_ui_scale * 100))
+
+st.markdown(
+    f"""
+<style>
+/* Responsive density scaling: fonts, rem-based controls, spacing and cards
+   adapt while the application itself always occupies the full viewport. */
+html {{
+    font-size: {_ui_font_percent}% !important;
+}}
+
+html, body, .stApp,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+.block-container {{
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}}
+
+/* Never reserve invisible horizontal canvas after the sidebar closes. */
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {{
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+}}
+
+[data-testid="stMainBlockContainer"],
+.block-container {{
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: clamp(.8rem, 1.2vw, 1.35rem) !important;
+    padding-right: clamp(.8rem, 1.2vw, 1.35rem) !important;
+}}
+
+/* Let responsive rows wrap instead of shrinking into a partial-width canvas. */
+[data-testid="stHorizontalBlock"] {{
+    width: 100% !important;
+    max-width: 100% !important;
+}}
+
+/* Plotly and iframe/component hosts follow their parent width at every density. */
+[data-testid="stPlotlyChart"],
+[data-testid="stIFrame"],
+iframe {{
+    max-width: 100% !important;
+}}
+
+/* Small screens get a slightly tighter canvas automatically. */
+@media (max-width: 900px) {{
+    [data-testid="stMainBlockContainer"],
+    .block-container {{
+        padding-left: .7rem !important;
+        padding-right: .7rem !important;
+    }}
+}}
+</style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Persistent controls remain available with the navigation rail open or closed.
+with st.container(key="orbidense_zoom_controls"):
+    _zoom_out, _zoom_reset, _zoom_in = st.columns([1, 1.35, 1], gap="small")
+
+    with _zoom_out:
+        if st.button(
+            "−",
+            key="orbidense_zoom_out",
+            help="Zoom out the full ORBIDENSE AI interface (maps keep their own map zoom)",
+            use_container_width=True,
+        ):
+            st.session_state["orbidense_ui_scale"] = round(
+                max(UI_SCALE_MIN, _ui_scale - UI_SCALE_STEP), 2
+            )
+            st.rerun()
+
+    with _zoom_reset:
+        if st.button(
+            f"{int(round(_ui_scale * 100))}%",
+            key="orbidense_zoom_reset",
+            help="Reset the full ORBIDENSE AI interface to 100%",
+            use_container_width=True,
+        ):
+            st.session_state["orbidense_ui_scale"] = 1.0
+            st.rerun()
+
+    with _zoom_in:
+        if st.button(
+            "+",
+            key="orbidense_zoom_in",
+            help="Zoom in the full ORBIDENSE AI interface (maps keep their own map zoom)",
+            use_container_width=True,
+        ):
+            st.session_state["orbidense_ui_scale"] = round(
+                min(UI_SCALE_MAX, _ui_scale + UI_SCALE_STEP), 2
+            )
+            st.rerun()
+
 
 DEFAULT_STATE = {
     "selected_city_id": None,
@@ -3646,8 +4287,9 @@ if not DEVELOPER_MODE:
 with st.sidebar:
 
     # =====================================================
-    # ORBIDENSE AI BRAND
+    # ORBIDENSE AI — COMMAND SIDEBAR
     # =====================================================
+    # Visual redesign only. All existing route values remain unchanged.
 
     if APP_LOGO_PATH.exists():
         st.image(
@@ -3657,28 +4299,19 @@ with st.sidebar:
     else:
         st.markdown(
             """
-<div class="cp-brand">
+<div class="cp-brand" style="text-align:center; margin:38px 0 20px;">
     ORBIDENSE <span class="cp-brand-ai">AI</span>
 </div>
             """,
             unsafe_allow_html=True,
         )
 
-    st.markdown(
-        """
-<div class="cp-brand-sub orbidense-sidebar-tagline">
-    EARTH DATA · RISK INTELLIGENCE · BETTER DECISIONS
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     # Dashboard remains in the codebase but is intentionally removed from
     # the visible navigation because Home already contains the main dashboard.
     if st.session_state.get("main_navigation") == "Dashboard":
         st.session_state["main_navigation"] = "Home"
 
-    # Public users never see Developer Analytics in the normal sidebar.
+    # Public users never see Developer Analytics.
     navigation_options = [
         "Home",
         "Map Explorer",
@@ -3691,14 +4324,21 @@ with st.sidebar:
         "About",
     ]
 
+    # The existing private developer gate is the only condition that reveals
+    # Developer Analytics. Nothing developer-specific is exposed publicly.
     if DEVELOPER_MODE:
         navigation_options.insert(-1, "Developer Analytics")
 
-    # If a stale session points at the old public Analytics item, recover safely.
+    # Recover safely from stale sessions that referenced an older analytics item.
     if st.session_state.get("main_navigation") == "Analytics":
         st.session_state["main_navigation"] = (
             "Developer Analytics" if DEVELOPER_MODE else "Home"
         )
+
+    st.markdown(
+        '<div class="orbidense-side-section">Main Navigation</div>',
+        unsafe_allow_html=True,
+    )
 
     nav_view = st.radio(
         "Navigation",
@@ -3707,47 +4347,51 @@ with st.sidebar:
         label_visibility="collapsed",
         width="stretch",
         format_func=lambda value: {
-            "Home": "✦   Home",
-            "Map Explorer": "▧   Map Explorer",
-            "Climate Timeline": "⟶   Climate Timeline",
+            "Home": "⌂   Home",
+            "Map Explorer": "◎   Map Explorer",
+            "Climate Timeline": "◷   Climate Timeline",
             "Climate Trends": "↗   Climate Trends",
             "Data & Methods": "▤   Data & Methods",
             "Compare Places": "⇄   Compare Places",
-            "Global Rankings": "▲   Global Rankings",
+            "Global Rankings": "♛   Global Rankings",
             "Climate Passport": "◈   Climate Passport",
-            "Developer Analytics": "▥   Developer Analytics",
-            "About": "◎   About ORBIDENSE AI",
+            "Developer Analytics": "▥   Developer Analytics   🔒",
+            "About": "ⓘ   About ORBIDENSE AI",
         }[value],
     )
 
-    st.markdown(
-        '<div class="cp-sidebar-title">Recent searches</div>',
-        unsafe_allow_html=True,
-    )
-
-    if st.session_state.recent_searches:
-        for recent in st.session_state.recent_searches:
-            st.markdown(
-                f'<div class="cp-recent">📍 {recent}</div>',
-                unsafe_allow_html=True,
-            )
-    else:
-        st.caption(
-            "Your recently selected places will appear here."
+    # -----------------------------------------------------
+    # PRIVATE SYSTEM STATUS
+    # -----------------------------------------------------
+    # This entire block is developer-only. Public users never receive a
+    # System Status panel in the sidebar.
+    if DEVELOPER_MODE:
+        st.markdown(
+            '<div class="orbidense-side-section">System Status</div>',
+            unsafe_allow_html=True,
         )
 
-    st.markdown(
-        """
-<div class="cp-data-box">
-<b style="color:#eaf4fb;">Data &amp; Models</b><br>
-Weather: Open-Meteo<br>
-Climate: ERA5 / CRU / CMIP6<br>
-Database: PostgreSQL / Neon<br>
-Maps: CARTO + MapTiler
+        analytics_state = (
+            "Analytics database ready"
+            if ANALYTICS_READY
+            else "Analytics database unavailable"
+        )
+
+        st.markdown(
+            f"""
+<div class="orbidense-dev-status">
+    <div class="orbidense-dev-status-top">
+        <span class="orbidense-dev-dot"></span>
+        <span>Developer mode active</span>
+    </div>
+    <div class="orbidense-dev-status-sub">
+        {analytics_state}<br>
+        Private session · developer-only controls
+    </div>
 </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 # =========================================================
@@ -4054,8 +4698,8 @@ if nav_view in {"Home", "Map Explorer"}:
             unsafe_allow_html=True,
         )
 
-        logo_col, identity_col, pulse_col, header_status_col = st.columns(
-            [0.075, 0.28, 0.47, 0.175],
+        logo_col, identity_col, pulse_col = st.columns(
+            [0.075, 0.31, 0.615],
             gap="small",
             vertical_alignment="center",
         )
@@ -4087,43 +4731,6 @@ if nav_view in {"Home", "Map Explorer"}:
             if pulse_html:
                 st.markdown(pulse_html, unsafe_allow_html=True)
 
-        with header_status_col:
-            developer_authenticated = bool(
-                st.session_state.get(
-                    "cp_analytics_authenticated",
-                    False,
-                )
-            )
-
-            if developer_authenticated and ANALYTICS_READY:
-                try:
-                    active_visitors = int(
-                        get_analytics_summary().get(
-                            "active_visitors",
-                            0,
-                        )
-                    )
-                    audience_text = "All systems normal"
-                    audience_sub = f"{active_visitors} active"
-                except Exception:
-                    audience_text = "All systems normal"
-                    audience_sub = "Live Earth online"
-            else:
-                audience_text = "All systems normal"
-                audience_sub = "Live Earth online"
-
-            st.markdown(
-                f"""
-<div class="cp-audience-wrap">
-    <div class="cp-audience-pill">
-        <span class="cp-audience-dot"></span>
-        <span>{audience_text}</span>
-        <span class="cp-audience-sub">· {audience_sub}</span>
-    </div>
-</div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     # -----------------------------------------------------
     # COMPACT SEARCH — NO REDUNDANT INTRODUCTION PANEL
@@ -4133,16 +4740,9 @@ if nav_view in {"Home", "Map Explorer"}:
         unsafe_allow_html=True,
     )
 
-    # Map Explorer keeps its status pill beside the search.
-    if nav_view == "Map Explorer":
-        search_col, status_col = st.columns(
-            [5.0, 1.35],
-            gap="medium",
-            vertical_alignment="center",
-        )
-    else:
-        search_col = st.container()
-        status_col = None
+    # Public system-health information is intentionally not displayed.
+    # Search remains full-width on both Home and Map Explorer.
+    search_col = st.container()
 
     with search_col:
         selected_search_result = st_searchbox(
@@ -4156,20 +4756,6 @@ if nav_view in {"Home", "Map Explorer"}:
             style_overrides=GLOBAL_SEARCHBOX_STYLE,
         )
 
-    if status_col is not None:
-        with status_col:
-            st.markdown(
-                """
-<div class="cp-audience-wrap">
-    <div class="cp-audience-pill">
-        <span class="cp-audience-dot"></span>
-        <span>All systems normal</span>
-        <span class="cp-audience-sub">· Live Earth online</span>
-    </div>
-</div>
-                """,
-                unsafe_allow_html=True,
-            )
 
 
 # =========================================================
