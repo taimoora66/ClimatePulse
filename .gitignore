@@ -6,3 +6,18 @@ __pycache__/
 
 # Local backups
 app_backup.py
+# ==========================================================
+# LOCAL DEVELOPMENT BACKUPS
+# ==========================================================
+
+app_before_*.py
+app_backup*.py
+*_backup.py
+*.bak
+
+# Local packaged project snapshots
+*.zip
+
+# Temporary migration / patch scripts
+apply_*_upgrade.py
+apply_*_fix.py
