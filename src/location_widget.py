@@ -25,7 +25,7 @@ def reverse_geocode_location(
 
     Important:
     live weather does not depend on this lookup. If the service is slow or
-    temporarily unavailable, ClimatePulse still activates the coordinates
+    temporarily unavailable, ORBIDENSE AI still activates the coordinates
     immediately and falls back to a coordinate label.
     """
 
@@ -43,7 +43,7 @@ def reverse_geocode_location(
             },
             headers={
                 "User-Agent":
-                    "ClimatePulse/1.0 environmental-data application"
+                    "ORBIDENSE-AI/1.0 environmental-data application"
             },
             timeout=4,
         )
@@ -434,212 +434,248 @@ export default function(component) {
         parentElement
     } = component;
 
-    const button =
-        parentElement.querySelector(
-            '#cp-location-button'
-        );
+    const button = parentElement.querySelector('#cp-location-button');
+    const progress = parentElement.querySelector('#cp-location-progress');
+    const status = parentElement.querySelector('#cp-location-status');
+    const title = parentElement.querySelector('#cp-location-title');
+    const subtitle = parentElement.querySelector('#cp-location-subtitle');
 
-    const progress =
-        parentElement.querySelector(
-            '#cp-location-progress'
-        );
+    const STORAGE_KEY = 'orbidense_browser_location_v1';
+    const AUTO_ATTEMPT_KEY = 'orbidense_geo_auto_attempted_v1';
+    const CACHE_MAX_AGE_MS = 10 * 60 * 1000;
 
-    const status =
-        parentElement.querySelector(
-            '#cp-location-status'
-        );
+    let disposed = false;
+    let requestInFlight = false;
 
-    const title =
-        parentElement.querySelector(
-            '#cp-location-title'
-        );
-
-    const subtitle =
-        parentElement.querySelector(
-            '#cp-location-subtitle'
-        );
-
-    function showProgress(
-        text
-    ) {
-        progress.classList.add(
-            'visible'
-        );
-
-        status.textContent =
-            text;
+    function showProgress(text) {
+        progress.classList.add('visible');
+        status.textContent = text;
     }
 
     function hideProgress() {
-        progress.classList.remove(
-            'visible'
-        );
+        progress.classList.remove('visible');
+    }
+
+    function setButtonState(mainText, subText, disabled=false) {
+        button.disabled = disabled;
+        title.textContent = mainText;
+        subtitle.textContent = subText;
     }
 
     function setIdleState() {
-        button.disabled =
-            false;
-
-        title.textContent =
-            'Use my location';
-
-        subtitle.textContent =
-            'Detect current conditions';
-
+        setButtonState('Use my location', 'Detect current conditions', false);
         hideProgress();
     }
 
-    function setLoadedState() {
-        const activeLabel =
-            data?.active_label
-            || '';
-
-        button.disabled =
-            false;
-
-        title.textContent =
-            activeLabel
-            ? 'Location active'
-            : 'Use my location';
-
-        subtitle.textContent =
-            activeLabel
-            || 'Detect current conditions';
-
+    function setLoadedState(label='') {
+        setButtonState(
+            'Current location',
+            label || 'Live conditions active',
+            false
+        );
         hideProgress();
     }
 
-    function requestLocation() {
-        if (
-            !navigator.geolocation
-        ) {
-            showProgress(
-                'Location is not supported by this browser.'
+    function setDeniedState() {
+        setButtonState('Enable location', 'Allow location in your browser', false);
+        showProgress('Location access is off. Enable it or search for a place.');
+    }
+
+    function setUnavailableState(message='Location is unavailable. Search for a place instead.') {
+        setButtonState('Try location again', 'Or use global search', false);
+        showProgress(message);
+    }
+
+    function emitCoordinates(latitude, longitude, accuracy, timestamp, source='browser_geolocation') {
+        if (disposed) return;
+
+        setTriggerValue('location', {
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+            accuracy: accuracy == null ? null : Number(accuracy),
+            timestamp: Number(timestamp || Date.now()),
+            source: source
+        });
+    }
+
+    function saveCoordinates(coords) {
+        try {
+            sessionStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify({
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                    accuracy: coords.accuracy || null,
+                    timestamp: Date.now()
+                })
             );
+        } catch (_) {}
+    }
 
+    function loadRecentCoordinates() {
+        try {
+            const raw = sessionStorage.getItem(STORAGE_KEY);
+            if (!raw) return null;
+            const cached = JSON.parse(raw);
+            if (!cached?.latitude || !cached?.longitude || !cached?.timestamp) return null;
+            if ((Date.now() - cached.timestamp) > CACHE_MAX_AGE_MS) return null;
+            return cached;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function requestLocation({ automatic=false, highAccuracy=false }={}) {
+        if (requestInFlight || disposed) return;
+
+        if (!window.isSecureContext) {
+            setUnavailableState('Location requires HTTPS (or localhost).');
             return;
         }
 
-        button.disabled =
-            true;
+        if (!navigator.geolocation) {
+            setUnavailableState('This browser does not provide location access.');
+            return;
+        }
 
-        title.textContent =
-            'Locating…';
-
-        subtitle.textContent =
-            'Waiting for browser permission';
-
-        showProgress(
-            'Detecting current coordinates…'
-        );
+        requestInFlight = true;
+        setButtonState('Locating…', automatic ? 'Preparing your local dashboard' : 'Waiting for browser location', true);
+        showProgress(automatic ? 'Detecting your current location…' : 'Detecting current coordinates…');
 
         navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const coordinates =
-                    position.coords;
+            (position) => {
+                requestInFlight = false;
+                const coords = position.coords;
+                saveCoordinates(coords);
+                showProgress('Location found · loading local weather…');
+                setButtonState('Current location', 'Loading live conditions', true);
 
-                showProgress(
-                    'Location found · updating ClimatePulse…'
+                emitCoordinates(
+                    coords.latitude,
+                    coords.longitude,
+                    coords.accuracy || null,
+                    Date.now(),
+                    automatic ? 'browser_geolocation_auto' : 'browser_geolocation_manual'
                 );
 
-                setTriggerValue(
-                    'location',
-                    {
-                        latitude:
-                            coordinates.latitude,
-                        longitude:
-                            coordinates.longitude,
-                        accuracy:
-                            coordinates.accuracy
-                            || null,
-                        timestamp:
-                            Date.now()
-                    }
-                );
-
-                // The Python side will rerun after processing.
-                // If the browser retains this DOM briefly, do not leave
-                // an endless spinner visible.
-                window.setTimeout(
-                    () => {
-                        setLoadedState();
-                    },
-                    1800
-                );
+                window.setTimeout(() => {
+                    if (!disposed) setLoadedState(data?.active_label || 'Live conditions active');
+                }, 1600);
             },
+            (error) => {
+                requestInFlight = false;
 
-            function(error) {
-                let message =
-                    'Location could not be detected.';
-
-                if (
-                    error.code === 1
-                ) {
-                    message =
-                        'Location permission was denied.';
+                if (error.code === 1) {
+                    setDeniedState();
+                    return;
                 }
 
-                else if (
-                    error.code === 2
-                ) {
-                    message =
-                        'Current location is temporarily unavailable.';
+                if (error.code === 3 && !highAccuracy) {
+                    // One quiet retry can help laptops that need a little longer.
+                    requestLocation({ automatic, highAccuracy: true });
+                    return;
                 }
 
-                else if (
-                    error.code === 3
-                ) {
-                    message =
-                        'Location request timed out. Try again.';
+                if (error.code === 2) {
+                    setUnavailableState('Current location is temporarily unavailable.');
+                } else if (error.code === 3) {
+                    setUnavailableState('Location request timed out. Try again or search for a place.');
+                } else {
+                    setUnavailableState();
                 }
-
-                button.disabled =
-                    false;
-
-                title.textContent =
-                    'Try again';
-
-                subtitle.textContent =
-                    'Use browser location';
-
-                showProgress(
-                    message
-                );
             },
-
             {
-                // Desktop/laptop geolocation is much faster with a normal
-                // accuracy request. ClimatePulse does not require metre-level
-                // GPS precision for weather/climate context.
-                enableHighAccuracy:
-                    false,
-
-                timeout:
-                    8000,
-
-                // Reuse a recent browser fix to avoid unnecessary delays.
-                maximumAge:
-                    300000
+                enableHighAccuracy: Boolean(highAccuracy),
+                timeout: highAccuracy ? 15000 : 9000,
+                maximumAge: 300000
             }
         );
     }
 
-    button.addEventListener(
-        'click',
-        requestLocation
-    );
+    async function automaticBootstrap() {
+        // If Python already has an active browser-derived location, don't ask again.
+        if (data?.active_label) {
+            setLoadedState(data.active_label);
+            return;
+        }
 
-    if (
-        data?.active_label
-    ) {
-        setLoadedState();
+        // Fast path after Streamlit reruns within the same browser tab.
+        const cached = loadRecentCoordinates();
+        if (cached) {
+            setButtonState('Current location', 'Restoring local conditions', true);
+            showProgress('Restoring your current location…');
+            emitCoordinates(
+                cached.latitude,
+                cached.longitude,
+                cached.accuracy,
+                cached.timestamp,
+                'browser_geolocation_cache'
+            );
+            return;
+        }
+
+        // Avoid triggering a permission prompt on every Streamlit rerun.
+        let attempted = false;
+        try {
+            attempted = sessionStorage.getItem(AUTO_ATTEMPT_KEY) === '1';
+        } catch (_) {}
+
+        if (attempted) {
+            setIdleState();
+            return;
+        }
+
+        try {
+            sessionStorage.setItem(AUTO_ATTEMPT_KEY, '1');
+        } catch (_) {}
+
+        if (!window.isSecureContext || !navigator.geolocation) {
+            setUnavailableState(
+                !window.isSecureContext
+                    ? 'Location requires HTTPS (or localhost).'
+                    : 'This browser does not provide location access.'
+            );
+            return;
+        }
+
+        // Permissions API lets us avoid repeatedly prompting visitors who denied it.
+        if (navigator.permissions?.query) {
+            try {
+                const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+                if (permission.state === 'denied') {
+                    setDeniedState();
+                    return;
+                }
+
+                // Both "granted" and "prompt" proceed. For "prompt", the browser
+                // displays its normal permission dialog; ORBIDENSE AI cannot and
+                // should not bypass that browser privacy control.
+                requestLocation({ automatic: true });
+                return;
+            } catch (_) {
+                // Safari and some browsers may not expose geolocation permission
+                // through navigator.permissions. Fall back to getCurrentPosition.
+            }
+        }
+
+        requestLocation({ automatic: true });
     }
 
-    else {
-        setIdleState();
-    }
+    const manualHandler = () => {
+        try {
+            sessionStorage.removeItem(AUTO_ATTEMPT_KEY);
+        } catch (_) {}
+        requestLocation({ automatic: false });
+    };
 
-    return () => {};
+    button.addEventListener('click', manualHandler);
+    automaticBootstrap();
+
+    return () => {
+        disposed = true;
+        button.removeEventListener('click', manualHandler);
+    };
 }
 """
 
@@ -664,13 +700,13 @@ def _component_available():
 
 def _location_component():
     key = (
-        "_climatepulse_location_component_v30"
+        "_orbidense_location_component_v31"
     )
 
     if key not in st.session_state:
         renderer = (
             st.components.v2.component(
-                "climatepulse_location_v30",
+                "orbidense_location_v31",
                 html=
                     _LOCATION_HTML,
                 css=
@@ -728,7 +764,7 @@ def render_location_control(
                 active_label,
         },
         key=
-            "climatepulse_location_mount_v30",
+            "orbidense_location_mount_v31",
         on_location_change=
             lambda: None,
     )
@@ -771,14 +807,14 @@ def render_location_control(
 
     if (
         st.session_state.get(
-            "_cp_location_signature_v30"
+            "_orbidense_location_signature_v31"
         )
         == signature
     ):
         return None
 
     st.session_state[
-        "_cp_location_signature_v30"
+        "_orbidense_location_signature_v31"
     ] = signature
 
     # Activate the coordinates regardless of reverse-geocoder availability.
