@@ -12,7 +12,7 @@ from src.observability import observe_operation
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 
-@st.cache_data(ttl=3600, max_entries=256, show_spinner=False)
+@st.cache_data(ttl=86400, max_entries=256, show_spinner=False)
 @observe_operation("open_meteo_archive", quality_source="Open-Meteo Archive")
 def get_point_history(
     latitude: float,
@@ -44,7 +44,10 @@ def get_point_history(
     response = requests.get(
         ARCHIVE_URL,
         params=params,
-        timeout=90,
+        # Historical data are secondary to the live experience. Bound a
+        # provider stall so an unavailable archive never holds a page for
+        # more than a reasonable request window.
+        timeout=30,
         headers={
             "User-Agent": "ClimatePulse/1.0"
         },

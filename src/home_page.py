@@ -19,6 +19,7 @@ except Exception:
 from src.api.home_environment import (
     get_global_weather_pulse,
     get_home_environment,
+    get_home_environment_detail,
     get_official_alerts,
 )
 from src.api.future_climate import (
@@ -75,6 +76,23 @@ def cached_home_environment(
 
 
 @st.cache_data(
+    ttl=900,
+    max_entries=128,
+    show_spinner=False,
+)
+def cached_home_environment_detail(
+    latitude,
+    longitude,
+    timezone,
+):
+    return get_home_environment_detail(
+        latitude,
+        longitude,
+        timezone,
+    )
+
+
+@st.cache_data(
     ttl=600,
     max_entries=8,
     show_spinner=False,
@@ -118,7 +136,7 @@ def cached_home_future(
 
 
 @st.cache_data(
-    ttl=43200,
+    ttl=86400,
     max_entries=128,
     show_spinner=False,
 )
@@ -3625,10 +3643,10 @@ def render_home_page(
         except Exception:
             environment = None
 
-    try:
-        global_pulse = cached_global_pulse()
-    except Exception:
-        global_pulse = []
+    # Global pulse is intentionally lazy. It is not needed for the weather
+    # strip or globe, so do not put a ~3 s provider request on Home's critical
+    # first-paint path. It is loaded only when the comparison widget is reached.
+    global_pulse = []
 
     official_alerts = []
 
@@ -4013,6 +4031,12 @@ def render_home_page(
             '<div class="cp-v19-section">Interactive comparison tool</div>'
         )
 
+        if not global_pulse:
+            try:
+                global_pulse = cached_global_pulse()
+            except Exception:
+                global_pulse = []
+
         if global_pulse:
             names = [
                 row[
@@ -4102,6 +4126,23 @@ def render_home_page(
         show_forecast
         and environment
     ):
+        # Hourly data is intentionally lazy. The fast summary bundle above
+        # already rendered location/weather/AQI/map; only now pay for the
+        # detailed series required by the chart and outdoor-window analysis.
+        if selected:
+            try:
+                detail_environment = cached_home_environment_detail(
+                    selected["latitude"],
+                    selected["longitude"],
+                    selected.get("timezone", "auto"),
+                )
+                detail_weather = detail_environment.get("weather", {})
+                detail_air = detail_environment.get("air", {})
+                hourly = detail_weather.get("hourly", {}) or hourly
+                air_hourly = detail_air.get("hourly", {}) or air_hourly
+            except Exception:
+                pass
+
         st.html(
             '<div class="cp-v19-section">Forecast intelligence</div>'
         )

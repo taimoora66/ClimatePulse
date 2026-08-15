@@ -1,5 +1,6 @@
 import streamlit as st
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import pandas as pd
@@ -415,6 +416,7 @@ def _extract_projection_table(
     return frame
 
 
+@st.cache_data(ttl=86400, max_entries=256, show_spinner=False)
 def _fetch_percentile_table(
     scenario: str,
     period: str,
@@ -439,7 +441,7 @@ def _fetch_percentile_table(
     return frame
 
 
-@st.cache_data(ttl=21600, max_entries=64, show_spinner=False)
+@st.cache_data(ttl=86400, max_entries=64, show_spinner=False)
 @observe_operation("world_bank_rankings", quality_source="World Bank CCKP")
 def get_country_projection_rankings(
     scenario: str = "ssp245",
@@ -464,33 +466,38 @@ def get_country_projection_rankings(
             "temperature anomalies could be parsed."
         )
 
-    # P10/P90 are useful but should not destroy the entire ranking page
-    # if one percentile endpoint is temporarily unavailable.
-    try:
-        p10 = _fetch_percentile_table(
-            scenario=scenario,
-            period=period,
-            percentile="p10",
-        ).rename(
-            columns={"value": "p10_c"}
-        )
-    except Exception:
-        p10 = pd.DataFrame(
-            columns=["iso3", "p10_c"]
-        )
+    # P10/P90 are independent and optional. Resolve both concurrently while
+    # preserving the existing graceful-degradation behavior.
+    percentile_results = {}
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(
+                _fetch_percentile_table,
+                scenario,
+                period,
+                percentile,
+            ): percentile
+            for percentile in ("p10", "p90")
+        }
+        for future in as_completed(futures):
+            percentile = futures[future]
+            try:
+                percentile_results[percentile] = future.result()
+            except Exception:
+                percentile_results[percentile] = None
 
-    try:
-        p90 = _fetch_percentile_table(
-            scenario=scenario,
-            period=period,
-            percentile="p90",
-        ).rename(
-            columns={"value": "p90_c"}
-        )
-    except Exception:
-        p90 = pd.DataFrame(
-            columns=["iso3", "p90_c"]
-        )
+    raw_p10 = percentile_results.get("p10")
+    p10 = (
+        raw_p10.rename(columns={"value": "p10_c"})
+        if raw_p10 is not None
+        else pd.DataFrame(columns=["iso3", "p10_c"])
+    )
+    raw_p90 = percentile_results.get("p90")
+    p90 = (
+        raw_p90.rename(columns={"value": "p90_c"})
+        if raw_p90 is not None
+        else pd.DataFrame(columns=["iso3", "p90_c"])
+    )
 
     result = median.copy()
 
@@ -546,7 +553,7 @@ def get_country_projection_rankings(
     ]
 
 
-@st.cache_data(ttl=21600, max_entries=256, show_spinner=False)
+@st.cache_data(ttl=86400, max_entries=256, show_spinner=False)
 @observe_operation("world_bank_trajectory", quality_source="World Bank CCKP")
 def get_country_scenario_trajectory(
     iso3_code: str,
@@ -555,89 +562,71 @@ def get_country_scenario_trajectory(
     """
     Filter the global country projection aggregate for one country across
     the four standard CCKP 20-year periods.
+
+    V3 performance note: the period/percentile datasets are independent.
+    Fetch them through a small bounded worker pool, then assemble the rows in
+    deterministic period order. The percentile tables themselves are cached
+    for 24 hours, so rankings and trajectories reuse the same global CCKP
+    payloads instead of downloading them again.
     """
-    iso3_code = str(
-        iso3_code
-    ).strip().upper()
+    iso3_code = str(iso3_code).strip().upper()
+
+    requests_to_make = [
+        (period, percentile)
+        for period in _TRAJECTORY_PERIODS
+        for percentile in ("median", "p10", "p90")
+    ]
+    tables = {}
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(
+                _fetch_percentile_table,
+                scenario,
+                period,
+                percentile,
+            ): (period, percentile)
+            for period, percentile in requests_to_make
+        }
+
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                tables[key] = future.result()
+            except Exception:
+                tables[key] = None
 
     rows = []
-
     for period in _TRAJECTORY_PERIODS:
-        try:
-            median_table = _fetch_percentile_table(
-                scenario=scenario,
-                period=period,
-                percentile="median",
-            )
-
-            median_row = median_table[
-                median_table["iso3"]
-                == iso3_code
-            ]
-
-            if median_row.empty:
-                continue
-
-            median_value = _finite(
-                median_row.iloc[0]["value"]
-            )
-
-            if median_value is None:
-                continue
-
-            p10_value = None
-            p90_value = None
-
-            try:
-                p10_table = _fetch_percentile_table(
-                    scenario=scenario,
-                    period=period,
-                    percentile="p10",
-                )
-
-                p10_row = p10_table[
-                    p10_table["iso3"]
-                    == iso3_code
-                ]
-
-                if not p10_row.empty:
-                    p10_value = _finite(
-                        p10_row.iloc[0]["value"]
-                    )
-
-            except Exception:
-                pass
-
-            try:
-                p90_table = _fetch_percentile_table(
-                    scenario=scenario,
-                    period=period,
-                    percentile="p90",
-                )
-
-                p90_row = p90_table[
-                    p90_table["iso3"]
-                    == iso3_code
-                ]
-
-                if not p90_row.empty:
-                    p90_value = _finite(
-                        p90_row.iloc[0]["value"]
-                    )
-
-            except Exception:
-                pass
-
-            rows.append(
-                {
-                    "period": period,
-                    "median_c": median_value,
-                    "p10_c": p10_value,
-                    "p90_c": p90_value,
-                }
-            )
-
-        except Exception:
+        median_table = tables.get((period, "median"))
+        if median_table is None or median_table.empty:
             continue
+
+        median_row = median_table[median_table["iso3"] == iso3_code]
+        if median_row.empty:
+            continue
+
+        median_value = _finite(median_row.iloc[0]["value"])
+        if median_value is None:
+            continue
+
+        values = {}
+        for percentile in ("p10", "p90"):
+            table = tables.get((period, percentile))
+            value = None
+            if table is not None and not table.empty:
+                row = table[table["iso3"] == iso3_code]
+                if not row.empty:
+                    value = _finite(row.iloc[0]["value"])
+            values[percentile] = value
+
+        rows.append(
+            {
+                "period": period,
+                "median_c": median_value,
+                "p10_c": values["p10"],
+                "p90_c": values["p90"],
+            }
+        )
 
     return pd.DataFrame(rows)

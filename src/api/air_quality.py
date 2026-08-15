@@ -1,11 +1,6 @@
 import streamlit as st
-import requests
 from src.observability import observe_operation
-
-
-AIR_QUALITY_URL = (
-    "https://air-quality-api.open-meteo.com/v1/air-quality"
-)
+from src.api.home_environment import get_home_environment
 
 
 @st.cache_data(ttl=600, max_entries=512, show_spinner=False)
@@ -15,28 +10,6 @@ def get_current_air_quality(
     longitude,
     timezone="auto",
 ):
-
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-
-        "current": [
-            "pm10",
-            "pm2_5",
-            "nitrogen_dioxide",
-            "ozone",
-            "european_aqi",
-        ],
-
-        "timezone": timezone,
-    }
-
-    response = requests.get(
-        AIR_QUALITY_URL,
-        params=params,
-        timeout=20,
-    )
-
-    response.raise_for_status()
-
-    return response.json()
+    """Return current AQI from ORBIDENSE's canonical live bundle."""
+    bundle = get_home_environment(latitude, longitude, timezone)
+    return bundle.get("air", {}) if isinstance(bundle, dict) else {}

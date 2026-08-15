@@ -1,11 +1,6 @@
 import streamlit as st
-import requests
 from src.observability import observe_operation
-
-
-FORECAST_URL = (
-    "https://api.open-meteo.com/v1/forecast"
-)
+from src.api.home_environment import get_home_environment
 
 
 @st.cache_data(ttl=300, max_entries=512, show_spinner=False)
@@ -15,29 +10,10 @@ def get_current_weather(
     longitude,
     timezone="auto",
 ):
+    """Return current weather from ORBIDENSE's canonical live bundle.
 
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-
-        "current": [
-            "temperature_2m",
-            "apparent_temperature",
-            "relative_humidity_2m",
-            "precipitation",
-            "weather_code",
-            "wind_speed_10m",
-        ],
-
-        "timezone": timezone,
-    }
-
-    response = requests.get(
-        FORECAST_URL,
-        params=params,
-        timeout=20,
-    )
-
-    response.raise_for_status()
-
-    return response.json()
+    This preserves the public return shape while avoiding a separate provider
+    request when the same location is also requesting AQI/forecast context.
+    """
+    bundle = get_home_environment(latitude, longitude, timezone)
+    return bundle.get("weather", {}) if isinstance(bundle, dict) else {}

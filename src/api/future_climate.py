@@ -273,7 +273,7 @@ def _agreement_label(
     return "Low"
 
 
-@st.cache_data(ttl=21600, max_entries=256, show_spinner=False)
+@st.cache_data(ttl=86400, max_entries=256, show_spinner=False)
 @observe_operation("open_meteo_climate", quality_source="Open-Meteo Climate")
 def get_midcentury_ensemble(
     latitude,
@@ -303,11 +303,12 @@ def get_midcentury_ensemble(
 
     model_results = []
 
-    # Keep concurrency intentionally low because climate
-    # requests are heavier than live-weather calls.
+    # Model requests are independent. Running a small bounded batch in
+    # parallel cuts first-load wall-clock time substantially while avoiding
+    # an unbounded burst against the climate provider.
     with ThreadPoolExecutor(
         max_workers=min(
-            2,
+            4,
             len(requested_models),
         )
     ) as executor:

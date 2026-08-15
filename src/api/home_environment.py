@@ -67,15 +67,18 @@ def get_home_environment(
     timezone: str = "auto",
 ):
     """
-    Load one compact weather request plus one air-quality request.
+    Fast canonical live bundle for the selected location.
 
-    The Home page then derives its health/context indicators locally.
+    Performance V2 deliberately keeps the critical Home request small:
+    current conditions + daily summary + current AQI/pollen only. Hourly
+    series are loaded lazily by ``get_home_environment_detail`` when the
+    lower forecast/outdoor sections actually need them.
     """
     weather_params = {
         "latitude": latitude,
         "longitude": longitude,
         "timezone": timezone or "auto",
-        "forecast_days": 7,
+        "forecast_days": 2,
         "current": (
             "temperature_2m,"
             "relative_humidity_2m,"
@@ -88,20 +91,6 @@ def get_home_environment(
             "surface_pressure,"
             "cloud_cover,"
             "is_day"
-        ),
-        "hourly": (
-            "temperature_2m,"
-            "apparent_temperature,"
-            "relative_humidity_2m,"
-            "dew_point_2m,"
-            "precipitation_probability,"
-            "precipitation,"
-            "weather_code,"
-            "wind_speed_10m,"
-            "wind_gusts_10m,"
-            "uv_index,"
-            "shortwave_radiation,"
-            "cloud_cover"
         ),
         "daily": (
             "weather_code,"
@@ -121,20 +110,8 @@ def get_home_environment(
         "latitude": latitude,
         "longitude": longitude,
         "timezone": timezone or "auto",
-        "forecast_days": 5,
+        "forecast_days": 2,
         "current": (
-            "european_aqi,"
-            "pm2_5,"
-            "pm10,"
-            "ozone,"
-            "nitrogen_dioxide,"
-            "alder_pollen,"
-            "birch_pollen,"
-            "grass_pollen,"
-            "mugwort_pollen,"
-            "ragweed_pollen"
-        ),
-        "hourly": (
             "european_aqi,"
             "pm2_5,"
             "pm10,"
@@ -148,17 +125,85 @@ def get_home_environment(
         ),
     }
 
-    # Weather and air quality are independent network calls. Run them
-    # concurrently so Home waits for the slower request instead of the sum
-    # of both request times. The returned payload is unchanged.
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="home-live") as executor:
+    # Independent providers are fetched together. Each result is isolated so
+    # a slow/failed AQI request never prevents weather from rendering (and
+    # vice versa). Smaller payloads + fail-fast timeouts keep first paint fast.
+    weather = {}
+    air = {}
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="home-summary") as executor:
         weather_future = executor.submit(
-            _request_json, FORECAST_URL, weather_params, 10
+            _request_json, FORECAST_URL, weather_params, (2.5, 6.0)
         )
         air_future = executor.submit(
-            _request_json, AIR_URL, air_params, 10
+            _request_json, AIR_URL, air_params, (2.5, 5.0)
         )
-        weather = weather_future.result()
+        try:
+            weather = weather_future.result()
+        except Exception:
+            weather = {}
+        try:
+            air = air_future.result()
+        except Exception:
+            air = {}
+
+    return {"weather": weather, "air": air}
+
+
+@st.cache_data(ttl=900, max_entries=256, show_spinner=False)
+@observe_operation("home_environment_detail", quality_source="Open-Meteo Home Detail")
+def get_home_environment_detail(
+    latitude: float,
+    longitude: float,
+    timezone: str = "auto",
+):
+    """Load only the hourly series used by forecast/outdoor intelligence."""
+    weather_params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": timezone or "auto",
+        "forecast_days": 2,
+        "hourly": (
+            "temperature_2m,"
+            "apparent_temperature,"
+            "relative_humidity_2m,"
+            "dew_point_2m,"
+            "precipitation_probability,"
+            "precipitation,"
+            "weather_code,"
+            "wind_speed_10m,"
+            "wind_gusts_10m,"
+            "uv_index,"
+            "shortwave_radiation,"
+            "cloud_cover"
+        ),
+    }
+    air_params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "timezone": timezone or "auto",
+        "forecast_days": 2,
+        "hourly": (
+            "european_aqi,"
+            "pm2_5,"
+            "pm10,"
+            "ozone,"
+            "nitrogen_dioxide"
+        ),
+    }
+
+    weather = {}
+    air = {}
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="home-detail") as executor:
+        weather_future = executor.submit(
+            _request_json, FORECAST_URL, weather_params, (2.5, 6.0)
+        )
+        air_future = executor.submit(
+            _request_json, AIR_URL, air_params, (2.5, 5.0)
+        )
+        try:
+            weather = weather_future.result()
+        except Exception:
+            weather = {}
         try:
             air = air_future.result()
         except Exception:

@@ -58,11 +58,17 @@ def get_pool():
         conninfo=DATABASE_URL,
         min_size=0,
         max_size=5,
-        timeout=10,
+        # Fail fast if the remote database is unavailable. Analytics and
+        # observability are optional to the public experience and must never
+        # make a visitor wait through long pool timeouts.
+        timeout=3,
         max_idle=300,
         max_lifetime=1800,
         kwargs={
             "row_factory": dict_row,
+            # libpq connection establishment timeout (seconds). This is
+            # separate from the pool checkout timeout above.
+            "connect_timeout": 3,
         },
         check=ConnectionPool.check_connection,
         open=True,

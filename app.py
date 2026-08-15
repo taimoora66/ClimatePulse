@@ -3877,34 +3877,13 @@ def cached_live_environment(
     longitude,
     timezone,
 ):
+    """Canonical current-weather + AQI bundle.
+
+    Performance V2 routes point live conditions through the same compact
+    provider bundle used by Home. This removes duplicate Open-Meteo calls
+    when current weather and AQI are requested together.
     """
-    Fetch current weather and air quality concurrently.
-
-    Both calls are independent, so running them together
-    reduces the waiting time for live conditions.
-    """
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        weather_future = executor.submit(
-            get_current_weather,
-            latitude,
-            longitude,
-            timezone=timezone,
-        )
-
-        air_future = executor.submit(
-            get_current_air_quality,
-            latitude,
-            longitude,
-            timezone=timezone,
-        )
-
-        weather_data = weather_future.result()
-        air_data = air_future.result()
-
-    return {
-        "weather": weather_data,
-        "air": air_data,
-    }
+    return get_home_environment(latitude, longitude, timezone)
 
 
 @st.cache_data(
@@ -3992,7 +3971,7 @@ def cached_country_historical_climate(
 
 
 @st.cache_data(
-    ttl=43200,
+    ttl=86400,
     max_entries=64,
     show_spinner=False,
 )
@@ -4007,7 +3986,7 @@ def cached_country_projection_rankings(
 
 
 @st.cache_data(
-    ttl=43200,
+    ttl=86400,
     max_entries=256,
     show_spinner=False,
 )
@@ -5153,7 +5132,7 @@ if active_point_location:
 
 # Historical fallback for a point when DB history is missing.
 @st.cache_data(
-    ttl=21600,
+    ttl=86400,
     max_entries=64,
     show_spinner=False,
 )
