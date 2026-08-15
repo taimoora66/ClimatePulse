@@ -65,7 +65,6 @@ from src.ai_assistant import (
     render_ai_page,
     render_persistent_ai,
 )
-from src.live_globe import cached_country_field
 
 from src.queries.climate import (
     get_annual_climate_summary,
@@ -157,7 +156,6 @@ html, body, [class*="css"] {
     min-height: 0 !important;
     background: transparent !important;
     border: 0 !important;
-    overflow: visible !important;
 }
 
 [data-testid="stToolbar"] {
@@ -303,153 +301,137 @@ h3 {
 }
 
 /* =========================================================
-   ORBIDENSE AI — NATIVE EXPLORE SIDEBAR CONTROL
-   Uses Streamlit's actual native controls in this installed build:
-   OPEN   -> [data-testid="stSidebarCollapseButton"]
-   CLOSED -> [data-testid="stExpandSidebarButton"]
-
-   No JavaScript, no iframe/component injection, no duplicate control.
+   ORBIDENSE AI — EXPLORE MORE SIDEBAR CONTROL
+   Uses Streamlit's native sidebar collapse / expand action.
+   Expanded state: "Explore More / Minimize dashboard"
+   Collapsed state: "Explore More / Expand dashboard"
    ========================================================= */
 
-/* ---------- OPEN SIDEBAR: collapse navigation ---------- */
+/* Expanded sidebar: place the control above the brand/navigation. */
 [data-testid="stSidebarCollapseButton"] {
-    width: calc(100% - 22px) !important;
-    margin: 10px 11px 12px 11px !important;
+    width: calc(100% - 18px) !important;
+    margin: 6px 9px 8px 9px !important;
     padding: 0 !important;
-    position: sticky !important;
-    top: 10px !important;
-    z-index: 2147482000 !important;
 }
 
-[data-testid="stSidebarCollapseButton"] > button,
 [data-testid="stSidebarCollapseButton"] button {
     width: 100% !important;
-    min-width: 0 !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    padding: 0 16px !important;
+    min-height: 54px !important;
+    height: 54px !important;
+    padding: 7px 12px !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(53, 214, 224, .62) !important;
+    background:
+        linear-gradient(135deg, rgba(7, 31, 48, .99), rgba(8, 22, 36, .99)) !important;
+    color: #eafaff !important;
+    box-shadow:
+        0 10px 28px rgba(0, 0, 0, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .055),
+        0 0 0 1px rgba(20, 177, 203, .05) !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    gap: 9px !important;
-    border-radius: 13px !important;
-    border: 1px solid rgba(54, 212, 230, .80) !important;
-    background: linear-gradient(135deg, rgba(10, 42, 60, .99), rgba(5, 23, 37, 1)) !important;
-    box-shadow: 0 9px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05) !important;
-    color: #f6fbff !important;
-    cursor: pointer !important;
-    overflow: hidden !important;
-    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    overflow: visible !important;
+    transition:
+        transform .18s ease,
+        border-color .18s ease,
+        box-shadow .18s ease,
+        background .18s ease !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button::after {
-    content: "Explore" !important;
-    display: inline-block !important;
-    font-size: .92rem !important;
-    line-height: 1 !important;
-    font-weight: 800 !important;
-    letter-spacing: .015em !important;
-    color: #f6fbff !important;
-    white-space: nowrap !important;
+    content: "Explore More\\A Minimize dashboard";
+    white-space: pre-line;
+    text-align: left;
+    color: #f4fbff;
+    font-size: .82rem;
+    font-weight: 760;
+    line-height: 1.18;
+    letter-spacing: .01em;
 }
 
 [data-testid="stSidebarCollapseButton"] button svg {
-    width: 20px !important;
-    height: 20px !important;
-    color: #71edf0 !important;
+    width: 22px !important;
+    height: 22px !important;
+    color: #dff8ff !important;
     flex: 0 0 auto !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button:hover {
-    transform: translateY(-1px) !important;
-    border-color: rgba(113, 237, 240, 1) !important;
-    background: linear-gradient(135deg, rgba(12, 52, 72, .99), rgba(6, 29, 45, .99)) !important;
-    box-shadow: 0 12px 32px rgba(0,0,0,.42), 0 0 0 3px rgba(54,212,230,.08) !important;
+    transform: translateY(-1px);
+    border-color: rgba(71, 231, 222, .95) !important;
+    background:
+        linear-gradient(135deg, rgba(10, 49, 67, 1), rgba(7, 29, 44, 1)) !important;
+    box-shadow:
+        0 12px 34px rgba(0, 0, 0, .34),
+        0 0 0 3px rgba(52, 219, 225, .08) !important;
 }
 
-/* ---------- CLOSED SIDEBAR: restore navigation ----------
-   IMPORTANT: In the user's installed Streamlit build the restore control is
-   the button itself, not a wrapper. That is why earlier selectors did not
-   enlarge the tiny top-left chevron. */
-[data-testid="stExpandSidebarButton"] {
+/* Give the second line a teal visual cue through the whole control glow. */
+[data-testid="stSidebarCollapseButton"] button:focus-visible {
+    outline: 2px solid rgba(65, 222, 230, .9) !important;
+    outline-offset: 2px !important;
+}
+
+/* Collapsed sidebar: keep an obvious restore control at top-left. */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
     position: fixed !important;
-    top: 14px !important;
-    left: 14px !important;
-    z-index: 2147483001 !important;
-    width: 132px !important;
-    min-width: 132px !important;
-    max-width: 132px !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    max-height: 46px !important;
-    margin: 0 !important;
-    padding: 0 16px !important;
+    left: 12px !important;
+    top: 12px !important;
+    z-index: 1000000 !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 9px !important;
     visibility: visible !important;
     opacity: 1 !important;
-    pointer-events: auto !important;
+}
+
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button {
+    width: 168px !important;
+    min-width: 168px !important;
+    height: 52px !important;
+    padding: 7px 12px !important;
     border-radius: 13px !important;
-    border: 1px solid rgba(54, 212, 230, .84) !important;
-    background: linear-gradient(135deg, rgba(10, 42, 60, .995), rgba(5, 23, 37, 1)) !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,.48), 0 0 22px rgba(54,212,230,.08) !important;
-    color: #f6fbff !important;
-    cursor: pointer !important;
-    overflow: hidden !important;
-    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
+    border: 1px solid rgba(53, 214, 224, .70) !important;
+    background:
+        linear-gradient(135deg, rgba(7, 31, 48, .98), rgba(7, 21, 34, .98)) !important;
+    color: #ecfbff !important;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, .34),
+        0 0 0 1px rgba(42, 213, 221, .05) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
 }
 
-[data-testid="stExpandSidebarButton"]::after {
-    content: "Explore" !important;
-    display: inline-block !important;
-    font-size: .92rem !important;
-    line-height: 1 !important;
-    font-weight: 800 !important;
-    letter-spacing: .015em !important;
-    color: #f6fbff !important;
-    white-space: nowrap !important;
+[data-testid="stSidebarCollapsedControl"] button::after,
+[data-testid="collapsedControl"] button::after {
+    content: "Explore More\\A Expand dashboard";
+    white-space: pre-line;
+    text-align: left;
+    color: #f4fbff;
+    font-size: .80rem;
+    font-weight: 750;
+    line-height: 1.18;
 }
 
-[data-testid="stExpandSidebarButton"] svg {
-    width: 20px !important;
-    height: 20px !important;
-    color: #71edf0 !important;
+[data-testid="stSidebarCollapsedControl"] button svg,
+[data-testid="collapsedControl"] button svg {
+    width: 22px !important;
+    height: 22px !important;
+    color: #dff8ff !important;
     flex: 0 0 auto !important;
 }
 
-[data-testid="stExpandSidebarButton"]:hover {
-    transform: translateY(-1px) !important;
-    border-color: rgba(113,237,240,1) !important;
-    background: linear-gradient(135deg, rgba(12,53,73,.995), rgba(6,29,45,.995)) !important;
-    box-shadow: 0 13px 34px rgba(0,0,0,.50), 0 0 0 3px rgba(54,212,230,.09) !important;
-}
-
-/* The restore button lives inside Streamlit's header. The app keeps the
-   header visually collapsed, but overflow must remain visible/clickable. */
-[data-testid="stHeader"] {
-    overflow: visible !important;
-    pointer-events: none !important;
-}
-
-[data-testid="stHeader"] [data-testid="stExpandSidebarButton"],
-[data-testid="stHeader"] [data-testid="stToolbar"] {
-    pointer-events: auto !important;
-}
-
-@media (max-width: 760px) {
-    [data-testid="stExpandSidebarButton"] {
-        top: 10px !important;
-        left: 10px !important;
-        width: 116px !important;
-        min-width: 116px !important;
-        max-width: 116px !important;
-        height: 42px !important;
-        min-height: 42px !important;
-        max-height: 42px !important;
-        padding: 0 13px !important;
-    }
+[data-testid="stSidebarCollapsedControl"] button:hover,
+[data-testid="collapsedControl"] button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(71, 231, 222, .95) !important;
+    box-shadow:
+        0 12px 34px rgba(0, 0, 0, .38),
+        0 0 0 3px rgba(52, 219, 225, .08) !important;
 }
 
 /* A subtle edge handle makes the dashboard state obvious. */
@@ -492,56 +474,6 @@ h3 {
     letter-spacing: .095em;
     text-transform: uppercase;
 }
-
-/* Compact live-global pulse next to the ORBIDENSE wordmark. */
-.orbidense-pulse-strip {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(72px, 1fr));
-    gap: 7px;
-    width: 100%;
-}
-
-.orbidense-pulse-mini {
-    min-height: 55px;
-    padding: 8px 10px;
-    border-radius: 11px;
-    border: 1px solid rgba(91, 171, 205, .18);
-    background: linear-gradient(180deg, rgba(10, 29, 43, .86), rgba(6, 20, 31, .88));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
-}
-
-.orbidense-pulse-label {
-    color: #6e9db7;
-    font-size: .58rem;
-    font-weight: 720;
-    letter-spacing: .055em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.orbidense-pulse-value {
-    margin-top: 3px;
-    color: #f4fbff;
-    font-size: .88rem;
-    font-weight: 820;
-    line-height: 1.05;
-    white-space: nowrap;
-}
-
-.orbidense-pulse-place {
-    margin-top: 2px;
-    color: #51d9e5;
-    font-size: .56rem;
-    line-height: 1.1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-@media (max-width: 1100px) {
-    .orbidense-pulse-strip { grid-template-columns: repeat(2, minmax(72px, 1fr)); }
-}
-
 
 /* Keep the exact supplied logo compact and un-cropped. */
 .orbidense-home-head [data-testid="stImage"] {
@@ -1642,12 +1574,6 @@ div[data-testid="stChatInput"] input::placeholder {
     """,
     unsafe_allow_html=True,
 )
-
-# =========================================================
-# ORBIDENSE AI — PERSISTENT EXPLORE BUTTON
-# Sidebar collapse/restore is handled entirely by Streamlit's native controls.
-# They are branded as “Explore” through CSS above, so no injected JavaScript
-# or deprecated components.html iframe is required.
 
 DEFAULT_STATE = {
     "selected_city_id": None,
@@ -3986,53 +3912,6 @@ GLOBAL_SEARCHBOX_STYLE = {
 # not inherit this large search/header block.
 # =========================================================
 
-def _header_global_pulse_html():
-    """Return four compact live-global indicators for the Home header."""
-    try:
-        frame = cached_country_field()
-        if frame is None or frame.empty:
-            raise RuntimeError("No live country rows")
-
-        def extreme(column, largest=True):
-            values = pd.to_numeric(frame[column], errors="coerce")
-            valid = values.dropna()
-            if valid.empty:
-                return None
-            idx = valid.idxmax() if largest else valid.idxmin()
-            return frame.loc[idx]
-
-        hottest = extreme("temperature_c", True)
-        coldest = extreme("temperature_c", False)
-        windiest = extreme("wind_kmh", True)
-        wettest = extreme("precipitation_mm", True)
-
-        def card(label, row, column, suffix, decimals=1):
-            if row is None:
-                value, place = "—", "Live data"
-            else:
-                raw = pd.to_numeric(pd.Series([row.get(column)]), errors="coerce").iloc[0]
-                value = f"{raw:.{decimals}f}{suffix}" if pd.notna(raw) else "—"
-                place = str(row.get("country", "—"))
-            return f"""
-<div class="orbidense-pulse-mini">
-  <div class="orbidense-pulse-label">{label}</div>
-  <div class="orbidense-pulse-value">{value}</div>
-  <div class="orbidense-pulse-place">{place}</div>
-</div>
-"""
-
-        return (
-            '<div class="orbidense-pulse-strip">'
-            + card("Hottest", hottest, "temperature_c", "°C")
-            + card("Coldest", coldest, "temperature_c", "°C")
-            + card("Wind", windiest, "wind_kmh", " km/h", 0)
-            + card("Rain", wettest, "precipitation_mm", " mm")
-            + '</div>'
-        )
-    except Exception:
-        return ""
-
-
 selected_search_result = None
 
 if nav_view in {"Home", "Map Explorer"}:
@@ -4054,8 +3933,8 @@ if nav_view in {"Home", "Map Explorer"}:
             unsafe_allow_html=True,
         )
 
-        logo_col, identity_col, pulse_col, header_status_col = st.columns(
-            [0.075, 0.28, 0.47, 0.175],
+        logo_col, identity_col, header_status_col = st.columns(
+            [0.085, 0.735, 0.18],
             gap="small",
             vertical_alignment="center",
         )
@@ -4081,11 +3960,6 @@ if nav_view in {"Home", "Map Explorer"}:
                 """,
                 unsafe_allow_html=True,
             )
-
-        with pulse_col:
-            pulse_html = _header_global_pulse_html()
-            if pulse_html:
-                st.markdown(pulse_html, unsafe_allow_html=True)
 
         with header_status_col:
             developer_authenticated = bool(

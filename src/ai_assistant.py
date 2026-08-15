@@ -9,19 +9,19 @@ import streamlit as st
 
 
 # ============================================================
-# CLIMATEPULSE AUTHORITATIVE PROJECT KNOWLEDGE
+# ORBIDENSE AI AUTHORITATIVE PROJECT KNOWLEDGE
 # ============================================================
 
 PROJECT_KNOWLEDGE = {
-    "name": "ClimatePulse",
-    "tagline": "Global Climate Intelligence",
+    "name": "ORBIDENSE AI",
+    "tagline": "Earth Data. Risk Intelligence. Better Decisions.",
     "purpose": (
-        "ClimatePulse is an independent climate and environmental-data "
-        "exploration platform. It combines live environmental conditions, "
-        "historical climate information, future climate projections, "
-        "country and place comparisons, global climate signals, climate "
-        "timelines, climate-health context, compound-risk interpretation, "
-        "maps and AI-assisted explanations in one interactive application."
+        "ORBIDENSE AI is an independent Earth-data, climate and environmental-"
+        "intelligence platform. It integrates live environmental conditions, "
+        "historical climate evidence, future climate projections, geographic "
+        "exploration, comparative indicators, climate-health context, compound-"
+        "risk interpretation and AI-assisted analysis in one interactive, "
+        "data-grounded decision-support environment."
     ),
     "creator": "Taimoor Ahmad",
     "creator_role": (
@@ -30,7 +30,7 @@ PROJECT_KNOWLEDGE = {
     ),
     "institution": "University of Milan",
     "features": [
-        "Home / Live Earth intelligence",
+        "Home / Live Earth Intelligence",
         "Dashboard",
         "Map Explorer",
         "Climate Timeline",
@@ -40,9 +40,9 @@ PROJECT_KNOWLEDGE = {
         "Global Rankings",
         "Climate Passport",
         "Climate-health context",
-        "Compound climate-risk interpretation",
-        "ClimatePulse AI",
-        "About ClimatePulse",
+        "Compound environmental-risk interpretation",
+        "ORBIDENSE AI Assistant",
+        "About ORBIDENSE AI",
     ],
     "data_sources": [
         "Open-Meteo",
@@ -59,9 +59,10 @@ PROJECT_KNOWLEDGE = {
         "PostgreSQL / Neon",
     ],
     "disclaimer": (
-        "ClimatePulse is an informational and analytical project. It is not "
-        "an official weather-warning service, emergency-alert system, medical "
-        "service, or substitute for professional climate-risk assessment."
+        "ORBIDENSE AI is an informational, analytical and decision-support "
+        "project. It is not an official weather-warning service, emergency-alert "
+        "system, medical service, or substitute for professional climate-risk "
+        "assessment."
     ),
 }
 
@@ -187,26 +188,26 @@ def _system_prompt(
     context: dict[str, Any],
 ) -> str:
     return f"""
-You are ClimatePulse AI, a broad general-purpose conversational assistant
-embedded in the ClimatePulse application.
+You are the ORBIDENSE AI Assistant, a broad general-purpose conversational assistant
+embedded in the ORBIDENSE AI Earth-intelligence platform.
 
 YOU CAN HELP WITH
-- ClimatePulse itself: purpose, creator, features, methods and data.
-- The currently selected ClimatePulse location and displayed environmental data.
+- ORBIDENSE AI itself: purpose, creator, features, methods and data.
+- The currently selected ORBIDENSE AI location and displayed environmental data.
 - Climate, weather, environment, sustainability and climate-health concepts.
 - Programming, Python, SQL, statistics, mathematics and technology.
 - Study questions, academic explanations and writing.
 - General science and ordinary general-knowledge questions.
 - Other normal questions a general conversational assistant can reasonably answer.
 
-AUTHORITATIVE CLIMATEPULSE PROJECT INFORMATION
+AUTHORITATIVE ORBIDENSE AI PROJECT INFORMATION
 {json.dumps(
     PROJECT_KNOWLEDGE,
     ensure_ascii=False,
     default=str,
 )}
 
-CURRENT CLIMATEPULSE SESSION CONTEXT
+CURRENT ORBIDENSE AI SESSION CONTEXT
 {json.dumps(
     context,
     ensure_ascii=False,
@@ -216,12 +217,12 @@ CURRENT CLIMATEPULSE SESSION CONTEXT
 RULES
 1. Answer the user's actual question directly.
 2. You are not restricted to climate questions.
-3. If asked who created, built or developed ClimatePulse, answer:
+3. If asked who created, built or developed ORBIDENSE AI, answer:
    Taimoor Ahmad, an MSc student in Environmental Change & Global
    Sustainability at the University of Milan.
 4. If asked about the website's purpose/features/data, use the authoritative
-   ClimatePulse information above.
-5. Use current ClimatePulse values when supplied in session context.
+   ORBIDENSE AI information above.
+5. Use current ORBIDENSE AI values when supplied in session context.
 6. Never invent live weather values, official warnings, records, diagnoses,
    private information or unavailable measurements.
 7. Clearly distinguish current weather, historical/reanalysis climate data,
@@ -247,7 +248,7 @@ def ask_huggingface(
             "ok":
                 False,
             "answer": (
-                "ClimatePulse AI is not connected. Add a Hugging Face token "
+                "ORBIDENSE AI Assistant is not connected. Add a Hugging Face token "
                 "with Inference Providers permission to HF_TOKEN, then reload."
             ),
             "model":
@@ -370,7 +371,7 @@ def ask_huggingface(
         "ok":
             False,
         "answer": (
-            "ClimatePulse AI could not reach an available inference model. "
+            "ORBIDENSE AI Assistant could not reach an available inference model. "
             "Please verify the Hugging Face token, model access and inference "
             "credits, then try again."
         ),
@@ -737,7 +738,7 @@ export default function(component) {
     <button class="cp-drag" type="button" title="Drag">⋮⋮</button>
     <button class="cp-open" type="button">
         <span class="cp-spark">✦</span>
-        <span class="cp-label">ClimatePulse AI</span>
+        <span class="cp-label">ORBIDENSE AI</span>
         <span class="cp-dot"></span>
     </button>
 </div>
@@ -745,7 +746,7 @@ export default function(component) {
 <section class="cp-panel">
     <header class="cp-header">
         <div>
-            <div class="cp-kicker">CLIMATEPULSE AI</div>
+            <div class="cp-kicker">ORBIDENSE AI</div>
             <div class="cp-title">Ask anything</div>
         </div>
 
@@ -1095,7 +1096,7 @@ export default function(component) {
 
         contextBox.textContent =
             selected
-            ? `Current ClimatePulse context · ${selected}`
+            ? `Current ORBIDENSE AI context · ${selected}`
             : 'General AI mode · select a location for grounded local context';
 
 
@@ -1123,7 +1124,7 @@ export default function(component) {
 
             intro.textContent =
                 (
-                    'Ask me about ClimatePulse, this location, climate, '
+                    'Ask me about ORBIDENSE AI, this location, climate, '
                     + 'programming, science, study questions or general knowledge.'
                 );
 
@@ -1428,7 +1429,7 @@ def _fallback_ai(
     history = _history()
 
     with st.popover(
-        "✦ ClimatePulse AI",
+        "✦ ORBIDENSE AI",
         width="content",
     ):
         st.caption(
@@ -1691,7 +1692,7 @@ def render_ai_page(
 ):
     st.info(
         (
-            "ClimatePulse AI is available from the floating assistant "
+            "ORBIDENSE AI Assistant is available from the floating assistant "
             "on every page."
         )
     )

@@ -157,7 +157,6 @@ html, body, [class*="css"] {
     min-height: 0 !important;
     background: transparent !important;
     border: 0 !important;
-    overflow: visible !important;
 }
 
 [data-testid="stToolbar"] {
@@ -303,153 +302,131 @@ h3 {
 }
 
 /* =========================================================
-   ORBIDENSE AI — NATIVE EXPLORE SIDEBAR CONTROL
-   Uses Streamlit's actual native controls in this installed build:
-   OPEN   -> [data-testid="stSidebarCollapseButton"]
-   CLOSED -> [data-testid="stExpandSidebarButton"]
-
-   No JavaScript, no iframe/component injection, no duplicate control.
+   ORBIDENSE AI — PERSISTENT EXPLORE CONTROL
+   One compact control for BOTH states:
+   • sidebar open   -> Explore collapses navigation
+   • sidebar closed -> Explore restores navigation
+   Uses Streamlit's native sidebar control; only the presentation changes.
    ========================================================= */
 
-/* ---------- OPEN SIDEBAR: collapse navigation ---------- */
+/* Expanded sidebar — native collapse control becomes "Explore". */
 [data-testid="stSidebarCollapseButton"] {
-    width: calc(100% - 22px) !important;
-    margin: 10px 11px 12px 11px !important;
+    width: calc(100% - 20px) !important;
+    margin: 8px 10px 12px 10px !important;
     padding: 0 !important;
     position: sticky !important;
-    top: 10px !important;
-    z-index: 2147482000 !important;
+    top: 8px !important;
+    z-index: 1000001 !important;
 }
 
-[data-testid="stSidebarCollapseButton"] > button,
 [data-testid="stSidebarCollapseButton"] button {
     width: 100% !important;
-    min-width: 0 !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    padding: 0 16px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 15px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 9px !important;
-    border-radius: 13px !important;
-    border: 1px solid rgba(54, 212, 230, .80) !important;
-    background: linear-gradient(135deg, rgba(10, 42, 60, .99), rgba(5, 23, 37, 1)) !important;
-    box-shadow: 0 9px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05) !important;
-    color: #f6fbff !important;
-    cursor: pointer !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(63, 220, 228, .72) !important;
+    background: linear-gradient(135deg, rgba(8, 45, 62, .99), rgba(5, 24, 38, .99)) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.045) !important;
+    color: #f4fbff !important;
     overflow: hidden !important;
-    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
+    cursor: pointer !important;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button::after {
     content: "Explore" !important;
-    display: inline-block !important;
-    font-size: .92rem !important;
+    font-size: .90rem !important;
     line-height: 1 !important;
     font-weight: 800 !important;
-    letter-spacing: .015em !important;
-    color: #f6fbff !important;
-    white-space: nowrap !important;
+    letter-spacing: .02em !important;
+    color: #f5fbff !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button svg {
-    width: 20px !important;
-    height: 20px !important;
-    color: #71edf0 !important;
-    flex: 0 0 auto !important;
+    width: 19px !important;
+    height: 19px !important;
+    color: #74edf1 !important;
 }
 
 [data-testid="stSidebarCollapseButton"] button:hover {
     transform: translateY(-1px) !important;
-    border-color: rgba(113, 237, 240, 1) !important;
-    background: linear-gradient(135deg, rgba(12, 52, 72, .99), rgba(6, 29, 45, .99)) !important;
-    box-shadow: 0 12px 32px rgba(0,0,0,.42), 0 0 0 3px rgba(54,212,230,.08) !important;
+    border-color: rgba(101, 245, 240, 1) !important;
+    box-shadow: 0 11px 30px rgba(0,0,0,.38), 0 0 0 3px rgba(63,221,229,.08) !important;
 }
 
-/* ---------- CLOSED SIDEBAR: restore navigation ----------
-   IMPORTANT: In the user's installed Streamlit build the restore control is
-   the button itself, not a wrapper. That is why earlier selectors did not
-   enlarge the tiny top-left chevron. */
-[data-testid="stExpandSidebarButton"] {
+/* Collapsed sidebar — Streamlit has changed this test-id across releases,
+   so support the known test-ids AND accessible-label variants. */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 2147483000 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] button,
+button[aria-label="Open sidebar"],
+button[aria-label="Expand sidebar"] {
     position: fixed !important;
     top: 14px !important;
     left: 14px !important;
     z-index: 2147483001 !important;
-    width: 132px !important;
-    min-width: 132px !important;
-    max-width: 132px !important;
-    height: 46px !important;
-    min-height: 46px !important;
-    max-height: 46px !important;
-    margin: 0 !important;
-    padding: 0 16px !important;
+    width: 118px !important;
+    min-width: 118px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 14px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 9px !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    border-radius: 13px !important;
-    border: 1px solid rgba(54, 212, 230, .84) !important;
-    background: linear-gradient(135deg, rgba(10, 42, 60, .995), rgba(5, 23, 37, 1)) !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,.48), 0 0 22px rgba(54,212,230,.08) !important;
-    color: #f6fbff !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(63, 220, 228, .78) !important;
+    background: linear-gradient(135deg, rgba(8, 45, 62, .99), rgba(5, 24, 38, .99)) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,.42), 0 0 24px rgba(49,220,227,.08) !important;
+    color: #f5fbff !important;
     cursor: pointer !important;
     overflow: hidden !important;
-    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease !important;
 }
 
-[data-testid="stExpandSidebarButton"]::after {
+[data-testid="stSidebarCollapsedControl"] button::after,
+[data-testid="collapsedControl"] button::after,
+button[aria-label="Open sidebar"]::after,
+button[aria-label="Expand sidebar"]::after {
     content: "Explore" !important;
-    display: inline-block !important;
-    font-size: .92rem !important;
-    line-height: 1 !important;
+    font-size: .90rem !important;
     font-weight: 800 !important;
-    letter-spacing: .015em !important;
-    color: #f6fbff !important;
-    white-space: nowrap !important;
+    letter-spacing: .02em !important;
+    color: #f5fbff !important;
 }
 
-[data-testid="stExpandSidebarButton"] svg {
-    width: 20px !important;
-    height: 20px !important;
-    color: #71edf0 !important;
-    flex: 0 0 auto !important;
+[data-testid="stSidebarCollapsedControl"] button svg,
+[data-testid="collapsedControl"] button svg,
+button[aria-label="Open sidebar"] svg,
+button[aria-label="Expand sidebar"] svg {
+    width: 19px !important;
+    height: 19px !important;
+    color: #74edf1 !important;
 }
 
-[data-testid="stExpandSidebarButton"]:hover {
+[data-testid="stSidebarCollapsedControl"] button:hover,
+[data-testid="collapsedControl"] button:hover,
+button[aria-label="Open sidebar"]:hover,
+button[aria-label="Expand sidebar"]:hover {
     transform: translateY(-1px) !important;
-    border-color: rgba(113,237,240,1) !important;
-    background: linear-gradient(135deg, rgba(12,53,73,.995), rgba(6,29,45,.995)) !important;
-    box-shadow: 0 13px 34px rgba(0,0,0,.50), 0 0 0 3px rgba(54,212,230,.09) !important;
-}
-
-/* The restore button lives inside Streamlit's header. The app keeps the
-   header visually collapsed, but overflow must remain visible/clickable. */
-[data-testid="stHeader"] {
-    overflow: visible !important;
-    pointer-events: none !important;
-}
-
-[data-testid="stHeader"] [data-testid="stExpandSidebarButton"],
-[data-testid="stHeader"] [data-testid="stToolbar"] {
-    pointer-events: auto !important;
-}
-
-@media (max-width: 760px) {
-    [data-testid="stExpandSidebarButton"] {
-        top: 10px !important;
-        left: 10px !important;
-        width: 116px !important;
-        min-width: 116px !important;
-        max-width: 116px !important;
-        height: 42px !important;
-        min-height: 42px !important;
-        max-height: 42px !important;
-        padding: 0 13px !important;
-    }
+    border-color: rgba(101,245,240,1) !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45), 0 0 0 3px rgba(63,221,229,.08) !important;
 }
 
 /* A subtle edge handle makes the dashboard state obvious. */
@@ -1642,12 +1619,6 @@ div[data-testid="stChatInput"] input::placeholder {
     """,
     unsafe_allow_html=True,
 )
-
-# =========================================================
-# ORBIDENSE AI — PERSISTENT EXPLORE BUTTON
-# Sidebar collapse/restore is handled entirely by Streamlit's native controls.
-# They are branded as “Explore” through CSS above, so no injected JavaScript
-# or deprecated components.html iframe is required.
 
 DEFAULT_STATE = {
     "selected_city_id": None,

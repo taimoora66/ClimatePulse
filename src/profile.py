@@ -26,12 +26,12 @@ BUILDER_INTERESTS = (
 )
 
 PROJECT_MOTIVATION = (
-    "ClimatePulse combines observed climate data, current environmental "
-    "conditions and climate-model projections in one interactive platform for "
-    "exploring and comparing environmental change across places. The platform "
-    "keeps point observations, reanalysis, national spatial averages and future "
-    "model projections conceptually distinct so that the data remain useful "
-    "without losing scientific context."
+    "ORBIDENSE AI combines Earth data, observed climate evidence, current "
+    "environmental conditions and climate-model projections in one interactive "
+    "platform for exploring environmental change, risk and decision-relevant "
+    "context across places. The platform keeps point observations, reanalysis, "
+    "national spatial averages and future model projections conceptually distinct "
+    "so that the data remain useful without losing scientific context."
 )
 
 GITHUB_URL = "https://github.com/taimoora66/ClimatePulse"
