@@ -1,0 +1,41 @@
+iso3,country,rating,update_date,coverage_note,source_url
+ARG,Argentina,Highly insufficient,2026-07,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+AUS,Australia,Insufficient,2025-06,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+BTN,Bhutan,Almost Sufficient,2023-07,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+BRA,Brazil,Highly insufficient,2026-06,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+CAN,Canada,Highly insufficient,2025-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+CHL,Chile,Almost Sufficient,2025-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+CHN,China,Highly insufficient,2026-06,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+COL,Colombia,Insufficient,2025-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+CRI,Costa Rica,Almost Sufficient,2024-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+EGY,Egypt,Highly insufficient,2025-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+ETH,Ethiopia,Almost Sufficient,2025-05,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+EUU,European Union,Insufficient,2024-11,CAT regional rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+GMB,The Gambia,Almost Sufficient,2023-02,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+DEU,Germany,Insufficient,2025-07,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+IND,India,Highly insufficient,2025-09,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+IDN,Indonesia,Critically insufficient,2025-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+IRN,Iran (Islamic Republic of),Critically insufficient,2023-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+JPN,Japan,Insufficient,2024-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+KAZ,Kazakhstan,Insufficient,2024-01,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+KEN,Kenya,Almost Sufficient,2026-03,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+MEX,Mexico,Highly insufficient,2026-02,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+MAR,Morocco,Almost Sufficient,2023-04,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+NPL,Nepal,Almost Sufficient,2023-08,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+NZL,New Zealand,Highly insufficient,2023-03,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+NGA,Nigeria,Almost Sufficient,2025-03,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+NOR,Norway,Almost Sufficient,2025-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+PER,Peru,Insufficient,2025-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+PHL,Philippines,Almost Sufficient,2025-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+RUS,Russian Federation,Critically insufficient,2025-09,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+SAU,Saudi Arabia,Critically insufficient,2026-05,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+SGP,Singapore,Highly insufficient,2024-08,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+ZAF,South Africa,Insufficient,2025-05,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+KOR,South Korea,Insufficient,2025-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+CHE,Switzerland,Insufficient,2024-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+THA,Thailand,Critically insufficient,2022-12,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+TUR,Türkiye,Critically insufficient,2025-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+ARE,UAE,Insufficient,2024-11,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+GBR,United Kingdom,Insufficient,2025-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+USA,USA,Critically insufficient,2025-09,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/
+VNM,Viet Nam,Critically insufficient,2025-10,CAT country rating,https://climateactiontracker.org/cat-data-explorer/country-ratings/

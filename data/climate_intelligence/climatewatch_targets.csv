@@ -1,0 +1,10 @@
+iso3,record_index,source,location,year,value,label,document_slug,latest
+FRA,0,Climate Watch /api/v1/quantifications,FRA,2050,0.0,LTS,lts,True
+USA,0,Climate Watch /api/v1/quantifications,USA,2030,"[3184.8, 3317.5]","Revised First NDC, Unconditional (Withdrawn)",revised_first_ndc,False
+USA,1,Climate Watch /api/v1/quantifications,USA,2030,,"Revised First NDC, BAU (Withdrawn)",revised_first_ndc,False
+USA,2,Climate Watch /api/v1/quantifications,USA,2035,"[2239.58, 2568.93]","Second NDC, Unconditional (Withdrawn)",second_ndc,True
+USA,3,Climate Watch /api/v1/quantifications,USA,2035,,"Second NDC, BAU (Withdrawn)",second_ndc,True
+USA,4,Climate Watch /api/v1/quantifications,USA,2050,0.0,LTS,lts,True
+CHN,0,Climate Watch /api/v1/quantifications,CHN,2030,10280.0,"Revised First NDC, Unconditional",revised_first_ndc,False
+CHN,1,Climate Watch /api/v1/quantifications,CHN,2035,"[12561.3, 12980.01]","Third NDC, Unconditional",third_ndc,True
+CHN,2,Climate Watch /api/v1/quantifications,CHN,2060,0.0,LTS,lts,True

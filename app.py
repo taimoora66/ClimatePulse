@@ -69,6 +69,21 @@ from src.ai_assistant import (
     render_persistent_ai,
 )
 from src.live_globe import cached_country_field
+from src.climate_intelligence.pages import (
+    render_country_climate_outlook,
+    render_climate_action_progress,
+)
+
+from src.about_professional import render_professional_about
+from src.intelligence_pages import (
+    inject_intelligence_theme,
+    render_climate_outlook,
+    render_climate_action,
+    render_compare,
+    render_global_insights,
+    render_climate_passport,
+    render_about_science,
+)
 
 from src.queries.climate import (
     get_annual_climate_summary,
@@ -4320,15 +4335,43 @@ with st.sidebar:
         st.session_state["main_navigation"] = "Home"
 
     # Public users never see Developer Analytics.
+    # Product simplification: Home already owns live map exploration.
+    # The former Timeline/Trends pages are rebuilt as two distinct evidence products.
+    legacy_routes = {
+        "Map Explorer": "Home",
+        "Climate Timeline": "Country Climate Outlook",
+        "Climate Trends": "Climate Action & Progress",
+        "Data & Methods": "Country Climate Outlook",
+    }
+    current_route = st.session_state.get("main_navigation")
+    if current_route in legacy_routes:
+        st.session_state["main_navigation"] = legacy_routes[current_route]
+
+
+    # ORBIDENSE AI intelligence redesign:
+    # normalize stale browser/session routes from previous public navigation.
+    _legacy_public_routes = {
+        "Dashboard": "Home",
+        "Map Explorer": "Home",
+        "Climate Timeline": "Climate Outlook",
+        "Climate Trends": "Climate Outlook",
+        "Country Climate Outlook": "Climate Outlook",
+        "Climate Action & Progress": "Climate Action",
+        "Compare Places": "Compare",
+        "Global Rankings": "Global Insights",
+        "Data & Methods": "About",
+    }
+    _legacy_current = st.session_state.get("main_navigation")
+    if _legacy_current in _legacy_public_routes:
+        st.session_state["main_navigation"] = _legacy_public_routes[_legacy_current]
+
+
     navigation_options = [
         "Home",
-        "Map Explorer",
-        "Climate Timeline",
-        "Climate Trends",
-        "Data & Methods",
-        "Compare Places",
-        "Global Rankings",
-        "Climate Passport",
+        "Climate Outlook",
+        "Climate Action",
+        "Compare",
+        "Global Insights",
         "About",
     ]
 
@@ -4356,13 +4399,10 @@ with st.sidebar:
         width="stretch",
         format_func=lambda value: {
             "Home": "⌂   Home",
-            "Map Explorer": "◎   Map Explorer",
-            "Climate Timeline": "◷   Climate Timeline",
-            "Climate Trends": "↗   Climate Trends",
-            "Data & Methods": "▤   Data & Methods",
-            "Compare Places": "⇄   Compare Places",
-            "Global Rankings": "♛   Global Rankings",
-            "Climate Passport": "◈   Climate Passport",
+            "Climate Outlook": "◔   Climate Outlook",
+            "Climate Action": "↗   Climate Action",
+            "Compare": "⇄   Compare",
+            "Global Insights": "◎   Global Insights",
             "Developer Analytics": "▥   Developer Analytics   🔒",
             "About": "ⓘ   About ORBIDENSE AI",
         }[value],
@@ -4687,7 +4727,7 @@ def _header_global_pulse_html():
 
 selected_search_result = None
 
-if nav_view in {"Home", "Map Explorer"}:
+if nav_view in {"Home", "Country Climate Outlook", "Climate Action & Progress"}:
 
     st.markdown(
         '<div id="dashboard"></div>',
@@ -4749,7 +4789,7 @@ if nav_view in {"Home", "Map Explorer"}:
     )
 
     # Public system-health information is intentionally not displayed.
-    # Search remains full-width on both Home and Map Explorer.
+    # Search remains full-width on Home and both climate-intelligence products.
     search_col = st.container()
 
     with search_col:
@@ -5327,8 +5367,8 @@ if country_feature:
 
     country_heavy_views = {
         "Dashboard",
-        "Climate Timeline",
-        "Climate Trends",
+        "Country Climate Outlook",
+        "Climate Action & Progress",
         "Compare Places",
         "Climate Passport",
     }
@@ -6214,6 +6254,41 @@ render_persistent_ai(
 )
 
 
+# =========================================================
+# ORBIDENSE AI — FINAL INTELLIGENCE ROUTES
+# Persistent AI is mounted immediately above this block.
+# Home and Developer Analytics continue into existing code.
+# =========================================================
+inject_intelligence_theme()
+
+_orb_selected_iso3 = (
+    country_iso3
+    if "country_iso3" in locals() and country_iso3
+    else None
+)
+
+if nav_view == "Climate Outlook":
+    render_climate_outlook(preferred_iso3=_orb_selected_iso3)
+    st.stop()
+
+if nav_view == "Climate Action":
+    render_climate_action(preferred_iso3=_orb_selected_iso3)
+    st.stop()
+
+if nav_view == "Compare":
+    render_compare(preferred_iso3=_orb_selected_iso3)
+    st.stop()
+
+if nav_view == "Global Insights":
+    render_global_insights()
+    st.stop()
+
+if nav_view == "About":
+    render_professional_about()
+    st.stop()
+
+
+
 if city is not None:
     title = f"{city['city_name']}, {city['country_name']}"
 
@@ -6405,19 +6480,22 @@ if nav_view == "AI Assistant":
 # CLIMATE TIMELINE
 # =========================================================
 
-if nav_view == "Climate Timeline":
-    render_climate_timeline_page(
-        city=city,
-        point_location=(
-            st.session_state.get(
-                "selected_location"
-            )
-        ),
-        summary=summary,
-        anomalies=anomalies,
+if nav_view == "Country Climate Outlook":
+    render_country_climate_outlook(
         country_feature=country_feature,
-        country_national=country_national,
         country_iso3=country_iso3,
+        country_national=country_national,
+        point_location=st.session_state.get("selected_location"),
+    )
+    st.stop()
+
+
+if nav_view == "Climate Action & Progress":
+    render_climate_action_progress(
+        country_feature=country_feature,
+        country_iso3=country_iso3,
+        country_national=country_national,
+        point_location=st.session_state.get("selected_location"),
     )
     st.stop()
 

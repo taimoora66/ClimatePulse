@@ -553,80 +553,165 @@ def get_country_projection_rankings(
     ]
 
 
+def _extract_single_country_projection_value(payload: Any) -> float | None:
+    """Extract a single annual TAS anomaly from a country-specific CCKP payload.
+
+    CCKP's documented country API uses the ISO3 geocode directly. Payload
+    serialization can vary, so extraction first looks for explicit TAS/value
+    records and then falls back to numeric scalars whose path refers to ``tas``.
+    """
+    candidates: list[float] = []
+
+    for kind, path, item in _walk(payload):
+        if kind == "dict":
+            value = _projection_value(item)
+            if value is not None:
+                # Prefer records that are explicitly TAS-related, but accept a
+                # single unambiguous value record as a fallback.
+                text = " ".join(str(x).lower() for x in path)
+                keys = " ".join(str(k).lower() for k in item.keys())
+                if "tas" in text or "tas" in keys or any(
+                    key in item for key in ("value", "anomaly", "median", "mean")
+                ):
+                    candidates.append(value)
+
+        elif kind == "scalar":
+            path_text = " ".join(str(x).lower() for x in path)
+            if "tasmin" in path_text or "tasmax" in path_text:
+                continue
+            if "tas" not in path_text and "value" not in path_text and "anomaly" not in path_text:
+                continue
+            value = _finite(item)
+            if value is not None and -20 <= value <= 20:
+                candidates.append(value)
+
+    if not candidates:
+        return None
+    return float(pd.Series(candidates, dtype="float64").median())
+
+
+@st.cache_data(ttl=86400, max_entries=1024, show_spinner=False)
+def _fetch_country_projection_value(
+    iso3_code: str,
+    scenario: str,
+    period: str,
+    percentile: str,
+) -> float | None:
+    """Fetch one documented CCKP country aggregate directly by ISO3 geocode."""
+    iso3_code = str(iso3_code).strip().upper()
+    errors = []
+    for dataset in _candidate_dataset_names(period, scenario, percentile):
+        url = f"https://cckpapi.worldbank.org/cckp/v1/{dataset}/{iso3_code}"
+        try:
+            response = requests.get(
+                url,
+                params={"_format": "json"},
+                timeout=30,
+                headers={"User-Agent": "ORBIDENSE-AI/1.0 (climate intelligence dashboard)"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            value = _extract_single_country_projection_value(payload)
+            if value is not None:
+                return value
+            errors.append(f"{response.url}: no TAS value parsed")
+        except Exception as exc:
+            errors.append(f"{url}: {type(exc).__name__}: {exc}")
+    return None
+
+
 @st.cache_data(ttl=86400, max_entries=256, show_spinner=False)
 @observe_operation("world_bank_trajectory", quality_source="World Bank CCKP")
 def get_country_scenario_trajectory(
     iso3_code: str,
     scenario: str = "ssp245",
 ) -> pd.DataFrame:
-    """
-    Filter the global country projection aggregate for one country across
-    the four standard CCKP 20-year periods.
+    """Return country CMIP6 TAS-anomaly climatologies across standard periods.
 
-    V3 performance note: the period/percentile datasets are independent.
-    Fetch them through a small bounded worker pool, then assemble the rows in
-    deterministic period order. The percentile tables themselves are cached
-    for 24 hours, so rankings and trajectories reuse the same global CCKP
-    payloads instead of downloading them again.
+    Country pages now use CCKP's documented country endpoint directly with the
+    ISO3 geocode. The global aggregate parser remains the ranking path, but a
+    country view no longer depends on extracting the requested country from a
+    very large all-countries payload.
     """
     iso3_code = str(iso3_code).strip().upper()
-
     requests_to_make = [
         (period, percentile)
         for period in _TRAJECTORY_PERIODS
         for percentile in ("median", "p10", "p90")
     ]
-    tables = {}
+    values: dict[tuple[str, str], float | None] = {}
 
+    # Twelve independent country aggregates; bounded concurrency keeps latency
+    # low without creating an uncontrolled provider burst.
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(
-                _fetch_percentile_table,
+                _fetch_country_projection_value,
+                iso3_code,
                 scenario,
                 period,
                 percentile,
             ): (period, percentile)
             for period, percentile in requests_to_make
         }
-
         for future in as_completed(futures):
             key = futures[future]
             try:
-                tables[key] = future.result()
+                values[key] = future.result()
             except Exception:
-                tables[key] = None
+                values[key] = None
 
     rows = []
     for period in _TRAJECTORY_PERIODS:
-        median_table = tables.get((period, "median"))
-        if median_table is None or median_table.empty:
-            continue
-
-        median_row = median_table[median_table["iso3"] == iso3_code]
-        if median_row.empty:
-            continue
-
-        median_value = _finite(median_row.iloc[0]["value"])
+        median_value = _finite(values.get((period, "median")))
         if median_value is None:
             continue
+        rows.append({
+            "period": period,
+            "median_c": median_value,
+            "p10_c": _finite(values.get((period, "p10"))),
+            "p90_c": _finite(values.get((period, "p90"))),
+        })
 
-        values = {}
-        for percentile in ("p10", "p90"):
-            table = tables.get((period, percentile))
-            value = None
-            if table is not None and not table.empty:
-                row = table[table["iso3"] == iso3_code]
-                if not row.empty:
-                    value = _finite(row.iloc[0]["value"])
-            values[percentile] = value
-
-        rows.append(
-            {
+    # Defensive fallback to the existing global aggregate tables if a provider
+    # serialization prevents direct-country parsing for a given release.
+    if not rows:
+        tables = {}
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                executor.submit(_fetch_percentile_table, scenario, period, percentile): (period, percentile)
+                for period, percentile in requests_to_make
+            }
+            for future in as_completed(futures):
+                key = futures[future]
+                try:
+                    tables[key] = future.result()
+                except Exception:
+                    tables[key] = None
+        for period in _TRAJECTORY_PERIODS:
+            median_table = tables.get((period, "median"))
+            if median_table is None or median_table.empty:
+                continue
+            median_row = median_table[median_table["iso3"] == iso3_code]
+            if median_row.empty:
+                continue
+            median_value = _finite(median_row.iloc[0]["value"])
+            if median_value is None:
+                continue
+            percentile_values = {}
+            for percentile in ("p10", "p90"):
+                table = tables.get((period, percentile))
+                value = None
+                if table is not None and not table.empty:
+                    row = table[table["iso3"] == iso3_code]
+                    if not row.empty:
+                        value = _finite(row.iloc[0]["value"])
+                percentile_values[percentile] = value
+            rows.append({
                 "period": period,
                 "median_c": median_value,
-                "p10_c": values["p10"],
-                "p90_c": values["p90"],
-            }
-        )
+                "p10_c": percentile_values["p10"],
+                "p90_c": percentile_values["p90"],
+            })
 
     return pd.DataFrame(rows)

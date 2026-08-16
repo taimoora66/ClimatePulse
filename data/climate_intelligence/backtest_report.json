@@ -1,0 +1,164 @@
+{
+  "deterministic": [
+    {
+      "check": "trend_per_decade",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "percent_change",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "target_gap_positive_shortfall",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "gap_classification",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "sector_shares_sum",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "sector_rank",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "online": [
+    {
+      "check": "cckp_trajectory_ITA",
+      "pass": false,
+      "detail": "rows=0"
+    },
+    {
+      "check": "cat_snapshot_ITA",
+      "pass": false,
+      "detail": "not covered"
+    },
+    {
+      "check": "climatewatch_ndc_ITA",
+      "pass": false,
+      "detail": "records=0"
+    },
+    {
+      "check": "emissions_ITA",
+      "pass": true,
+      "detail": "rows=1913"
+    },
+    {
+      "check": "timeline_ITA",
+      "pass": true,
+      "detail": "records=32"
+    },
+    {
+      "check": "cckp_trajectory_DEU",
+      "pass": false,
+      "detail": "rows=0"
+    },
+    {
+      "check": "cat_snapshot_DEU",
+      "pass": true,
+      "detail": "Insufficient"
+    },
+    {
+      "check": "climatewatch_ndc_DEU",
+      "pass": false,
+      "detail": "records=0"
+    },
+    {
+      "check": "emissions_DEU",
+      "pass": true,
+      "detail": "rows=1927"
+    },
+    {
+      "check": "timeline_DEU",
+      "pass": true,
+      "detail": "records=43"
+    },
+    {
+      "check": "cckp_trajectory_FRA",
+      "pass": false,
+      "detail": "rows=0"
+    },
+    {
+      "check": "cat_snapshot_FRA",
+      "pass": false,
+      "detail": "not covered"
+    },
+    {
+      "check": "climatewatch_ndc_FRA",
+      "pass": true,
+      "detail": "records=1"
+    },
+    {
+      "check": "emissions_FRA",
+      "pass": true,
+      "detail": "rows=1915"
+    },
+    {
+      "check": "timeline_FRA",
+      "pass": true,
+      "detail": "records=59"
+    },
+    {
+      "check": "cckp_trajectory_USA",
+      "pass": false,
+      "detail": "rows=0"
+    },
+    {
+      "check": "cat_snapshot_USA",
+      "pass": true,
+      "detail": "Critically insufficient"
+    },
+    {
+      "check": "climatewatch_ndc_USA",
+      "pass": true,
+      "detail": "records=5"
+    },
+    {
+      "check": "emissions_USA",
+      "pass": true,
+      "detail": "rows=1938"
+    },
+    {
+      "check": "timeline_USA",
+      "pass": true,
+      "detail": "records=40"
+    },
+    {
+      "check": "cckp_trajectory_CHN",
+      "pass": false,
+      "detail": "rows=0"
+    },
+    {
+      "check": "cat_snapshot_CHN",
+      "pass": true,
+      "detail": "Highly insufficient"
+    },
+    {
+      "check": "climatewatch_ndc_CHN",
+      "pass": true,
+      "detail": "records=3"
+    },
+    {
+      "check": "emissions_CHN",
+      "pass": true,
+      "detail": "rows=1935"
+    },
+    {
+      "check": "timeline_CHN",
+      "pass": true,
+      "detail": "records=23"
+    }
+  ],
+  "deterministic_pass_pct": 100.0,
+  "online_pass_pct": 64.0,
+  "interpretation": "Online checks measure data availability/integration, not scientific model skill."
+}

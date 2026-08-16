@@ -21,3 +21,33 @@ app_backup*.py
 # Temporary migration / patch scripts
 apply_*_upgrade.py
 apply_*_fix.py
+# ============================================================
+# ORBIDENSE climate-data build cache / raw sources
+# ============================================================
+
+data/climate_intelligence/raw/
+data/climate_intelligence/population_raw/
+data/climate_intelligence/hazard_raw/
+data/climate_intelligence/cckp_build/
+data/climate_intelligence/cckp_test/
+data/climate_intelligence/boundaries/
+
+# Large gridded source data
+*.nc
+
+# Temporary / backup datasets
+*_PRE_REPAIR.*
+*_BEFORE_*
+*.bak
+*.backup
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local environment / secrets
+.venv/
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
