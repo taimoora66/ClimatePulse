@@ -12,14 +12,14 @@ from src.analytics import record_ai_usage, record_error, record_performance
 
 
 # ============================================================
-# ORBIDENSE AI AUTHORITATIVE PROJECT KNOWLEDGE
+# ORBIDENSE AUTHORITATIVE PROJECT KNOWLEDGE
 # ============================================================
 
 PROJECT_KNOWLEDGE = {
-    "name": "ORBIDENSE AI",
+    "name": "ORBIDENSE",
     "tagline": "Earth Data. Risk Intelligence. Better Decisions.",
     "purpose": (
-        "ORBIDENSE AI is an independent Earth-data, climate and environmental-"
+        "ORBIDENSE is an independent Earth-data, climate and environmental-"
         "intelligence platform. It integrates live environmental conditions, "
         "historical climate evidence, future climate projections, geographic "
         "exploration, comparative indicators, climate-health context, compound-"
@@ -44,8 +44,8 @@ PROJECT_KNOWLEDGE = {
         "Climate Passport",
         "Climate-health context",
         "Compound environmental-risk interpretation",
-        "ORBIDENSE AI Assistant",
-        "About ORBIDENSE AI",
+        "ORBIDENSE Assistant",
+        "About",
     ],
     "data_sources": [
         "Open-Meteo",
@@ -62,7 +62,7 @@ PROJECT_KNOWLEDGE = {
         "PostgreSQL / Neon",
     ],
     "disclaimer": (
-        "ORBIDENSE AI is an informational, analytical and decision-support "
+        "ORBIDENSE is an informational, analytical and decision-support "
         "project. It is not an official weather-warning service, emergency-alert "
         "system, medical service, or substitute for professional climate-risk "
         "assessment."
@@ -191,26 +191,26 @@ def _system_prompt(
     context: dict[str, Any],
 ) -> str:
     return f"""
-You are the ORBIDENSE AI Assistant, a broad general-purpose conversational assistant
-embedded in the ORBIDENSE AI Earth-intelligence platform.
+You are the ORBIDENSE Assistant, a broad general-purpose conversational assistant
+embedded in the ORBIDENSE Earth-intelligence platform.
 
 YOU CAN HELP WITH
-- ORBIDENSE AI itself: purpose, creator, features, methods and data.
-- The currently selected ORBIDENSE AI location and displayed environmental data.
+- ORBIDENSE itself: purpose, creator, features, methods and data.
+- The currently selected ORBIDENSE location and displayed environmental data.
 - Climate, weather, environment, sustainability and climate-health concepts.
 - Programming, Python, SQL, statistics, mathematics and technology.
 - Study questions, academic explanations and writing.
 - General science and ordinary general-knowledge questions.
 - Other normal questions a general conversational assistant can reasonably answer.
 
-AUTHORITATIVE ORBIDENSE AI PROJECT INFORMATION
+AUTHORITATIVE ORBIDENSE PROJECT INFORMATION
 {json.dumps(
     PROJECT_KNOWLEDGE,
     ensure_ascii=False,
     default=str,
 )}
 
-CURRENT ORBIDENSE AI SESSION CONTEXT
+CURRENT ORBIDENSE SESSION CONTEXT
 {json.dumps(
     context,
     ensure_ascii=False,
@@ -220,12 +220,12 @@ CURRENT ORBIDENSE AI SESSION CONTEXT
 RULES
 1. Answer the user's actual question directly.
 2. You are not restricted to climate questions.
-3. If asked who created, built or developed ORBIDENSE AI, answer:
+3. If asked who created, built or developed ORBIDENSE, answer:
    Taimoor Ahmad, an MSc student in Environmental Change & Global
    Sustainability at the University of Milan.
 4. If asked about the website's purpose/features/data, use the authoritative
-   ORBIDENSE AI information above.
-5. Use current ORBIDENSE AI values when supplied in session context.
+   ORBIDENSE information above.
+5. Use current ORBIDENSE values when supplied in session context.
 6. Never invent live weather values, official warnings, records, diagnoses,
    private information or unavailable measurements.
 7. Clearly distinguish current weather, historical/reanalysis climate data,
@@ -289,7 +289,7 @@ def ask_huggingface(
         record_error(exc, component="ai_assistant", operation="huggingface_inference", severity="error")
         return {
             "ok": False,
-            "answer": "ORBIDENSE AI Assistant is temporarily unavailable. Please try again later.",
+            "answer": "ORBIDENSE Assistant is temporarily unavailable. Please try again later.",
             "model": None,
             "error": "HF_TOKEN missing",
         }
@@ -386,7 +386,7 @@ def ask_huggingface(
 
     return {
         "ok": False,
-        "answer": "ORBIDENSE AI Assistant is temporarily unavailable. Please try again later.",
+        "answer": "ORBIDENSE Assistant is temporarily unavailable. Please try again later.",
         "model": None,
         "error": str(last_exception) if last_exception is not None else "Inference unavailable",
     }
@@ -748,7 +748,7 @@ export default function(component) {
     <button class="cp-drag" type="button" title="Drag">⋮⋮</button>
     <button class="cp-open" type="button">
         <span class="cp-spark">✦</span>
-        <span class="cp-label">ORBIDENSE AI</span>
+        <span class="cp-label">ORBIDENSE</span>
         <span class="cp-dot"></span>
     </button>
 </div>
@@ -756,7 +756,7 @@ export default function(component) {
 <section class="cp-panel">
     <header class="cp-header">
         <div>
-            <div class="cp-kicker">ORBIDENSE AI</div>
+            <div class="cp-kicker">ORBIDENSE</div>
             <div class="cp-title">Ask anything</div>
         </div>
 
@@ -1106,7 +1106,7 @@ export default function(component) {
 
         contextBox.textContent =
             selected
-            ? `Current ORBIDENSE AI context · ${selected}`
+            ? `Current ORBIDENSE context · ${selected}`
             : 'General AI mode · select a location for grounded local context';
 
 
@@ -1134,7 +1134,7 @@ export default function(component) {
 
             intro.textContent =
                 (
-                    'Ask me about ORBIDENSE AI, this location, climate, '
+                    'Ask me about ORBIDENSE, this location, climate, '
                     + 'programming, science, study questions or general knowledge.'
                 );
 
@@ -1439,7 +1439,7 @@ def _fallback_ai(
     history = _history()
 
     with st.popover(
-        "✦ ORBIDENSE AI",
+        "✦ ORBIDENSE",
         width="content",
     ):
         st.caption(
@@ -1702,7 +1702,7 @@ def render_ai_page(
 ):
     st.info(
         (
-            "ORBIDENSE AI Assistant is available from the floating assistant "
+            "ORBIDENSE Assistant is available from the floating assistant "
             "on every page."
         )
     )

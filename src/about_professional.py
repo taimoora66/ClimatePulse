@@ -41,9 +41,9 @@ def _css() -> None:
 def render_professional_about() -> None:
     _css()
     st.markdown('''
-<div class="about-eyebrow">ABOUT ORBIDENSE AI</div>
+<div class="about-eyebrow">ABOUT ORBIDENSE</div>
 <div class="about-title">Earth data. Climate intelligence. Better decisions.</div>
-<div class="about-lead">ORBIDENSE AI is an independent environmental and climate-intelligence project built to make complex Earth-system information easier to explore, compare and interpret without hiding scientific uncertainty or data provenance.</div>
+<div class="about-lead">ORBIDENSE is an independent environmental and climate-intelligence project built to make complex Earth-system information easier to explore, compare and interpret without hiding scientific uncertainty or data provenance.</div>
 ''', unsafe_allow_html=True)
 
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
@@ -68,9 +68,9 @@ def render_professional_about() -> None:
 
     with right:
         st.markdown('''
-<div class="about-card"><div class="about-eyebrow">WHY ORBIDENSE AI</div>
+<div class="about-card"><div class="about-eyebrow">WHY ORBIDENSE</div>
 <h3>Turning fragmented environmental data into usable intelligence</h3>
-<p>Climate information is often split across weather APIs, reanalysis archives, climate-model products, emissions databases, policy trackers and risk frameworks. ORBIDENSE AI brings these layers into one coherent experience while preserving the distinction between observed conditions, historical climate, future projections, exposure, vulnerability and policy action.</p>
+<p>Climate information is often split across weather APIs, reanalysis archives, climate-model products, emissions databases, policy trackers and risk frameworks. ORBIDENSE brings these layers into one coherent experience while preserving the distinction between observed conditions, historical climate, future projections, exposure, vulnerability and policy action.</p>
 <div class="about-quote">The goal is not another dashboard full of disconnected numbers. The goal is a transparent Earth-intelligence environment where users can understand what is happening, what may happen, how places differ, and whether climate action is keeping pace.</div></div>
 ''', unsafe_allow_html=True)
         st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
@@ -112,4 +112,4 @@ def render_professional_about() -> None:
     with tabs[3]:
         st.markdown('''- Country-level climate aggregates suppress local spatial differences.\n- Model ensemble spread does not represent every source of uncertainty.\n- Live conditions can be point-based rather than area-wide.\n- Climate-action datasets update at different intervals.\n- Composite risk metrics should not be created without explicit hazard, exposure and vulnerability methodology.''')
     with tabs[4]:
-        st.markdown('ORBIDENSE AI keeps detailed references and processing notes in project documentation and dataset metadata so visual pages can remain readable while scientific provenance stays auditable.')
+        st.markdown('ORBIDENSE keeps detailed references and processing notes in project documentation and dataset metadata so visual pages can remain readable while scientific provenance stays auditable.')

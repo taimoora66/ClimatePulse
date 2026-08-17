@@ -371,11 +371,11 @@ def _condition_palette(
     trend=None,
 ):
     """
-    ORBIDENSE AI Home hero presentation palette.
+    ORBIDENSE Home hero presentation palette.
 
     V30 design rule:
     environmental conditions may change the accent/glow, but the whole
-    ORBIDENSE AI hero should remain a stable dark-blue/teal brand surface.
+    ORBIDENSE hero should remain a stable dark-blue/teal brand surface.
     This prevents a hot current location from turning the entire header red.
     """
 
@@ -1850,7 +1850,7 @@ def _build_live_feed(
                     ),
                     "detail": (
                         "Warmest current reference-city observation "
-                        "in the ORBIDENSE AI live globe sample."
+                        "in the ORBIDENSE live globe sample."
                     ),
                 }
             )
@@ -1865,7 +1865,7 @@ def _build_live_feed(
                     ),
                     "detail": (
                         "Highest European-AQI value in the current "
-                        "ORBIDENSE AI reference-city sample."
+                        "ORBIDENSE reference-city sample."
                     ),
                 }
             )
@@ -3110,7 +3110,7 @@ def _local_advisory(official_alerts, context_alerts, guidance):
             "label": "LOCAL WEATHER SIGNAL",
             "title": alert.get("title") or "Weather context",
             "text": alert.get("message") or "Conditions may warrant extra attention today.",
-            "source": "ORBIDENSE AI contextual screening",
+            "source": "ORBIDENSE contextual screening",
         }
 
     if guidance:
@@ -3128,7 +3128,7 @@ def _local_advisory(official_alerts, context_alerts, guidance):
         "label": "LOCAL CONDITIONS",
         "title": "No significant weather-health signal",
         "text": "Current conditions do not trigger a notable heat, air-quality or weather advisory in the available data.",
-        "source": "Current ORBIDENSE AI environmental context",
+        "source": "Current ORBIDENSE environmental context",
     }
 
 
@@ -3550,7 +3550,7 @@ def render_home_page(
     font-size: .82rem;
 ">
     <strong style="color:#edfaff;">Preparing your local Earth view</strong><br>
-    Allow browser location when prompted. ORBIDENSE AI will automatically
+    Allow browser location when prompted. ORBIDENSE will automatically
     load current weather, environmental context and center the live map on
     your detected position. You can always use global search instead.
 </div>
@@ -3563,7 +3563,7 @@ def render_home_page(
         ] = detected_location
 
         # app.py watches this flag and promotes the browser point
-        # to ORBIDENSE AI's active location before downstream data load.
+        # to ORBIDENSE's active location before downstream data load.
         st.session_state[
             "v27_location_sync_pending"
         ] = True
@@ -3852,7 +3852,7 @@ def render_home_page(
     )
 
     # Global Pulse summary now lives in the compact Home header beside the
-    # ORBIDENSE AI identity. Give the live globe the full content width.
+    # ORBIDENSE identity. Give the live globe the full content width.
     st.markdown(
         "### Live Earth weather field"
     )
@@ -3893,7 +3893,7 @@ def render_home_page(
       <div class="cp-v19-mini">
         <div class="cp-v19-mini-label">Latest anomaly</div>
         <div class="cp-v19-mini-value">{_fmt(snapshot['recent_anomaly'], '+.2f', '°C')}</div>
-        <div class="cp-v19-mini-note">Relative to ORBIDENSE AI baseline</div>
+        <div class="cp-v19-mini-note">Relative to ORBIDENSE baseline</div>
       </div>
       <div class="cp-v19-mini">
         <div class="cp-v19-mini-label">Warming trend</div>
@@ -4006,7 +4006,7 @@ def render_home_page(
         else:
             brief = (
                 "Search a city, place or country — or enable current "
-                "location — to generate a data-grounded ORBIDENSE AI brief."
+                "location — to generate a data-grounded ORBIDENSE brief."
             )
 
         st.html(
@@ -4295,7 +4295,7 @@ def render_home_page(
                 st.caption(
                     "Official-warning coverage is provider-dependent. "
                     "US points use the National Weather Service when applicable; "
-                    "ORBIDENSE AI context alerts remain clearly separate."
+                    "ORBIDENSE context alerts remain clearly separate."
                 )
 
     if show_timeline:
@@ -4559,7 +4559,7 @@ def render_home_page(
                     )
 
     st.html(
-        '<div class="cp-v19-section">ORBIDENSE AI Assistant</div>'
+        '<div class="cp-v19-section">ORBIDENSE Assistant</div>'
     )
 
     ai_status = get_ai_status()
@@ -4580,7 +4580,7 @@ def render_home_page(
     <div class="cp-v19-eyebrow">Open-source climate assistant</div>
     <div class="cp-v19-h2">Ask about this place, the globe, climate science or the data.</div>
     <div class="cp-v19-note">
-        ORBIDENSE AI passes the current displayed data into the assistant before it answers.
+        ORBIDENSE passes the current displayed data into the assistant before it answers.
         It is instructed not to invent live values, warnings or diagnoses.
     </div>
   </div>
@@ -4613,7 +4613,7 @@ def render_home_page(
                 )
 
         question = st.chat_input(
-            "Ask ORBIDENSE AI…",
+            "Ask ORBIDENSE…",
             key="v20_ai_question",
         )
 
@@ -4688,7 +4688,7 @@ def render_home_page(
     font-size:.58rem;
     padding:18px 0 4px;
 ">
-    ORBIDENSE AI · EARTH DATA · RISK INTELLIGENCE · BETTER DECISIONS
+    ORBIDENSE · EARTH DATA · RISK INTELLIGENCE · BETTER DECISIONS
 </div>
         """
     )
@@ -4725,7 +4725,7 @@ def render_dashboard_page(
     st.html(
         """
 <div class="cp-home-hero">
-    <div class="cp-home-kicker">ORBIDENSE AI · EARTH INTELLIGENCE</div>
+    <div class="cp-home-kicker">ORBIDENSE · EARTH INTELLIGENCE</div>
     <div class="cp-home-title">
         Conditions, context and climate — without the clutter.
     </div>
@@ -4989,7 +4989,7 @@ def render_climate_timeline_page(
         One place. <span>Past → present → future.</span>
     </div>
     <div class="cp-v19-copy">
-        ORBIDENSE AI explicitly separates historical observations/reanalysis
+        ORBIDENSE explicitly separates historical observations/reanalysis
         from model projections while presenting them in one continuous,
         interactive climate narrative.
     </div>
@@ -5179,7 +5179,7 @@ def render_climate_timeline_page(
         )
 
         st.caption(
-            "City history uses the existing ORBIDENSE AI ERA5 pipeline. "
+            "City history uses the existing ORBIDENSE ERA5 pipeline. "
             "Full 2100 city-scale NEX-GDDP-CMIP6 should be served from a "
             "preprocessed cache rather than queried live from the full archive."
         )

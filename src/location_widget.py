@@ -25,7 +25,7 @@ def reverse_geocode_location(
 
     Important:
     live weather does not depend on this lookup. If the service is slow or
-    temporarily unavailable, ORBIDENSE AI still activates the coordinates
+    temporarily unavailable, ORBIDENSE still activates the coordinates
     immediately and falls back to a coordinate label.
     """
 
@@ -649,7 +649,7 @@ export default function(component) {
                 }
 
                 // Both "granted" and "prompt" proceed. For "prompt", the browser
-                // displays its normal permission dialog; ORBIDENSE AI cannot and
+                // displays its normal permission dialog; ORBIDENSE cannot and
                 // should not bypass that browser privacy control.
                 requestLocation({ automatic: true });
                 return;

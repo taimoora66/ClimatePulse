@@ -345,7 +345,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
             file_name=f"orbidense_exposure_{scenario}_{period}_{statistic}_{hazard}_{int(threshold)}.csv",
             mime="text/csv",width="stretch")
     with b2:
-        if st.button("Explain this view with ORBIDENSE AI",width="stretch"):
+        if st.button("Explain this view with ORBIDENSE",width="stretch"):
             st.session_state["orbidense_ai_context_hint"]={
                 "section":"Population Exposure","country":country,"iso3":iso3,
                 "scenario":scenario,"period":period,"statistic":statistic,
@@ -354,7 +354,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
                 "population_exposed":float(row["population_exposed"]),
                 "exposed_share_pct":float(row["exposed_share_pct"]),
             }
-            st.success("Exposure context prepared for ORBIDENSE AI.")
+            st.success("Exposure context prepared for ORBIDENSE.")
     with b3:
         st.markdown("""<div class="exp-note"><b style="color:#fff">Validated production layer</b><br>
 129,360 rows · 245 entities · 0 duplicate keys · 245/245 coverage</div>""",unsafe_allow_html=True)

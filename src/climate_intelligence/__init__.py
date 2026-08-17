@@ -1,1 +1,1 @@
-"""ORBIDENSE AI climate-intelligence product layer."""
+"""ORBIDENSE climate-intelligence product layer."""

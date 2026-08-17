@@ -26,7 +26,7 @@ BUILDER_INTERESTS = (
 )
 
 PROJECT_MOTIVATION = (
-    "ORBIDENSE AI combines Earth data, observed climate evidence, current "
+    "ORBIDENSE combines Earth data, observed climate evidence, current "
     "environmental conditions and climate-model projections in one interactive "
     "platform for exploring environmental change, risk and decision-relevant "
     "context across places. The platform keeps point observations, reanalysis, "

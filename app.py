@@ -9,6 +9,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pydeck as pdk
 import streamlit as st
+
+from src.orbidense_router import render_site_router, EARLY_PUBLIC_CSS
+
+
+from src.home_v2 import render_home_v2
 from src.ui_v27 import (
     dark_dataframe,
     inject_v27_ui,
@@ -111,24 +116,27 @@ def get_maptiler_key():
 MAPTILER_KEY = get_maptiler_key()
 
 # =========================================================
-# ORBIDENSE AI — BRAND CONFIGURATION
+# ORBIDENSE — BRAND CONFIGURATION
 # =========================================================
 
-APP_NAME = "ORBIDENSE AI"
+APP_NAME = "ORBIDENSE"
 APP_TAGLINE = "Earth Data · Risk Intelligence · Better Decisions"
 APP_SHORT_TAGLINE = "Earth Intelligence & Environmental Risk"
-APP_LOGO_PATH = Path("assets/orbidense_ai_logo.png")
+APP_LOGO_PATH = Path("assets/orbidense_logo.png")
+APP_FAVICON_PATH = Path("assets/orbidense_favicon.png")
 
 
 st.set_page_config(
     page_title=APP_NAME,
-    page_icon=str(APP_LOGO_PATH) if APP_LOGO_PATH.exists() else "🌍",
+    page_icon=str(APP_FAVICON_PATH) if APP_FAVICON_PATH.exists() else (str(APP_LOGO_PATH) if APP_LOGO_PATH.exists() else "🌍"),
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+st.markdown(EARLY_PUBLIC_CSS, unsafe_allow_html=True)
+
 # =========================================================
-# ORBIDENSE AI — ACCESSIBILITY / VIEW SCALE
+# ORBIDENSE — ACCESSIBILITY / VIEW SCALE
 # =========================================================
 # This controls the visual scale of the complete Streamlit application.
 # It changes presentation only; maps, data, calculations and routing are untouched.
@@ -149,7 +157,7 @@ except Exception as analytics_error:
         analytics_error
     )
     print(
-        "ORBIDENSE AI analytics initialization error:",
+        "ORBIDENSE analytics initialization error:",
         analytics_error,
     )
 
@@ -179,7 +187,7 @@ html, body, [class*="css"] {
    APP SHELL / TOP-SPACING FIX
    =========================================================
    Streamlit reserves a header band even when its background is transparent.
-   Collapse that reservation so every ORBIDENSE AI page starts near the top.
+   Collapse that reservation so every ORBIDENSE page starts near the top.
    Keep the toolbar available as a small floating control at the top-right.
 */
 [data-testid="stHeader"] {
@@ -251,7 +259,7 @@ footer {
 /* =========================================================
    HOME CLEANUP
    =========================================================
-   The large ORBIDENSE AI Home hero repeated information already communicated
+   The large ORBIDENSE Home hero repeated information already communicated
    by the navigation/search and pushed the live globe below the fold.
    Hide it globally by its dedicated V19 wrapper. The globe and Global Pulse
    columns then move upward automatically without changing any weather/data logic.
@@ -307,7 +315,7 @@ h3 {
     background: #0a1724;
 }
 /* =========================================================
-   ORBIDENSE AI BRANDING
+   ORBIDENSE BRANDING
    ========================================================= */
 
 .cp-brand {
@@ -354,7 +362,7 @@ h3 {
 }
 
 /* =========================================================
-   ORBIDENSE AI — NATIVE EXPLORE SIDEBAR CONTROL
+   ORBIDENSE — NATIVE EXPLORE SIDEBAR CONTROL
    Uses Streamlit's actual native controls in this installed build:
    OPEN   -> [data-testid="stSidebarCollapseButton"]
    CLOSED -> [data-testid="stExpandSidebarButton"]
@@ -509,7 +517,7 @@ h3 {
     box-shadow: 10px 0 32px rgba(0, 0, 0, .13);
 }
 
-/* Compact ORBIDENSE AI Home identity. Keeps the top area dense. */
+/* Compact ORBIDENSE Home identity. Keeps the top area dense. */
 .orbidense-home-head {
     margin: 0 0 8px 0;
     padding: 0;
@@ -667,7 +675,7 @@ h3 {
 }
 
 /* =========================================================
-   ORBIDENSE AI — PROFESSIONAL COMMAND SIDEBAR
+   ORBIDENSE — PROFESSIONAL COMMAND SIDEBAR
    Visual-only redesign. Navigation values and page routing are unchanged.
    ========================================================= */
 
@@ -686,7 +694,7 @@ h3 {
     padding: 14px 18px 18px 18px !important;
 }
 
-/* Exact supplied ORBIDENSE AI artwork — prominent, never cropped. */
+/* Exact supplied ORBIDENSE artwork — prominent, never cropped. */
 [data-testid="stSidebar"] [data-testid="stImage"] {
     margin: 12px auto 4px auto !important;
     padding: 0 !important;
@@ -1976,7 +1984,7 @@ div[data-testid="stChatInput"] input::placeholder {
 }
 
 /* =========================================================
-   ORBIDENSE AI — RESPONSIVE WORKSPACE + VIEW CONTROLS
+   ORBIDENSE — RESPONSIVE WORKSPACE + VIEW CONTROLS
    =========================================================
    1) The dashboard must consume the released sidebar width immediately.
    2) Zoom controls scale the complete interface, not Plotly/map camera zoom.
@@ -2193,7 +2201,7 @@ body:has([data-testid="stExpandSidebarButton"]) [data-testid="stSidebar"] {
 )
 
 # =========================================================
-# ORBIDENSE AI — PERSISTENT EXPLORE BUTTON
+# ORBIDENSE — PERSISTENT EXPLORE BUTTON
 # Sidebar collapse/restore is handled entirely by Streamlit's native controls.
 # They are branded as “Explore” through CSS above, so no injected JavaScript
 # or deprecated components.html iframe is required.
@@ -2277,7 +2285,7 @@ with st.container(key="orbidense_zoom_controls"):
         if st.button(
             "−",
             key="orbidense_zoom_out",
-            help="Zoom out the full ORBIDENSE AI interface (maps keep their own map zoom)",
+            help="Zoom out the full ORBIDENSE interface (maps keep their own map zoom)",
             use_container_width=True,
         ):
             st.session_state["orbidense_ui_scale"] = round(
@@ -2289,7 +2297,7 @@ with st.container(key="orbidense_zoom_controls"):
         if st.button(
             f"{int(round(_ui_scale * 100))}%",
             key="orbidense_zoom_reset",
-            help="Reset the full ORBIDENSE AI interface to 100%",
+            help="Reset the full ORBIDENSE interface to 100%",
             use_container_width=True,
         ):
             st.session_state["orbidense_ui_scale"] = 1.0
@@ -2299,7 +2307,7 @@ with st.container(key="orbidense_zoom_controls"):
         if st.button(
             "+",
             key="orbidense_zoom_in",
-            help="Zoom in the full ORBIDENSE AI interface (maps keep their own map zoom)",
+            help="Zoom in the full ORBIDENSE interface (maps keep their own map zoom)",
             use_container_width=True,
         ):
             st.session_state["orbidense_ui_scale"] = round(
@@ -4310,7 +4318,7 @@ if not DEVELOPER_MODE:
 with st.sidebar:
 
     # =====================================================
-    # ORBIDENSE AI — COMMAND SIDEBAR
+    # ORBIDENSE — COMMAND SIDEBAR
     # =====================================================
     # Visual redesign only. All existing route values remain unchanged.
 
@@ -4323,7 +4331,7 @@ with st.sidebar:
         st.markdown(
             """
 <div class="cp-brand" style="text-align:center; margin:38px 0 20px;">
-    ORBIDENSE <span class="cp-brand-ai">AI</span>
+    ORBIDENSE
 </div>
             """,
             unsafe_allow_html=True,
@@ -4348,7 +4356,7 @@ with st.sidebar:
         st.session_state["main_navigation"] = legacy_routes[current_route]
 
 
-    # ORBIDENSE AI intelligence redesign:
+    # ORBIDENSE intelligence redesign:
     # normalize stale browser/session routes from previous public navigation.
     _legacy_public_routes = {
         "Dashboard": "Home",
@@ -4391,23 +4399,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    nav_view = st.radio(
-        "Navigation",
-        options=navigation_options,
-        key="main_navigation",
-        label_visibility="collapsed",
-        width="stretch",
-        format_func=lambda value: {
-            "Home": "⌂   Home",
-            "Climate Outlook": "◔   Climate Outlook",
-            "Climate Action": "↗   Climate Action",
-            "Compare": "⇄   Compare",
-            "Global Insights": "◎   Global Insights",
-            "Developer Analytics": "▥   Developer Analytics   🔒",
-            "About": "ⓘ   About ORBIDENSE AI",
-        }[value],
-    )
-
+    nav_view = st.session_state.get("main_navigation", "Home")
     # -----------------------------------------------------
     # PRIVATE SYSTEM STATUS
     # -----------------------------------------------------
@@ -4480,7 +4472,7 @@ if SHOULD_TRACK_AUDIENCE:
         # Analytics must never be allowed to break the climate application.
         AUDIENCE_ANALYTICS_READY = False
         print(
-            "ORBIDENSE AI analytics tracking error:",
+            "ORBIDENSE analytics tracking error:",
             analytics_tracking_error,
         )
 
@@ -4501,7 +4493,7 @@ if nav_view == "Developer Analytics":
 
     if not ANALYTICS_READY:
         st.error(
-            "Developer analytics could not connect to the ORBIDENSE AI database."
+            "Developer analytics could not connect to the ORBIDENSE database."
         )
 
         if ANALYTICS_INIT_ERROR:
@@ -4538,7 +4530,7 @@ if nav_view == "Developer Analytics":
     )
 
     if not authenticated:
-        st.markdown("## ▥ ORBIDENSE AI Developer Analytics")
+        st.markdown("## ▥ ORBIDENSE Developer Analytics")
         st.caption("Private developer access · not part of public navigation")
 
         entered_password = st.text_input(
@@ -4570,7 +4562,7 @@ if nav_view == "Developer Analytics":
         st.stop()
 
     # Import the heavy dashboard only after developer authentication.
-    # This keeps public ORBIDENSE AI resilient even if the optional
+    # This keeps public ORBIDENSE resilient even if the optional
     # analytics dashboard has a local dependency problem.
     try:
         from src.analytics_dashboard import render_analytics_dashboard
@@ -4579,7 +4571,7 @@ if nav_view == "Developer Analytics":
     except Exception as dashboard_error:
         st.error(
             "Developer analytics dashboard could not be rendered. "
-            "The public ORBIDENSE AI application remains available."
+            "The public ORBIDENSE application remains available."
         )
         with st.expander("Developer analytics technical detail", expanded=True):
             st.exception(dashboard_error)
@@ -4727,82 +4719,10 @@ def _header_global_pulse_html():
 
 selected_search_result = None
 
-if nav_view in {"Home", "Country Climate Outlook", "Climate Action & Progress"}:
-
-    st.markdown(
-        '<div id="dashboard"></div>',
-        unsafe_allow_html=True,
-    )
-
-    # -----------------------------------------------------
-    # HOME IDENTITY — FIRST ELEMENT ON THE PAGE
-    # -----------------------------------------------------
-    # The exact supplied logo is shown first, followed by the
-    # ORBIDENSE AI wordmark. The redundant Global Place Search
-    # introduction card has intentionally been removed.
-    if nav_view == "Home":
-        st.markdown(
-            '<div class="orbidense-home-head"></div>',
-            unsafe_allow_html=True,
-        )
-
-        logo_col, identity_col, pulse_col = st.columns(
-            [0.075, 0.31, 0.615],
-            gap="small",
-            vertical_alignment="center",
-        )
-
-        with logo_col:
-            if APP_LOGO_PATH.exists():
-                st.image(
-                    str(APP_LOGO_PATH),
-                    width=72,
-                )
-
-        with identity_col:
-            st.markdown(
-                """
-<div class="orbidense-home-wordmark">
-    <div class="orbidense-home-title">
-        ORBIDENSE <span>AI</span>
-    </div>
-    <div class="orbidense-home-tagline">
-        Earth Data · Risk Intelligence · Better Decisions
-    </div>
-</div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with pulse_col:
-            pulse_html = _header_global_pulse_html()
-            if pulse_html:
-                st.markdown(pulse_html, unsafe_allow_html=True)
-
-
-    # -----------------------------------------------------
-    # COMPACT SEARCH — NO REDUNDANT INTRODUCTION PANEL
-    # -----------------------------------------------------
-    st.markdown(
-        '<div class="orbidense-search-row"></div>',
-        unsafe_allow_html=True,
-    )
-
-    # Public system-health information is intentionally not displayed.
-    # Search remains full-width on Home and both climate-intelligence products.
-    search_col = st.container()
-
-    with search_col:
-        selected_search_result = st_searchbox(
-            global_search,
-            key="global_place_search",
-            label=None,
-            placeholder="Search any place — Milan, Islamabad, Tokyo, Pakistan...",
-            debounce=300,
-            edit_after_submit="option",
-            clear_on_submit=False,
-            style_overrides=GLOBAL_SEARCHBOX_STYLE,
-        )
+# The legacy pre-router Home header/search was intentionally removed.
+# Public branding, navigation and search are rendered once by the
+# ORBIDENSE site router / Home renderer. This prevents the old AI-branded
+# header from flashing during initial load and removes duplicate page chrome.
 
 
 
@@ -4852,7 +4772,7 @@ if selected_search_result:
                 },
             )
         except Exception as analytics_event_error:
-            print("ORBIDENSE AI search analytics error:", analytics_event_error)
+            print("ORBIDENSE search analytics error:", analytics_event_error)
 
     # -----------------------------------------------------
     # COUNTRY
@@ -4975,7 +4895,7 @@ if pending_location:
 #
 # Home's browser geolocation runs after the main app search logic.  When it
 # succeeds it sets v27_location_sync_pending and reruns.  On this next pass,
-# make that browser point the actual global ORBIDENSE AI selection BEFORE
+# make that browser point the actual global ORBIDENSE selection BEFORE
 # dashboard/history variables are created.
 # =========================================================
 
@@ -5001,7 +4921,7 @@ if st.session_state.get(
                     },
                 )
             except Exception as analytics_event_error:
-                print("ORBIDENSE AI location analytics error:", analytics_event_error)
+                print("ORBIDENSE location analytics error:", analytics_event_error)
 
         browser_id = browser_point.get(
             "id"
@@ -5191,6 +5111,10 @@ history_required_views = {
     "Climate Trends",
     "Compare Places",
     "Climate Passport",
+    "Climate Outlook",
+    "Climate Action",
+    "Compare",
+    "Global Insights",
 }
 
 if (
@@ -5317,7 +5241,7 @@ if active_point_location is not None:
 # =========================================================
 #
 # A country is fundamentally different from a city/point.
-# ORBIDENSE AI therefore uses:
+# ORBIDENSE therefore uses:
 #
 #   Historical national climate:
 #       World Bank CCKP / CRU spatial country averages
@@ -5371,6 +5295,10 @@ if country_feature:
         "Climate Action & Progress",
         "Compare Places",
         "Climate Passport",
+        "Climate Outlook",
+        "Climate Action",
+        "Compare",
+        "Global Insights",
     }
 
     if (
@@ -5458,6 +5386,10 @@ if (
         "Climate Trends",
         "Compare Places",
         "Climate Passport",
+        "Climate Outlook",
+        "Climate Action",
+        "Compare",
+        "Global Insights",
     }
     and country_feature
     and country_location
@@ -5573,7 +5505,7 @@ def render_history_progress(
             "partial",
         }:
             st.caption(
-                "ORBIDENSE AI will resume this location's "
+                "ORBIDENSE will resume this location's "
                 "missing years the next time it is opened."
             )
 
@@ -6233,14 +6165,68 @@ else:
     ai_air = {}
     ai_scope = None
 
+
+# =========================================================
+# ORBIDENSE PUBLIC SITE ROUTER — SINGLE SOURCE OF TRUTH
+# =========================================================
+#
+# The router may receive either the new public labels or a legacy internal
+# label from an older browser session / Home CTA. Normalize locally instead
+# of rewriting st.session_state after a navigation widget has been created.
+# This avoids StreamlitAPIException and guarantees every visible button lands
+# on exactly one renderer.
+# =========================================================
+
+_raw_nav_view = render_site_router(
+    st.session_state.get("main_navigation", nav_view)
+)
+
+_ROUTE_ALIASES = {
+    # Home
+    "Home": "Home",
+    "Dashboard": "Home",
+    "Map Explorer": "Home",
+
+    # Climate Outlook
+    "Climate Outlook": "Climate Outlook",
+    "Country Climate Outlook": "Climate Outlook",
+    "Climate Timeline": "Climate Outlook",
+    "Outlook": "Climate Outlook",
+
+    # Climate Action
+    "Climate Action": "Climate Action",
+    "Climate Action & Progress": "Climate Action",
+    "Climate Trends": "Climate Action",
+    "Action": "Climate Action",
+
+    # Compare
+    "Compare": "Compare",
+    "Compare Places": "Compare",
+
+    # Global
+    "Global Insights": "Global Insights",
+    "Global Rankings": "Global Insights",
+    "Global": "Global Insights",
+
+    # About
+    "About": "About",
+    "Data & Methods": "About",
+
+    # Private developer page is handled earlier.
+    "Developer Analytics": "Developer Analytics",
+}
+
+nav_view = _ROUTE_ALIASES.get(_raw_nav_view, _raw_nav_view)
+
+# =========================================================
+# GLOBAL ASSISTANT CONTEXT
+# =========================================================
 global_ai_context = {
     "selected_location": ai_selected_name,
     "scope": ai_scope,
     "current_weather": ai_weather,
     "current_air_quality": ai_air,
-    "history_status": st.session_state.get(
-        "history_status"
-    ),
+    "history_status": st.session_state.get("history_status"),
     "historical_trend": trend,
     "country_iso3": country_iso3,
     "country_data_loaded": bool(
@@ -6249,34 +6235,37 @@ global_ai_context = {
     ),
 }
 
-render_persistent_ai(
-    global_ai_context
-)
-
+# Mount once, before every public page, including Home.
+# There is no separate public AI page.
+render_persistent_ai(global_ai_context)
 
 # =========================================================
-# ORBIDENSE AI — FINAL INTELLIGENCE ROUTES
-# Persistent AI is mounted immediately above this block.
-# Home and Developer Analytics continue into existing code.
+# FINAL PUBLIC PAGE DISPATCH
 # =========================================================
 inject_intelligence_theme()
 
-_orb_selected_iso3 = (
-    country_iso3
-    if "country_iso3" in locals() and country_iso3
-    else None
-)
+_orb_selected_iso3 = country_iso3 if country_iso3 else None
+
+if nav_view == "Home":
+    render_home_v2()
+    st.stop()
 
 if nav_view == "Climate Outlook":
-    render_climate_outlook(preferred_iso3=_orb_selected_iso3)
+    render_climate_outlook(
+        preferred_iso3=_orb_selected_iso3
+    )
     st.stop()
 
 if nav_view == "Climate Action":
-    render_climate_action(preferred_iso3=_orb_selected_iso3)
+    render_climate_action(
+        preferred_iso3=_orb_selected_iso3
+    )
     st.stop()
 
 if nav_view == "Compare":
-    render_compare(preferred_iso3=_orb_selected_iso3)
+    render_compare(
+        preferred_iso3=_orb_selected_iso3
+    )
     st.stop()
 
 if nav_view == "Global Insights":
@@ -6287,3131 +6276,11 @@ if nav_view == "About":
     render_professional_about()
     st.stop()
 
-
-
-if city is not None:
-    title = f"{city['city_name']}, {city['country_name']}"
-
-    live_timezone = None
-
-    try:
-        live_timezone = (
-            live_environment
-            .get("weather", {})
-            .get("timezone")
-        )
-    except Exception:
-        live_timezone = None
-
-    timezone_label = (
-        live_timezone
-        or (
-            "Local timezone"
-            if city["timezone"] == "auto"
-            else city["timezone"]
-        )
-    )
-
-    selected_scope_note = None
-
-    if st.session_state.selected_location:
-        selected_scope_note = (
-            st.session_state.selected_location
-            .get("scope_note")
-        )
-
-    scope_html = (
-        f"<span>◌ Point-based ERA5 at selected centroid</span>"
-        if selected_scope_note
-        else ""
-    )
-
-    meta = (
-        f"◈ {city['latitude']:.4f}°, {city['longitude']:.4f}°"
-        f"<span>◉ {timezone_label}</span>"
-        f"<span>ERA5 1990–2025</span>"
-        f"{scope_html}"
-    )
-elif st.session_state.selected_country:
-    title = maptiler_result_label(
-        st.session_state.selected_country
-    )
-
-    if (
-        country_national is not None
-        and not country_national.empty
-    ):
-        country_source_label = (
-            "National climate data ready"
-        )
-    elif country_data_error:
-        country_source_label = (
-            "National data source unavailable"
-        )
-    else:
-        country_source_label = (
-            "Retrieving national climate data"
-        )
-
-    meta = (
-        f"◈ {country_iso3 or 'Country'}"
-        f"<span>World Bank CCKP national averages</span>"
-        f"<span>CRU historical national series</span>"
-        f"<span>{country_source_label}</span>"
-    )
-else:
-    if nav_view == "Home":
-        title = "Live Earth Intelligence"
-        meta = "Current conditions, forecast, health context, compound signals and climate change"
-    else:
-        title = "Global Climate Intelligence"
-        meta = "Search any city, place or country to explore climate conditions and long-term trends"
-
-if nav_view != "Home":
-    st.markdown(
-        f"""
-<div class="cp-topline"><div>
-<div class="cp-place-title">{title}</div>
-<div class="cp-place-meta">{meta}</div>
-</div></div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-# =========================================================
-# DERIVED CLIMATE PRODUCT DATA
-# =========================================================
-#
-# These variables must be created before Climate Passport,
-# Dashboard Fingerprint, or Climate Trends attempts to use
-# them. Keeping them here prevents NameError on navigation.
-# =========================================================
-
-warming_rate = None
-warming_text = "N/A"
-climate_fingerprint = None
-climate_signature = "Climate profile unavailable"
-
-if (
-    summary is not None
-    and not summary.empty
-):
-    warming_rate = (
-        safe_float(
-            trend.get(
-                "warming_rate_c_per_decade"
-            )
-        )
-        if trend
-        else None
-    )
-
-    warming_text = (
-        f"{warming_rate:+.2f}°C/decade"
-        if warming_rate is not None
-        else "N/A"
-    )
-
-    climate_fingerprint = (
-        build_climate_fingerprint(
-            summary,
-            warming_rate,
-        )
-    )
-
-    climate_signature = (
-        fingerprint_signature(
-            climate_fingerprint
-        )
-    )
-
-
-
-# =========================================================
-# FUTURISTIC HOME
-# =========================================================
-
-if nav_view == "Home":
-    render_home_page(
-        city=city,
-        point_location=(
-            st.session_state.get(
-                "selected_location"
-            )
-        ),
-        summary=summary,
-        anomalies=anomalies,
-        trend=trend,
-        country_feature=country_feature,
-        country_location=country_location,
-        country_national=country_national,
-        country_iso3=country_iso3,
-    )
-    st.stop()
-
-
-if nav_view == "Dashboard":
-    render_dashboard_page(
-        city=city,
-        point_location=(
-            st.session_state.get(
-                "selected_location"
-            )
-        ),
-        summary=summary,
-        anomalies=anomalies,
-        trend=trend,
-        country_feature=country_feature,
-        country_location=country_location,
-        country_national=country_national,
-    )
-    st.stop()
-
-
-if nav_view == "AI Assistant":
-    render_ai_page(
-        global_ai_context
-    )
-    st.stop()
-
-
-# =========================================================
-# CLIMATE TIMELINE
-# =========================================================
-
-if nav_view == "Country Climate Outlook":
-    render_country_climate_outlook(
-        country_feature=country_feature,
-        country_iso3=country_iso3,
-        country_national=country_national,
-        point_location=st.session_state.get("selected_location"),
-    )
-    st.stop()
-
-
-if nav_view == "Climate Action & Progress":
-    render_climate_action_progress(
-        country_feature=country_feature,
-        country_iso3=country_iso3,
-        country_national=country_national,
-        point_location=st.session_state.get("selected_location"),
-    )
-    st.stop()
-
-
-# =========================================================
-# COMPARE PLACES
-# =========================================================
-
-if nav_view == "Compare Places":
-
-    st.markdown(
-        """<div class="cp-compare-hero">
-<div class="cp-compare-title">⇄ Compare Places</div>
-<div class="cp-compare-sub">
-Compare two to four places across <b>Past</b>, <b>Recent Climate</b>,
-<b>Now</b>, <b>Observed Trend</b> and an optional
-<b>2041–2049 multi-model CMIP6 ensemble</b>. Future uncertainty is shown
-as model spread rather than as artificial emissions scenarios.
-</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    control_a, control_b = st.columns(
-        [
-            0.8,
-            1.7,
-        ],
-        gap="medium",
-    )
-
-    with control_a:
-        compare_count = st.selectbox(
-            "Number of places",
-            options=[
-                2,
-                3,
-                4,
-            ],
-            index=0,
-            key="compare_count",
-        )
-
-    with control_b:
-        future_mode = st.selectbox(
-            "Future climate ensemble",
-            options=[
-                "Off",
-                "Core 4 models",
-                "All 7 models",
-            ],
-            index=0,
-            key="future_ensemble_mode",
-            help=(
-                "Core 4 is recommended for routine use. "
-                "All 7 gives a broader model-spread check "
-                "but uses heavier climate API calls."
-            ),
-        )
-
-    if future_mode == "Core 4 models":
-        selected_future_models = [
-            "CMCC_CM2_VHR4",
-            "MRI_AGCM3_2_S",
-            "EC_Earth3P_HR",
-            "MPI_ESM1_2_XR",
-        ]
-    elif future_mode == "All 7 models":
-        selected_future_models = list(
-            CLIMATE_MODELS
-        )
-    else:
-        selected_future_models = []
-
-    include_future = bool(
-        selected_future_models
-    )
-
-    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
-        try:
-            track_event_once(
-                f"compare_config::{compare_count}::{future_mode}",
-                "compare_configuration",
-                category="compare",
-                page_name=nav_view,
-                metadata={
-                    "place_count": compare_count,
-                    "future_mode": future_mode,
-                    "model_count": len(selected_future_models),
-                },
-            )
-        except Exception as analytics_event_error:
-            print("ORBIDENSE AI compare analytics error:", analytics_event_error)
-
-    st.markdown(
-        """<div class="cp-compare-warning">
-<b>Scope:</b> country selections use a centroid-point proxy rather than
-a national area average. Future low/median/high values represent the
-spread across selected climate models — not low/medium/high emissions
-pathways.
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    selector_columns = st.columns(
-        compare_count,
-        gap="small",
-    )
-
-    selected_features = []
-
-    for index in range(
-        compare_count
-    ):
-        state_key = (
-            f"compare_feature_{index}"
-        )
-
-        with selector_columns[index]:
-            result = st_searchbox(
-                global_search,
-                key=(
-                    f"compare_search_{index}"
-                ),
-                label=(
-                    f"Place {index + 1}"
-                ),
-                placeholder=(
-                    "Search country, city or place..."
-                ),
-                debounce=300,
-                edit_after_submit="option",
-                clear_on_submit=False,
-                style_overrides=GLOBAL_SEARCHBOX_STYLE,
-            )
-
-            if result:
-                st.session_state[
-                    state_key
-                ] = result
-
-            stored = st.session_state.get(
-                state_key
-            )
-
-            if stored:
-                selected_features.append(
-                    stored
-                )
-
-    clear_col, note_col = st.columns(
-        [
-            0.8,
-            3.2,
-        ],
-        vertical_alignment="center",
-    )
-
-    with clear_col:
-        if st.button(
-            "Clear comparison",
-            width="stretch",
-        ):
-            for index in range(4):
-                st.session_state.pop(
-                    f"compare_feature_{index}",
-                    None,
-                )
-            st.rerun()
-
-    with note_col:
-        st.caption(
-            "Historical metrics appear when the ERA5 record "
-            "for that location is ready."
-        )
-
-    if len(selected_features) < 2:
-        st.markdown(
-            """<div class="cp-landing">
-<b>Select at least two locations</b><br>
-<span class="cp-muted">
-ORBIDENSE AI can compare two, three or four locations side by side.
-</span>
-</div>""",
-            unsafe_allow_html=True,
-        )
-        st.stop()
-
-    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
-        try:
-            compare_labels = [
-                maptiler_result_label(feature)
-                for feature in selected_features
-            ]
-            compare_signature = "|".join(compare_labels) + f"|{future_mode}"
-            track_event_once(
-                f"compare_selection::{compare_signature}",
-                "compare_places_selected",
-                category="compare",
-                page_name=nav_view,
-                metadata={
-                    "places": compare_labels,
-                    "place_count": len(compare_labels),
-                    "future_mode": future_mode,
-                },
-            )
-        except Exception as analytics_event_error:
-            print("ORBIDENSE AI compare selection analytics error:", analytics_event_error)
-
-    comparison_records = []
-
-    with st.spinner(
-        (
-            "Preparing historical, live and CMIP6 ensemble data..."
-            if include_future
-            else "Preparing historical and live comparison..."
-        )
-    ):
-        for feature in selected_features:
-            comparison_records.append(
-                comparison_snapshot(
-                    feature,
-                    include_future=include_future,
-                    future_models=selected_future_models,
-                )
-            )
-
-    # -----------------------------------------------------
-    # OVERVIEW CARDS
-    # -----------------------------------------------------
-
-    st.markdown(
-        "### Side-by-side overview"
-    )
-
-    overview_columns = st.columns(
-        len(comparison_records),
-        gap="small",
-    )
-
-    for column, record in zip(
-        overview_columns,
-        comparison_records,
-    ):
-        values = comparison_metrics(
-            record
-        )
-
-        current_text = (
-            f"{values['current_temp']:.1f}°C"
-            if values["current_temp"] is not None
-            else "N/A"
-        )
-        baseline_text = (
-            f"{values['baseline_temp']:.1f}°C"
-            if values["baseline_temp"] is not None
-            else "Loading"
-        )
-        trend_text = (
-            f"{values['warming_rate']:+.2f}°C/dec"
-            if values["warming_rate"] is not None
-            else "Loading"
-        )
-
-        if values["future_temp_median"] is not None:
-            future_text = (
-                f"{values['future_temp_median']:.1f}°C"
-            )
-            future_range = (
-                f"{values['future_temp_low']:.1f}–"
-                f"{values['future_temp_high']:.1f}°C "
-                f"({values['future_model_count']} models)"
-            )
-        else:
-            future_text = (
-                "Off"
-                if not include_future
-                else "Unavailable"
-            )
-            future_range = "—"
-
-        with column:
-            st.markdown(
-                f"""<div class="cp-compare-place">
-<div class="cp-compare-name">{record["label"]}</div>
-<div class="cp-compare-type">{record["scope"]}</div>
-<div class="cp-compare-big">{current_text}</div>
-<div class="cp-compare-caption">Current temperature</div>
-
-<div class="cp-compare-mini">
-<div class="cp-compare-mini-card">
-<div class="cp-compare-mini-label">1991–2020 baseline</div>
-<div class="cp-compare-mini-value">{baseline_text}</div>
-</div>
-<div class="cp-compare-mini-card">
-<div class="cp-compare-mini-label">Observed warming</div>
-<div class="cp-compare-mini-value">{trend_text}</div>
-</div>
-<div class="cp-compare-mini-card">
-<div class="cp-compare-mini-label">2041–2049 median</div>
-<div class="cp-compare-mini-value">{future_text}</div>
-</div>
-<div class="cp-compare-mini-card">
-<div class="cp-compare-mini-label">Model spread</div>
-<div class="cp-compare-mini-value">{future_range}</div>
-</div>
-</div>
-</div>""",
-                unsafe_allow_html=True,
-            )
-
-    # -----------------------------------------------------
-    # DETAILED MATRIX
-    # -----------------------------------------------------
-
-    st.markdown(
-        "### Past · Recent · Now · Trend · Future"
-    )
-
-    matrix_rows = []
-
-    for record in comparison_records:
-        values = comparison_metrics(
-            record
-        )
-
-        future_hot_range = None
-        if values["future_hot30_median"] is not None:
-            future_hot_range = (
-                f"{values['future_hot30_low']:.0f}–"
-                f"{values['future_hot30_high']:.0f}"
-            )
-
-        matrix_rows.append(
-            {
-                "Place": record["label"],
-                "Scope": record["scope"],
-                "Past mean temp 1991–2020 (°C)": values["baseline_temp"],
-                "Past annual precip (mm)": values["baseline_precip"],
-                "Past hot days ≥30°C / yr": values["baseline_hot30"],
-                "Past days ≥35°C / yr": values["baseline_hot35"],
-                "Recent mean temp 2016–2025 (°C)": values["recent_temp"],
-                "Recent change vs baseline (°C)": values["recent_temp_delta"],
-                "Now temp (°C)": values["current_temp"],
-                "Feels like (°C)": values["current_feels"],
-                "Humidity (%)": values["current_humidity"],
-                "European AQI": values["current_aqi"],
-                "Latest anomaly (°C)": values["latest_anomaly"],
-                "Observed trend (°C/decade)": values["warming_rate"],
-                "Future temp median (°C)": values["future_temp_median"],
-                "Future temp model min (°C)": values["future_temp_low"],
-                "Future temp model max (°C)": values["future_temp_high"],
-                "Future hot days median / yr": values["future_hot30_median"],
-                "Future hot days model range": future_hot_range,
-                "Future precip median (mm/yr)": values["future_precip_median"],
-                "Future model count": values["future_model_count"],
-            }
-        )
-
-    comparison_df = pd.DataFrame(
-        matrix_rows
-    )
-
-    dark_dataframe(
-        comparison_df
-    )
-
-    chart_labels = [
-        record["label"]
-        for record in comparison_records
-    ]
-
-    chart_metrics = [
-        comparison_metrics(record)
-        for record in comparison_records
-    ]
-
-    # -----------------------------------------------------
-    # TEMPERATURE / TREND
-    # -----------------------------------------------------
-
-    chart_a, chart_b = st.columns(
-        2,
-        gap="medium",
-    )
-
-    with chart_a:
-        with st.container(border=True):
-            st.markdown(
-                '<div class="cp-section-heading">Temperature evolution</div>',
-                unsafe_allow_html=True,
-            )
-
-            fig = go.Figure()
-
-            fig.add_trace(
-                go.Bar(
-                    x=chart_labels,
-                    y=[
-                        values["baseline_temp"]
-                        for values in chart_metrics
-                    ],
-                    name="1991–2020",
-                )
-            )
-            fig.add_trace(
-                go.Bar(
-                    x=chart_labels,
-                    y=[
-                        values["recent_temp"]
-                        for values in chart_metrics
-                    ],
-                    name="2016–2025",
-                )
-            )
-
-            if include_future:
-                fig.add_trace(
-                    go.Bar(
-                        x=chart_labels,
-                        y=[
-                            values["future_temp_median"]
-                            for values in chart_metrics
-                        ],
-                        error_y=dict(
-                            type="data",
-                            symmetric=False,
-                            array=[
-                                (
-                                    values["future_temp_high"]
-                                    - values["future_temp_median"]
-                                )
-                                if (
-                                    values["future_temp_high"] is not None
-                                    and values["future_temp_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                            arrayminus=[
-                                (
-                                    values["future_temp_median"]
-                                    - values["future_temp_low"]
-                                )
-                                if (
-                                    values["future_temp_low"] is not None
-                                    and values["future_temp_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                        ),
-                        name="2041–2049 ensemble",
-                    )
-                )
-
-            fig.update_layout(
-                barmode="group"
-            )
-            style_plotly(
-                fig,
-                height=330,
-                y_title="°C",
-            )
-            st.plotly_chart(
-                fig,
-                width="stretch",
-                config={
-                    "displayModeBar": False,
-                },
-            )
-
-    with chart_b:
-        with st.container(border=True):
-            st.markdown(
-                '<div class="cp-section-heading">Observed warming rate</div>',
-                unsafe_allow_html=True,
-            )
-
-            fig = go.Figure(
-                go.Bar(
-                    x=chart_labels,
-                    y=[
-                        values["warming_rate"]
-                        for values in chart_metrics
-                    ],
-                )
-            )
-            style_plotly(
-                fig,
-                height=330,
-                y_title="°C / decade",
-            )
-            fig.update_layout(
-                showlegend=False
-            )
-            st.plotly_chart(
-                fig,
-                width="stretch",
-                config={
-                    "displayModeBar": False,
-                },
-            )
-
-    # -----------------------------------------------------
-    # FUTURE ENSEMBLE
-    # -----------------------------------------------------
-
-    if include_future:
-
-        future_a, future_b = st.columns(
-            2,
-            gap="medium",
-        )
-
-        with future_a:
-            with st.container(border=True):
-                st.markdown(
-                    '<div class="cp-section-heading">Future hot days</div>',
-                    unsafe_allow_html=True,
-                )
-
-                fig = go.Figure(
-                    go.Bar(
-                        x=chart_labels,
-                        y=[
-                            values["future_hot30_median"]
-                            for values in chart_metrics
-                        ],
-                        error_y=dict(
-                            type="data",
-                            symmetric=False,
-                            array=[
-                                (
-                                    values["future_hot30_high"]
-                                    - values["future_hot30_median"]
-                                )
-                                if (
-                                    values["future_hot30_high"] is not None
-                                    and values["future_hot30_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                            arrayminus=[
-                                (
-                                    values["future_hot30_median"]
-                                    - values["future_hot30_low"]
-                                )
-                                if (
-                                    values["future_hot30_low"] is not None
-                                    and values["future_hot30_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                        ),
-                    )
-                )
-                style_plotly(
-                    fig,
-                    height=310,
-                    y_title="Days ≥30°C / year",
-                )
-                fig.update_layout(
-                    showlegend=False
-                )
-                st.plotly_chart(
-                    fig,
-                    width="stretch",
-                    config={
-                        "displayModeBar": False,
-                    },
-                )
-
-        with future_b:
-            with st.container(border=True):
-                st.markdown(
-                    '<div class="cp-section-heading">Future annual precipitation</div>',
-                    unsafe_allow_html=True,
-                )
-
-                fig = go.Figure(
-                    go.Bar(
-                        x=chart_labels,
-                        y=[
-                            values["future_precip_median"]
-                            for values in chart_metrics
-                        ],
-                        error_y=dict(
-                            type="data",
-                            symmetric=False,
-                            array=[
-                                (
-                                    values["future_precip_high"]
-                                    - values["future_precip_median"]
-                                )
-                                if (
-                                    values["future_precip_high"] is not None
-                                    and values["future_precip_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                            arrayminus=[
-                                (
-                                    values["future_precip_median"]
-                                    - values["future_precip_low"]
-                                )
-                                if (
-                                    values["future_precip_low"] is not None
-                                    and values["future_precip_median"] is not None
-                                )
-                                else 0
-                                for values in chart_metrics
-                            ],
-                        ),
-                    )
-                )
-                style_plotly(
-                    fig,
-                    height=310,
-                    y_title="mm / year",
-                )
-                fig.update_layout(
-                    showlegend=False
-                )
-                st.plotly_chart(
-                    fig,
-                    width="stretch",
-                    config={
-                        "displayModeBar": False,
-                    },
-                )
-
-        st.markdown(
-            "### Model agreement"
-        )
-
-        agreement_columns = st.columns(
-            len(comparison_records),
-            gap="small",
-        )
-
-        for column, record in zip(
-            agreement_columns,
-            comparison_records,
-        ):
-            values = comparison_metrics(
-                record
-            )
-
-            with column:
-                st.markdown(
-                    f"**{record['label']}**"
-                )
-                st.metric(
-                    "Temperature",
-                    values["future_temp_agreement"],
-                )
-                st.metric(
-                    "Hot days",
-                    values["future_hot_agreement"],
-                )
-                st.metric(
-                    "Precipitation",
-                    values["future_precip_agreement"],
-                )
-
-        with st.expander(
-            "Individual CMIP6 model results",
-            expanded=False,
-        ):
-            model_rows = []
-
-            for record in comparison_records:
-                ensemble = (
-                    record.get(
-                        "future_ensemble"
-                    )
-                    or {}
-                )
-
-                for model_result in ensemble.get(
-                    "models",
-                    []
-                ):
-                    model_rows.append(
-                        {
-                            "Place": record["label"],
-                            "Model": model_result.get("model"),
-                            "Mean temp 2041–2049 (°C)": model_result.get(
-                                "future_mean_temperature_c"
-                            ),
-                            "Hot days ≥30°C / yr": model_result.get(
-                                "future_hot_days_30c_per_year"
-                            ),
-                            "Annual precip (mm)": model_result.get(
-                                "future_annual_precipitation_mm"
-                            ),
-                        }
-                    )
-
-            if model_rows:
-                st.dataframe(
-                    pd.DataFrame(model_rows),
-                    width="stretch",
-                    hide_index=True,
-                )
-            else:
-                st.info(
-                    "No future-model results were returned."
-                )
-
-
-    # -----------------------------------------------------
-    # CLIMATE TRAJECTORY
-    # -----------------------------------------------------
-
-    st.markdown(
-        "### Climate trajectory"
-    )
-
-    trajectory_fig = go.Figure()
-
-    for record in comparison_records:
-        values = comparison_metrics(
-            record
-        )
-
-        x_values = []
-        y_values = []
-
-        if values["baseline_temp"] is not None:
-            x_values.append("1991–2020")
-            y_values.append(
-                values["baseline_temp"]
-            )
-
-        if values["recent_temp"] is not None:
-            x_values.append("2016–2025")
-            y_values.append(
-                values["recent_temp"]
-            )
-
-        if values["future_temp_median"] is not None:
-            x_values.append("2041–2049")
-            y_values.append(
-                values["future_temp_median"]
-            )
-
-        if len(y_values) >= 2:
-            trajectory_fig.add_trace(
-                go.Scatter(
-                    x=x_values,
-                    y=y_values,
-                    mode="lines+markers",
-                    name=record["label"],
-                    hovertemplate=(
-                        "<b>%{fullData.name}</b><br>"
-                        "%{x}: %{y:.2f}°C"
-                        "<extra></extra>"
-                    ),
-                )
-            )
-
-    if trajectory_fig.data:
-        style_plotly(
-            trajectory_fig,
-            height=390,
-            y_title="Mean temperature (°C)",
-        )
-        trajectory_fig.update_layout(
-            hovermode="x unified",
-        )
-        st.plotly_chart(
-            trajectory_fig,
-            width="stretch",
-            config={
-                "displayModeBar": True,
-                "responsive": True,
-            },
-        )
-
-    # True country-average SSP trajectories when all selections
-    # are countries.
-    country_selections = []
-    all_country_mode = True
-
-    for feature in selected_features:
-        if maptiler_feature_type(feature) != "country":
-            all_country_mode = False
-            break
-
-        iso3 = selected_feature_iso3(
-            feature
-        )
-
-        if not iso3:
-            all_country_mode = False
-            break
-
-        country_selections.append(
-            (
-                maptiler_result_label(feature),
-                iso3,
-            )
-        )
-
-    if all_country_mode:
-
-        st.markdown(
-            "### Country scenario trajectories to 2100"
-        )
-
-        scenario_name = st.selectbox(
-            "Shared Socioeconomic Pathway",
-            options=list(
-                CCKP_SCENARIOS.keys()
-            ),
-            index=1,
-            key="country_compare_scenario",
-        )
-
-        scenario_code = CCKP_SCENARIOS[
-            scenario_name
-        ]
-
-        scenario_fig = go.Figure()
-
-        scenario_rows = []
-
-        for display_name, iso3 in (
-            country_selections
-        ):
-            try:
-                traj = (
-                    cached_country_scenario_trajectory(
-                        iso3,
-                        scenario_code,
-                    )
-                )
-            except Exception:
-                traj = None
-
-            if traj is None or traj.empty:
-                continue
-
-            scenario_fig.add_trace(
-                go.Scatter(
-                    x=traj["period"],
-                    y=traj["median_c"],
-                    mode="lines+markers",
-                    name=display_name,
-                    customdata=traj[
-                        ["p10_c", "p90_c"]
-                    ].values,
-                    hovertemplate=(
-                        "<b>%{fullData.name}</b><br>"
-                        "%{x}<br>"
-                        "Median: %{y:.2f}°C<br>"
-                        "P10–P90: %{customdata[0]:.2f}–"
-                        "%{customdata[1]:.2f}°C"
-                        "<extra></extra>"
-                    ),
-                )
-            )
-
-            for _, row in traj.iterrows():
-                scenario_rows.append(
-                    {
-                        "Country": display_name,
-                        "ISO3": iso3,
-                        "Scenario": scenario_name,
-                        "Period": row["period"],
-                        "Median warming (°C)": row["median_c"],
-                        "P10 (°C)": row["p10_c"],
-                        "P90 (°C)": row["p90_c"],
-                    }
-                )
-
-        if scenario_fig.data:
-            style_plotly(
-                scenario_fig,
-                height=420,
-                y_title=(
-                    "Temperature anomaly vs "
-                    "1995–2014 (°C)"
-                ),
-            )
-            scenario_fig.update_layout(
-                hovermode="x unified",
-            )
-            st.plotly_chart(
-                scenario_fig,
-                width="stretch",
-                config={
-                    "displayModeBar": True,
-                    "responsive": True,
-                },
-            )
-
-            with st.expander(
-                "Scenario data table",
-                expanded=False,
-            ):
-                st.dataframe(
-                    pd.DataFrame(
-                        scenario_rows
-                    ),
-                    width="stretch",
-                    hide_index=True,
-                    column_config={
-                        "Median warming (°C)": st.column_config.NumberColumn(
-                            "Median warming",
-                            format="%.2f °C",
-                        ),
-                        "P10 (°C)": st.column_config.NumberColumn(
-                            "P10",
-                            format="%.2f °C",
-                        ),
-                        "P90 (°C)": st.column_config.NumberColumn(
-                            "P90",
-                            format="%.2f °C",
-                        ),
-                    },
-                )
-
-            st.caption(
-                "These country trajectories use World Bank CCKP "
-                "national spatial averages. City/place projections "
-                "remain point-based."
-            )
-
-
-
-    # -----------------------------------------------------
-    # VERDICT
-    # -----------------------------------------------------
-
-    verdict = comparison_verdict(
-        comparison_records
-    )
-    narrative = comparison_narrative(
-        comparison_records
-    )
-
-    st.markdown(
-        f"""<div class="cp-verdict">
-<div class="cp-verdict-title">Data-based comparison verdict</div>
-<div class="cp-compare-sub">{narrative}</div>
-
-<div class="cp-verdict-grid">
-<div class="cp-verdict-card">
-<div class="cp-verdict-label">Warmest right now</div>
-<div class="cp-verdict-value">{verdict.get("warmest_now", "N/A")}</div>
-</div>
-<div class="cp-verdict-card">
-<div class="cp-verdict-label">Fastest observed warming</div>
-<div class="cp-verdict-value">{verdict.get("fastest_historical_warming", "N/A")}</div>
-</div>
-<div class="cp-verdict-card">
-<div class="cp-verdict-label">Most baseline hot days</div>
-<div class="cp-verdict-value">{verdict.get("most_baseline_hot_days", "N/A")}</div>
-</div>
-<div class="cp-verdict-card">
-<div class="cp-verdict-label">Highest future ensemble heat</div>
-<div class="cp-verdict-value">{verdict.get("highest_future_heat", "Enable ensemble")}</div>
-</div>
-</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """<div class="cp-product-note">
-Future model ranges show CMIP6 model spread, not emissions-scenario
-uncertainty. Open-Meteo recommends comparing multiple climate models,
-and local precipitation generally carries greater model uncertainty
-than long-period temperature change.
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    st.download_button(
-        "Download comparison CSV",
-        data=comparison_df.to_csv(
-            index=False
-        ),
-        file_name="orbidense_ai_comparison.csv",
-        mime="text/csv",
-        width="stretch",
-    )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Compare Places</div>',
-        unsafe_allow_html=True,
-    )
-    st.stop()
-
-
-
-
-
-# =========================================================
-# GLOBAL COUNTRY WARMING RANKINGS
-# =========================================================
-
-if nav_view == "Global Rankings":
-
-    st.markdown(
-        """<div class="cp-rank-hero">
-<div class="cp-rank-title">▲ Global Country Warming Rankings</div>
-<div class="cp-rank-sub">
-Rank countries by projected mean-temperature change using World Bank
-Climate Change Knowledge Portal country-level CMIP6 spatial aggregates.
-Unlike centroid-based country views, these are national spatial averages.
-</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3 = st.columns(
-        [1.15, 1.15, .8],
-        gap="medium",
-    )
-
-    with c1:
-        scenario_label = st.selectbox(
-            "Emissions pathway",
-            options=list(
-                CCKP_SCENARIOS.keys()
-            ),
-            index=1,
-            key="global_rank_scenario",
-        )
-
-    scenario_code = CCKP_SCENARIOS[
-        scenario_label
-    ]
-
-    with c2:
-        period_label = st.selectbox(
-            "Projection period",
-            options=list(
-                CCKP_PERIODS.keys()
-            ),
-            index=1,
-            key="global_rank_period",
-        )
-
-    period_code = CCKP_PERIODS[
-        period_label
-    ]
-
-    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
-        try:
-            track_event_once(
-                f"rankings::{scenario_code}::{period_code}",
-                "global_rankings_view",
-                category="rankings",
-                page_name=nav_view,
-                metadata={
-                    "scenario": scenario_code,
-                    "scenario_label": scenario_label,
-                    "period": period_code,
-                    "period_label": period_label,
-                },
-            )
-        except Exception as analytics_event_error:
-            print("ORBIDENSE AI rankings analytics error:", analytics_event_error)
-
-    with c3:
-        top_n = st.selectbox(
-            "Show top / bottom",
-            options=[5, 10, 15, 20],
-            index=1,
-            key="global_rank_n",
-        )
-
-    st.markdown(
-        f'<span class="cp-scenario-pill">{scenario_label} · {period_label}</span>',
-        unsafe_allow_html=True,
-    )
-
-    try:
-        ranking_df = cached_country_projection_rankings(
-            scenario_code,
-            period_code,
-        )
-    except Exception as error:
-        record_error(
-            error,
-            component="global_rankings",
-            operation="load_world_bank_cckp_projections",
-            page_name=nav_view,
-            metadata={"scenario": scenario_code, "period": period_code},
-        )
-        st.caption("No ranking data is available for this selection right now.")
-        st.stop()
-
-    if ranking_df is None or ranking_df.empty:
-        record_data_quality(
-            "world_bank_cckp",
-            "country_projection_rankings",
-            "empty",
-            metadata={"scenario": scenario_code, "period": period_code},
-        )
-        st.caption("No ranking data is available for this selection right now.")
-        st.stop()
-
-    ranking_df = ranking_df.copy()
-
-    for column in [
-        "projected_warming_c",
-        "p10_c",
-        "p90_c",
-    ]:
-        ranking_df[column] = pd.to_numeric(
-            ranking_df[column],
-            errors="coerce",
-        )
-
-    ranking_df = (
-        ranking_df
-        .dropna(
-            subset=["projected_warming_c"]
-        )
-        .sort_values(
-            "projected_warming_c",
-            ascending=False,
-        )
-        .reset_index(drop=True)
-    )
-
-    ranking_df["rank"] = (
-        ranking_df.index + 1
-    )
-
-    hottest = ranking_df.head(
-        top_n
-    ).copy()
-
-    least = (
-        ranking_df
-        .sort_values(
-            "projected_warming_c",
-            ascending=True,
-        )
-        .head(top_n)
-        .copy()
-    )
-
-    warmest_row = (
-        ranking_df.iloc[0]
-        if not ranking_df.empty
-        else None
-    )
-
-    least_row = (
-        ranking_df.iloc[-1]
-        if not ranking_df.empty
-        else None
-    )
-
-    median_value = safe_float(
-        ranking_df[
-            "projected_warming_c"
-        ].median()
-    )
-
-    st.markdown(
-        f"""<div class="cp-rank-grid">
-<div class="cp-rank-card">
-<div class="cp-rank-label">Highest projected warming</div>
-<div class="cp-rank-value">{warmest_row["country_name"] if warmest_row is not None else "N/A"}</div>
-<div class="cp-rank-note">{fmt(warmest_row["projected_warming_c"] if warmest_row is not None else None, ".2f")}°C</div>
-</div>
-<div class="cp-rank-card">
-<div class="cp-rank-label">Lowest projected warming</div>
-<div class="cp-rank-value">{least_row["country_name"] if least_row is not None else "N/A"}</div>
-<div class="cp-rank-note">{fmt(least_row["projected_warming_c"] if least_row is not None else None, ".2f")}°C</div>
-</div>
-<div class="cp-rank-card">
-<div class="cp-rank-label">Country median</div>
-<div class="cp-rank-value">{fmt(median_value, ".2f")}°C</div>
-<div class="cp-rank-note">Median across returned countries</div>
-</div>
-<div class="cp-rank-card">
-<div class="cp-rank-label">Countries ranked</div>
-<div class="cp-rank-value">{len(ranking_df)}</div>
-<div class="cp-rank-note">National spatial aggregates</div>
-</div>
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    tab_most, tab_least, tab_all = st.tabs(
-        [
-            "Most warming",
-            "Least warming",
-            "All countries",
-        ]
-    )
-
-    with tab_most:
-        fig = go.Figure(
-            go.Bar(
-                x=hottest["projected_warming_c"],
-                y=hottest["country_name"],
-                orientation="h",
-                customdata=hottest[
-                    ["iso3", "p10_c", "p90_c"]
-                ].values,
-                hovertemplate=(
-                    "<b>%{y}</b><br>"
-                    "Median: %{x:.2f}°C<br>"
-                    "ISO3: %{customdata[0]}<br>"
-                    "P10–P90: %{customdata[1]:.2f}–"
-                    "%{customdata[2]:.2f}°C"
-                    "<extra></extra>"
-                ),
-            )
-        )
-        fig.update_layout(
-            yaxis=dict(
-                autorange="reversed"
-            ),
-            xaxis_title=(
-                "Projected warming vs 1995–2014 (°C)"
-            ),
-            showlegend=False,
-        )
-        style_plotly(
-            fig,
-            height=max(
-                330,
-                34 * len(hottest),
-            ),
-        )
-        st.plotly_chart(
-            fig,
-            width="stretch",
-            config={
-                "displayModeBar": True,
-                "responsive": True,
-            },
-        )
-        st.dataframe(
-            hottest[
-                [
-                    "rank",
-                    "country_name",
-                    "iso3",
-                    "projected_warming_c",
-                    "p10_c",
-                    "p90_c",
-                ]
-            ],
-            width="stretch",
-            hide_index=True,
-            column_config={
-                "rank": st.column_config.NumberColumn(
-                    "Rank",
-                    format="%d",
-                ),
-                "country_name": "Country",
-                "iso3": "ISO3",
-                "projected_warming_c": st.column_config.NumberColumn(
-                    "Median warming",
-                    format="%.2f °C",
-                ),
-                "p10_c": st.column_config.NumberColumn(
-                    "P10",
-                    format="%.2f °C",
-                ),
-                "p90_c": st.column_config.NumberColumn(
-                    "P90",
-                    format="%.2f °C",
-                ),
-            },
-        )
-
-    with tab_least:
-        fig = go.Figure(
-            go.Bar(
-                x=least["projected_warming_c"],
-                y=least["country_name"],
-                orientation="h",
-                customdata=least[
-                    ["iso3", "p10_c", "p90_c"]
-                ].values,
-                hovertemplate=(
-                    "<b>%{y}</b><br>"
-                    "Median: %{x:.2f}°C<br>"
-                    "P10–P90: %{customdata[1]:.2f}–"
-                    "%{customdata[2]:.2f}°C"
-                    "<extra></extra>"
-                ),
-            )
-        )
-        fig.update_layout(
-            xaxis_title=(
-                "Projected warming vs 1995–2014 (°C)"
-            ),
-            showlegend=False,
-        )
-        style_plotly(
-            fig,
-            height=max(
-                330,
-                34 * len(least),
-            ),
-        )
-        st.plotly_chart(
-            fig,
-            width="stretch",
-            config={
-                "displayModeBar": True,
-                "responsive": True,
-            },
-        )
-        st.dataframe(
-            least[
-                [
-                    "country_name",
-                    "iso3",
-                    "projected_warming_c",
-                    "p10_c",
-                    "p90_c",
-                ]
-            ],
-            width="stretch",
-            hide_index=True,
-        )
-
-    with tab_all:
-        filter_text = st.text_input(
-            "Filter countries",
-            placeholder=(
-                "Country name or ISO3..."
-            ),
-            key="rank_filter",
-        )
-
-        filtered = ranking_df.copy()
-
-        if filter_text.strip():
-            q = filter_text.strip().casefold()
-
-            filtered = filtered[
-                filtered["country_name"]
-                .astype(str)
-                .str.casefold()
-                .str.contains(q, na=False)
-                |
-                filtered["iso3"]
-                .astype(str)
-                .str.casefold()
-                .str.contains(q, na=False)
-            ]
-
-        st.dataframe(
-            filtered[
-                [
-                    "rank",
-                    "country_name",
-                    "iso3",
-                    "projected_warming_c",
-                    "p10_c",
-                    "p90_c",
-                ]
-            ],
-            width="stretch",
-            hide_index=True,
-            column_config={
-                "rank": st.column_config.NumberColumn(
-                    "Rank",
-                    format="%d",
-                ),
-                "country_name": "Country",
-                "iso3": "ISO3",
-                "projected_warming_c": st.column_config.ProgressColumn(
-                    "Median warming",
-                    format="%.2f °C",
-                    min_value=float(
-                        ranking_df[
-                            "projected_warming_c"
-                        ].min()
-                    ),
-                    max_value=float(
-                        ranking_df[
-                            "projected_warming_c"
-                        ].max()
-                    ),
-                ),
-                "p10_c": st.column_config.NumberColumn(
-                    "P10",
-                    format="%.2f °C",
-                ),
-                "p90_c": st.column_config.NumberColumn(
-                    "P90",
-                    format="%.2f °C",
-                ),
-            },
-        )
-
-    st.markdown(
-        "### Scenario sensitivity"
-    )
-
-    scenario_fig = go.Figure()
-
-    for scenario_name, scenario_value in (
-        CCKP_SCENARIOS.items()
-    ):
-        try:
-            scenario_df = (
-                cached_country_projection_rankings(
-                    scenario_value,
-                    period_code,
-                )
-            )
-
-            if (
-                scenario_df is None
-                or scenario_df.empty
-            ):
-                continue
-
-            scenario_df = scenario_df.sort_values(
-                "projected_warming_c",
-                ascending=False,
-            ).head(10)
-
-            scenario_fig.add_trace(
-                go.Scatter(
-                    x=scenario_df["country_name"],
-                    y=scenario_df[
-                        "projected_warming_c"
-                    ],
-                    mode="lines+markers",
-                    name=scenario_name,
-                    hovertemplate=(
-                        "<b>%{x}</b><br>"
-                        "%{y:.2f}°C"
-                        "<extra>%{fullData.name}</extra>"
-                    ),
-                )
-            )
-
-        except Exception:
-            continue
-
-    if scenario_fig.data:
-        style_plotly(
-            scenario_fig,
-            height=390,
-            y_title="Projected warming (°C)",
-        )
-        st.plotly_chart(
-            scenario_fig,
-            width="stretch",
-            config={
-                "displayModeBar": True,
-                "responsive": True,
-            },
-        )
-
-    st.markdown(
-        """<div class="cp-method-box">
-<b>Method:</b> World Bank CCKP CMIP6 country spatial averages.
-Temperature change is the multi-model ensemble anomaly relative to
-1995–2014. P10 and P90 communicate model uncertainty. This is a national
-comparison, unlike ORBIDENSE AI's centroid proxy used for ordinary
-country point searches.
-</div>""",
-        unsafe_allow_html=True,
-    )
-
-    st.download_button(
-        "Download ranking CSV",
-        data=ranking_df.to_csv(
-            index=False
-        ),
-        file_name=(
-            f"orbidense_ai_country_warming_"
-            f"{scenario_code}_{period_code}.csv"
-        ),
-        mime="text/csv",
-        width="stretch",
-    )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Global Rankings</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-
-
-# =========================================================
-# CLIMATE PASSPORT
-# =========================================================
-
-if nav_view == "Climate Passport":
-
-    passport_baseline_ready = False
-
-    if (
-        summary is not None
-        and not summary.empty
-        and "year" in summary.columns
-    ):
-        passport_baseline_years = summary[
-            (
-                summary["year"] >= 1991
-            )
-            &
-            (
-                summary["year"] <= 2020
-            )
-        ]
-
-        passport_baseline_ready = (
-            len(
-                passport_baseline_years
-            )
-            >= 25
-        )
-
-    if (
-        city is None
-        or summary is None
-        or summary.empty
-        or climate_fingerprint is None
-        or not passport_baseline_ready
-    ):
-
-        st.markdown(
-            """
-<div class="cp-landing">
-<b>Climate Passport needs historical climate data</b><br>
-<span class="cp-muted">
-Search a location with sufficient ERA5 history. If it is a new place,
-ORBIDENSE AI will prepare its historical record before the passport can
-be generated.
-</span>
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if city is not None:
-            render_history_progress(
-                city["city_id"]
-            )
-
-        st.stop()
-
-    fp = climate_fingerprint
-
-    if ANALYTICS_READY and AUDIENCE_ANALYTICS_READY:
-        try:
-            passport_location_label = (
-                f"{city.get('city_name', '')}, {city.get('country_name', '')}"
-                if isinstance(city, dict)
-                else "Selected location"
-            )
-            track_event_once(
-                f"passport::{passport_location_label}",
-                "climate_passport_generated",
-                category="climate_product",
-                page_name=nav_view,
-                metadata={
-                    "location": passport_location_label,
-                    "historical_period": "1990-2025",
-                    "baseline": "1991-2020",
-                },
-            )
-        except Exception as analytics_event_error:
-            print("ORBIDENSE AI passport analytics error:", analytics_event_error)
-
-    passport_latest = (
-        summary
-        .sort_values(
-            "year"
-        )
-        .iloc[-1]
-    )
-
-    passport_baseline = summary[
-        (
-            summary["year"] >= 1991
-        )
-        &
-        (
-            summary["year"] <= 2020
-        )
-    ]
-
-    passport_mean_temp = safe_float(
-        passport_baseline[
-            "avg_temperature_c"
-        ].mean()
-    )
-
-    passport_precip = safe_float(
-        passport_baseline[
-            "annual_precipitation_mm"
-        ].mean()
-    )
-
-    passport_hot_days = safe_float(
-        passport_baseline[
-            "hot_days_30c"
-        ].mean()
-    )
-
-    passport_extreme_days = safe_float(
-        passport_baseline[
-            "extreme_hot_days_35c"
-        ].mean()
-    )
-
-    passport_record_high = safe_float(
-        summary[
-            "hottest_day_c"
-        ].max()
-    )
-
-    passport_record_low = safe_float(
-        summary[
-            "coldest_day_c"
-        ].min()
-    )
-
-    passport_html = f"""<div class="cp-passport">
-<div class="cp-passport-eyebrow">ORBIDENSE AI Climate Passport</div>
-<div class="cp-passport-location">{city["city_name"]}, {city["country_name"]}</div>
-<div class="cp-passport-meta">◈ {city["latitude"]:.4f}°, {city["longitude"]:.4f}° &nbsp; • &nbsp; ERA5 1990–2025 &nbsp; • &nbsp; Baseline 1991–2020</div>
-<div class="cp-passport-signature">{climate_signature}</div>
-</div>"""
-
-    st.markdown(
-        passport_html,
-        unsafe_allow_html=True,
-    )
-
-    passport_left, passport_right = st.columns(
-        [
-            1.12,
-            0.88,
-        ],
-        gap="medium",
-    )
-
-    with passport_left:
-
-        st.markdown(
-            f"""<div class="cp-passport-grid">
-<div class="cp-passport-card">
-<div class="cp-passport-label">Baseline mean temperature</div>
-<div class="cp-passport-value">{fmt(passport_mean_temp, ".1f")}°C</div>
-<div class="cp-passport-note">1991–2020 annual mean</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Baseline precipitation</div>
-<div class="cp-passport-value">{fmt(passport_precip, ".0f")} mm</div>
-<div class="cp-passport-note">Average annual total</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Hot days ≥30°C</div>
-<div class="cp-passport-value">{fmt(passport_hot_days, ".0f")}</div>
-<div class="cp-passport-note">Average days/year</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Very hot days ≥35°C</div>
-<div class="cp-passport-value">{fmt(passport_extreme_days, ".0f")}</div>
-<div class="cp-passport-note">Average days/year</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Warming trend</div>
-<div class="cp-passport-value">{warming_text}</div>
-<div class="cp-passport-note">1990–2025 linear trend</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Record high</div>
-<div class="cp-passport-value">{fmt(passport_record_high, ".1f")}°C</div>
-<div class="cp-passport-note">Daily maximum, 1990–2025</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Record low</div>
-<div class="cp-passport-value">{fmt(passport_record_low, ".1f")}°C</div>
-<div class="cp-passport-note">Daily minimum, 1990–2025</div>
-</div>
-
-<div class="cp-passport-card">
-<div class="cp-passport-label">Latest annual mean</div>
-<div class="cp-passport-value">{fmt(passport_latest["avg_temperature_c"], ".1f")}°C</div>
-<div class="cp-passport-note">{int(passport_latest["year"])} ERA5</div>
-</div>
-</div>""",
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            """
-<div class="cp-product-note">
-The Climate Passport summarizes the selected ERA5 grid point. For a
-large administrative region, it represents the selected centroid rather
-than an area-wide average.
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with passport_right:
-
-        passport_categories = [
-            "Thermal Level",
-            "Hot Extremes",
-            "Rainfall",
-            "Rainfall Variability",
-            "Warming Signal",
-        ]
-
-        passport_values = [
-            fp["thermal"]["score"],
-            fp["hot_extremes"]["score"],
-            fp["rainfall"]["score"],
-            fp["variability"]["score"],
-            fp["warming"]["score"],
-        ]
-
-        passport_values = [
-            value
-            if value is not None
-            else 0
-            for value in passport_values
-        ]
-
-        passport_radar = go.Figure()
-
-        passport_radar.add_trace(
-            go.Scatterpolar(
-                r=(
-                    passport_values
-                    + [
-                        passport_values[0]
-                    ]
-                ),
-                theta=(
-                    passport_categories
-                    + [
-                        passport_categories[0]
-                    ]
-                ),
-                fill="toself",
-                name="Climate Fingerprint",
-                hovertemplate=(
-                    "%{theta}: %{r:.0f}/100"
-                    "<extra></extra>"
-                ),
-            )
-        )
-
-        passport_radar.update_layout(
-            height=390,
-            margin=dict(
-                l=35,
-                r=35,
-                t=35,
-                b=25,
-            ),
-            title=dict(
-                text="Climate Fingerprint",
-                x=0.5,
-                font=dict(
-                    size=15,
-                ),
-            ),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            showlegend=False,
-            polar=dict(
-                bgcolor="rgba(0,0,0,0)",
-                radialaxis=dict(
-                    visible=True,
-                    range=[
-                        0,
-                        100,
-                    ],
-                    tickvals=[
-                        0,
-                        25,
-                        50,
-                        75,
-                        100,
-                    ],
-                    gridcolor="rgba(130,170,195,.12)",
-                    linecolor="rgba(130,170,195,.12)",
-                    tickfont=dict(
-                        size=8,
-                        color="#68869a",
-                    ),
-                ),
-                angularaxis=dict(
-                    gridcolor="rgba(130,170,195,.10)",
-                    linecolor="rgba(130,170,195,.10)",
-                    tickfont=dict(
-                        size=9,
-                        color="#adc1cf",
-                    ),
-                ),
-            ),
-            font=dict(
-                color="#d9e8f1",
-            ),
-        )
-
-        st.plotly_chart(
-            passport_radar,
-            width="stretch",
-            config={
-                "displayModeBar": False,
-            },
-        )
-
-    st.markdown(
-        "### Fingerprint interpretation"
-    )
-
-    interpretation_columns = st.columns(
-        5,
-        gap="small",
-    )
-
-    interpretation_data = [
-        (
-            "Thermal",
-            fp["thermal"],
-        ),
-        (
-            "Heat",
-            fp["hot_extremes"],
-        ),
-        (
-            "Rainfall",
-            fp["rainfall"],
-        ),
-        (
-            "Variability",
-            fp["variability"],
-        ),
-        (
-            "Warming",
-            fp["warming"],
-        ),
-    ]
-
-    for column, (
-        title_text,
-        item,
-    ) in zip(
-        interpretation_columns,
-        interpretation_data,
-    ):
-        with column:
-            st.metric(
-                title_text,
-                (
-                    f"{fingerprint_score_text(item['score'])}/100"
-                ),
-                item[
-                    "label"
-                ],
-            )
-
-    st.markdown(
-        """
-<div class="cp-product-note">
-<b>How to read the Passport:</b> a higher fingerprint score means more of
-that climate characteristic under the fixed ORBIDENSE AI scale. It does
-not mean “better”, “worse”, “safer” or “more dangerous”. Climate risk
-would require separate hazard, exposure and vulnerability analysis.
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    passport_export = {
-        "location": (
-            f"{city['city_name']}, "
-            f"{city['country_name']}"
-        ),
-        "latitude": float(
-            city["latitude"]
-        ),
-        "longitude": float(
-            city["longitude"]
-        ),
-        "historical_period": "1990-2025",
-        "baseline": "1991-2020",
-        "signature": climate_signature,
-        "baseline_mean_temperature_c": (
-            passport_mean_temp
-        ),
-        "baseline_precipitation_mm": (
-            passport_precip
-        ),
-        "baseline_hot_days_30c": (
-            passport_hot_days
-        ),
-        "baseline_extreme_hot_days_35c": (
-            passport_extreme_days
-        ),
-        "warming_rate_c_per_decade": (
-            warming_rate
-        ),
-        "record_high_c": (
-            passport_record_high
-        ),
-        "record_low_c": (
-            passport_record_low
-        ),
-        "fingerprint": {
-            key: {
-                "score": (
-                    value[
-                        "score"
-                    ]
-                ),
-                "label": (
-                    value[
-                        "label"
-                    ]
-                ),
-            }
-            for key, value in fp.items()
-        },
-    }
-
-    st.download_button(
-        "Download Climate Passport (JSON)",
-        data=json.dumps(
-            passport_export,
-            indent=2,
-        ),
-        file_name=(
-            f"orbidense_ai_"
-            f"{city['city_name'].lower().replace(' ', '_')}_"
-            f"passport.json"
-        ),
-        mime="application/json",
-        width="stretch",
-    )
-
-    st.caption(
-        "Climate Passport is an interpretive ORBIDENSE AI product "
-        "based on ERA5 reanalysis and the selected point. "
-        "It is not an official climate classification or risk assessment."
-    )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Climate Passport</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-
-if nav_view == "About":
-    render_about_page()
-    st.stop()
-
-
-if nav_view in {"Home", "Map Explorer"}:
-    st.markdown('<div id="map-explorer"></div>', unsafe_allow_html=True)
-    map_col, current_col = st.columns([1.55, 1], gap="medium")
-    with map_col:
-        render_map_fragment()
-
-    with current_col:
-        with st.container(border=True):
-            if city is not None:
-                temperature = current_weather.get("temperature_2m")
-                feels_like = current_weather.get("apparent_temperature")
-                humidity = current_weather.get("relative_humidity_2m")
-                wind = current_weather.get("wind_speed_10m")
-                precipitation_now = current_weather.get("precipitation")
-                aqi = current_air.get("european_aqi")
-                pm25 = current_air.get("pm2_5")
-                st.markdown(
-                    f"""
-    <div class="cp-section-heading">☁️ &nbsp; Current Conditions <span class="cp-live-pill" style="float:right;">● Live</span></div>
-    <div class="cp-current-temp">{fmt(temperature, '.1f')}°C</div>
-    <div class="cp-muted">Feels like {fmt(feels_like, '.1f')}°C</div>
-    <div class="cp-mini-grid">
-    <div class="cp-mini-card"><div class="cp-mini-label">Humidity</div><div class="cp-mini-value">💧 {fmt(humidity, '.0f')}%</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Wind</div><div class="cp-mini-value">➤ {fmt(wind, '.1f')} km/h</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Precipitation</div><div class="cp-mini-value">🌧 {fmt(precipitation_now, '.1f')} mm</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">PM2.5</div><div class="cp-mini-value">{fmt(pm25, '.1f')} µg/m³</div></div>
-    </div>
-    <div class="cp-aqi"><div><div class="cp-mini-label">European Air Quality Index</div><div class="cp-mini-value">{aqi_note(aqi)}</div></div><div class="cp-aqi-value">{fmt(aqi, '.0f')}</div></div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            elif country_feature:
-
-                if (
-                    country_national is not None
-                    and not country_national.empty
-                ):
-                    country_baseline = country_national[
-                        (
-                            country_national[
-                                "year"
-                            ] >= 1991
-                        )
-                        &
-                        (
-                            country_national[
-                                "year"
-                            ] <= 2020
-                        )
-                    ]
-
-                    country_recent = country_national[
-                        (
-                            country_national[
-                                "year"
-                            ] >= 2015
-                        )
-                        &
-                        (
-                            country_national[
-                                "year"
-                            ] <= 2024
-                        )
-                    ]
-
-                    national_temp = safe_float(
-                        country_baseline[
-                            "mean_temperature_c"
-                        ].mean()
-                    )
-
-                    recent_temp = safe_float(
-                        country_recent[
-                            "mean_temperature_c"
-                        ].mean()
-                    )
-
-                    national_precip = safe_float(
-                        country_baseline[
-                            "annual_precipitation_mm"
-                        ].mean()
-                    )
-
-                    national_trend = safe_float(
-                        country_national.attrs.get(
-                            "warming_rate_c_per_decade"
-                        )
-                    )
-
-                    centroid_temp = safe_float(
-                        country_live_weather.get(
-                            "temperature_2m"
-                        )
-                    )
-
-                    st.markdown(
-                        f"""
-<div class="cp-section-heading">🌍 &nbsp; National Climate Overview</div>
-<div class="cp-current-temp">{fmt(national_temp, '.1f')}°C</div>
-<div class="cp-muted">1991–2020 national mean temperature</div>
-
-<div class="cp-mini-grid" style="margin-top:18px;">
-<div class="cp-mini-card">
-<div class="cp-mini-label">Recent 2015–2024</div>
-<div class="cp-mini-value">{fmt(recent_temp, '.1f')}°C</div>
-</div>
-<div class="cp-mini-card">
-<div class="cp-mini-label">Warming trend</div>
-<div class="cp-mini-value">{fmt(national_trend, '+.2f')}°C/dec</div>
-</div>
-<div class="cp-mini-card">
-<div class="cp-mini-label">Baseline precipitation</div>
-<div class="cp-mini-value">{fmt(national_precip, '.0f')} mm</div>
-</div>
-<div class="cp-mini-card">
-<div class="cp-mini-label">Centroid weather now</div>
-<div class="cp-mini-value">{fmt(centroid_temp, '.1f')}°C</div>
-</div>
-</div>
-
-<div class="cp-product-note">
-Historical values above are national spatial averages. “Centroid weather now”
-is only a point proxy and is not national current weather.
-</div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-                else:
-                    centroid_temp = safe_float(
-                        country_live_weather.get(
-                            "temperature_2m"
-                        )
-                    )
-
-                    centroid_humidity = safe_float(
-                        country_live_weather.get(
-                            "relative_humidity_2m"
-                        )
-                    )
-
-                    st.markdown(
-                        f"""
-<div class="cp-section-heading">🌍 &nbsp; Country Climate</div>
-<div class="cp-current-temp">{fmt(centroid_temp, '.1f')}°C</div>
-<div class="cp-muted">
-Live weather at the selected country centroid. This is a geographic
-reference point, not a national-average current temperature.
-</div>
-
-<div class="cp-mini-grid" style="margin-top:18px;">
-<div class="cp-mini-card">
-<div class="cp-mini-label">Centroid humidity</div>
-<div class="cp-mini-value">{fmt(centroid_humidity, '.0f')}%</div>
-</div>
-<div class="cp-mini-card">
-<div class="cp-mini-label">National history</div>
-<div class="cp-mini-value">Unavailable</div>
-</div>
-</div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-            else:
-                st.markdown(
-                    """
-    <div class="cp-section-heading">ORBIDENSE AI Explorer</div>
-    <div class="cp-current-temp">Explore anywhere.</div>
-    <div class="cp-muted">Search above to move the map instantly. Cities, towns, villages, neighbourhoods and many administrative areas can load point-based weather, air quality and ERA5 climate analytics.</div>
-    <div class="cp-mini-grid" style="margin-top:18px;">
-    <div class="cp-mini-card"><div class="cp-mini-label">Climate history</div><div class="cp-mini-value">1990–2025</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Database</div><div class="cp-mini-value">PostgreSQL / Neon</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Weather</div><div class="cp-mini-value">Open-Meteo</div></div>
-    <div class="cp-mini-card"><div class="cp-mini-label">Climate</div><div class="cp-mini-value">ERA5 / CRU / CMIP6</div></div>
-    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-
-if (
-    nav_view == "Home"
-    and city is not None
-    and today_forecast
-    and today_context
-    and (
-        today_context.get(
-            "baseline_sample_count"
-        )
-        or 0
-    ) >= 100
-):
-
-    forecast_high = safe_float(
-        today_forecast.get(
-            "temperature_max_c"
-        )
-    )
-
-    forecast_low = safe_float(
-        today_forecast.get(
-            "temperature_min_c"
-        )
-    )
-
-    typical_high = safe_float(
-        today_context.get(
-            "typical_high_c"
-        )
-    )
-
-    typical_low = safe_float(
-        today_context.get(
-            "typical_low_c"
-        )
-    )
-
-    high_p10 = safe_float(
-        today_context.get(
-            "high_p10_c"
-        )
-    )
-
-    high_p90 = safe_float(
-        today_context.get(
-            "high_p90_c"
-        )
-    )
-
-    high_percentile = safe_float(
-        today_context.get(
-            "high_percentile"
-        )
-    )
-
-    seasonal_shift = safe_float(
-        today_context.get(
-            "seasonal_shift_c"
-        )
-    )
-
-    record_high = safe_float(
-        today_context.get(
-            "seasonal_record_high_c"
-        )
-    )
-
-    record_high_date = (
-        today_context.get(
-            "seasonal_record_high_date"
-        )
-    )
-
-    difference_high = None
-
-    if (
-        forecast_high is not None
-        and typical_high is not None
-    ):
-        difference_high = (
-            forecast_high
-            - typical_high
-        )
-
-    normal_label, normal_color = (
-        today_normal_label(
-            high_percentile
-        )
-    )
-
-    if difference_high is None:
-        difference_text = "N/A"
-    else:
-        difference_text = (
-            f"{difference_high:+.1f}°C"
-        )
-
-    if high_percentile is None:
-        percentile_text = "N/A"
-        percentile_note = (
-            "Not enough baseline observations"
-        )
-    else:
-        percentile_text = (
-            f"{high_percentile:.0f}th"
-        )
-
-        percentile_note = (
-            f"Warmer than about "
-            f"{high_percentile:.0f}% of comparable "
-            f"1991–2020 days"
-        )
-
-    if (
-        high_p10 is not None
-        and high_p90 is not None
-    ):
-        normal_range_text = (
-            f"{high_p10:.1f}–"
-            f"{high_p90:.1f}°C"
-        )
-    else:
-        normal_range_text = "N/A"
-
-    if seasonal_shift is None:
-        shift_text = "N/A"
-    else:
-        shift_text = (
-            f"{seasonal_shift:+.1f}°C"
-        )
-
-    if record_high is None:
-        record_text = "N/A"
-        record_note = ""
-    else:
-        record_text = (
-            f"{record_high:.1f}°C"
-        )
-        record_note = (
-            safe_date_label(
-                record_high_date
-            )
-        )
-
-    if (
-        forecast_high is not None
-        and typical_high is not None
-    ):
-        if difference_high >= 2:
-            story = (
-                f"Today's forecast high is "
-                f"{difference_high:.1f}°C above the "
-                f"1991–2020 seasonal average."
-            )
-
-        elif difference_high <= -2:
-            story = (
-                f"Today's forecast high is "
-                f"{abs(difference_high):.1f}°C below the "
-                f"1991–2020 seasonal average."
-            )
-
-        else:
-            story = (
-                "Today's forecast high is close to the "
-                "1991–2020 seasonal average."
-            )
-
-    else:
-        story = (
-            "Historical comparison is unavailable."
-        )
-
-    intel_html = f"""<div class="cp-intel">
-<div class="cp-intel-top">
-<div>
-<div class="cp-intel-title">◉ Is Today Normal?</div>
-<div class="cp-intel-sub">Today's forecast compared with ERA5 days within ±7 calendar days of this date, using the 1991–2020 climate baseline.</div>
-</div>
-<div class="cp-intel-status" style="color:{normal_color}; border-color:{normal_color}55;">{normal_label}</div>
-</div>
-
-<div class="cp-intel-grid">
-<div class="cp-intel-card">
-<div class="cp-intel-label">Today's forecast high</div>
-<div class="cp-intel-value">{forecast_high:.1f}°C</div>
-<div class="cp-intel-note">Typical: {typical_high:.1f}°C • {difference_text}</div>
-</div>
-
-<div class="cp-intel-card">
-<div class="cp-intel-label">Climate percentile</div>
-<div class="cp-intel-value">{percentile_text}</div>
-<div class="cp-intel-note">{percentile_note}</div>
-</div>
-
-<div class="cp-intel-card">
-<div class="cp-intel-label">Typical high range</div>
-<div class="cp-intel-value">{normal_range_text}</div>
-<div class="cp-intel-note">10th–90th percentile, 1991–2020</div>
-</div>
-
-<div class="cp-intel-card">
-<div class="cp-intel-label">Seasonal warming shift</div>
-<div class="cp-intel-value">{shift_text}</div>
-<div class="cp-intel-note">2016–2025 vs 1991–2000 average high</div>
-</div>
-
-<div class="cp-intel-card">
-<div class="cp-intel-label">Seasonal record high</div>
-<div class="cp-intel-value">{record_text}</div>
-<div class="cp-intel-note">{record_note}</div>
-</div>
-</div>
-
-<div class="cp-intel-story">{story} This is climatological context, not a statement that climate change caused today's weather.</div>
-</div>"""
-
-    st.markdown(
-        intel_html,
-        unsafe_allow_html=True,
-    )
-
-
-if nav_view == "Map Explorer":
-
-    if country_feature:
-        render_country_national_dashboard(
-            compact=True
-        )
-
-    if (
-        city is not None
-        and st.session_state.get(
-            "history_status"
-        )
-        != "ready"
-    ):
-        render_history_progress(
-            city["city_id"]
-        )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Map Explorer</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-if (
-    nav_view == "Data & Methods"
-    and country_feature
-):
-    st.markdown(
-        "### Country Data & Methods"
-    )
-
-    st.markdown(
-        """
-**Historical national climate:** World Bank Climate Change Knowledge
-Portal (CCKP), spatially aggregated CRU country time series.
-
-**Historical temperature and precipitation:** 1901–2024.
-
-**Reference baseline:** 1991–2020.
-
-**Observed national warming trend:** linear least-squares slope over
-1971–2024, reported in °C per decade.
-
-**Future national projections:** CCKP CMIP6 country spatial averages,
-multi-model ensemble, with SSP1-2.6, SSP2-4.5, SSP3-7.0 and SSP5-8.5.
-
-**Projection uncertainty:** P10 / median / P90 across the climate-model
-ensemble.
-
-**Current weather for a country:** when shown, this is the weather at
-the selected country-search centroid only. It is explicitly a point
-proxy and is not interpreted as a national average.
-        """
-    )
-
-    if (
-        country_national is not None
-        and not country_national.empty
-    ):
-        st.dataframe(
-            country_national,
-            width="stretch",
-            hide_index=True,
-            column_config={
-                "year": st.column_config.NumberColumn(
-                    "Year",
-                    format="%d",
-                ),
-                "mean_temperature_c": st.column_config.NumberColumn(
-                    "National mean temperature",
-                    format="%.2f °C",
-                ),
-                "annual_precipitation_mm": st.column_config.NumberColumn(
-                    "National annual precipitation",
-                    format="%.0f mm",
-                ),
-            },
-        )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Country Data & Methods</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-if nav_view == "Data & Methods":
-
-    st.markdown(
-        "### Data & Methods"
-    )
-
-    st.markdown(
-        """
-**Historical climate:** ERA5 reanalysis accessed through
-Open-Meteo and stored in PostgreSQL/Neon.
-
-**Historical period:** 1990–2025.
-
-**Reference period:** 1991–2020.
-
-**Temperature anomaly:** annual mean temperature minus the
-1991–2020 mean for the selected ERA5 grid point.
-
-**Warming trend:** least-squares regression slope calculated
-in PostgreSQL and expressed in °C per decade.
-
-**Spatial meaning:** ERA5 is gridded reanalysis. For cities,
-towns, neighbourhoods and administrative areas, ORBIDENSE AI
-shows the grid point nearest the selected coordinate or
-centroid rather than a boundary-wide average.
-        """
-    )
-
-    if (
-        summary is not None
-        and not summary.empty
-    ):
-        tab1, tab2 = st.tabs(
-            [
-                "Annual climate data",
-                "Temperature anomalies",
-            ]
-        )
-
-        with tab1:
-            st.dataframe(
-                summary,
-                width="stretch",
-                hide_index=True,
-            )
-
-        with tab2:
-            st.dataframe(
-                anomalies,
-                width="stretch",
-                hide_index=True,
-            )
-
-    elif city is not None:
-        render_history_progress(
-            city["city_id"]
-        )
-
-        st.info(
-            "Historical tables will appear automatically "
-            "when this location's background import finishes."
-        )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Data & Methods</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-
-# =========================================================
-# COUNTRY DASHBOARD / CLIMATE TRENDS
-# =========================================================
-
-if (
-    country_feature
-    and nav_view in {
-        "Home",
-        "Climate Trends",
-    }
-):
-    render_country_national_dashboard(
-        compact=False
-    )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • National Earth Intelligence</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-
-if (
-    city is None
-    or summary is None
-    or summary.empty
-    or anomalies is None
-    or anomalies.empty
-):
-
-    if city is not None:
-
-        render_history_progress(
-            city["city_id"]
-        )
-
-        st.markdown(
-            """
-<div class="cp-landing">
-<b>Live conditions are ready</b><br>
-<span class="cp-muted">
-ORBIDENSE AI is preparing the 1990–2025 ERA5 history in the
-background. You can continue using the map and live conditions;
-historical charts appear automatically when the import completes.
-</span>
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    else:
-
-        st.markdown(
-            """
-<div class="cp-landing">
-<b>Start exploring</b><br>
-<span class="cp-muted">
-Search for any city, town, village, neighbourhood or place.
-The map follows your selection immediately.
-</span>
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown(
-        '<div class="cp-footer">ORBIDENSE AI • Earth Data · Risk Intelligence · Better Decisions</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.stop()
-
-if nav_view == "Climate Trends":
-    st.markdown("### Climate Trends")
-
-latest = summary.iloc[-1]
-latest_anomaly = anomalies.iloc[-1]
-latest_year = int(latest["year"])
-
-st.markdown(
-    f"""
-<div class="cp-kpi-grid">
-<div class="cp-kpi"><div class="cp-kpi-label">🌡 Mean Temp ({latest_year})</div><div class="cp-kpi-value cp-cyan">{latest['avg_temperature_c']:.1f}°C</div><div class="cp-kpi-note">Annual mean</div></div>
-<div class="cp-kpi"><div class="cp-kpi-label">↗ Temperature Anomaly</div><div class="cp-kpi-value cp-red">{latest_anomaly['anomaly_c']:+.2f}°C</div><div class="cp-kpi-note">vs 1991–2020</div></div>
-<div class="cp-kpi"><div class="cp-kpi-label">⌁ Warming Trend</div><div class="cp-kpi-value cp-blue">{warming_text}</div><div class="cp-kpi-note">Linear trend</div></div>
-<div class="cp-kpi"><div class="cp-kpi-label">☀ Days ≥30°C</div><div class="cp-kpi-value cp-orange">{int(latest['hot_days_30c'])}</div><div class="cp-kpi-note">Hot days</div></div>
-<div class="cp-kpi"><div class="cp-kpi-label">🔥 Days ≥35°C</div><div class="cp-kpi-value cp-red">{int(latest['extreme_hot_days_35c'])}</div><div class="cp-kpi-note">Extreme heat</div></div>
-<div class="cp-kpi"><div class="cp-kpi-label">🌧 Precipitation ({latest_year})</div><div class="cp-kpi-value cp-blue">{latest['annual_precipitation_mm']:.0f} mm</div><div class="cp-kpi-note">Annual total</div></div>
-</div>
-    """,
-    unsafe_allow_html=True,
+# This should never be reached for a public route. Do not silently fall back to
+# the old generic "Global Climate Intelligence" page; that behavior was masking
+# broken navigation.
+st.error(
+    f"ORBIDENSE routing error: unsupported route {nav_view!r}. "
+    "Refresh the page once. If it persists, check src/orbidense_router.py."
 )
-
-
-# =========================================================
-# CLIMATE FINGERPRINT
-# =========================================================
-
-if (
-    nav_view == "Home"
-    and climate_fingerprint
-):
-
-    fp = climate_fingerprint
-
-    fingerprint_html = f"""<div class="cp-fingerprint-wrap">
-<div class="cp-fingerprint-header">
-<div>
-<div class="cp-fingerprint-title">◈ Climate Fingerprint</div>
-<div class="cp-fingerprint-sub">A compact descriptive signature of this location's 1991–2020 climate and 1990–2025 warming signal.</div>
-</div>
-<div class="cp-fingerprint-badge">{climate_signature}</div>
-</div>
-
-<div class="cp-fingerprint-metrics">
-<div class="cp-fingerprint-metric">
-<div class="cp-fingerprint-label">Thermal Level</div>
-<div class="cp-fingerprint-score">{fingerprint_score_text(fp["thermal"]["score"])}</div>
-<div class="cp-fingerprint-desc">{fp["thermal"]["label"]} · {fmt(fp["thermal"]["raw"], ".1f")}°C baseline mean</div>
-</div>
-
-<div class="cp-fingerprint-metric">
-<div class="cp-fingerprint-label">Hot Extremes</div>
-<div class="cp-fingerprint-score">{fingerprint_score_text(fp["hot_extremes"]["score"])}</div>
-<div class="cp-fingerprint-desc">{fp["hot_extremes"]["label"]} hot-day profile</div>
-</div>
-
-<div class="cp-fingerprint-metric">
-<div class="cp-fingerprint-label">Rainfall Amount</div>
-<div class="cp-fingerprint-score">{fingerprint_score_text(fp["rainfall"]["score"])}</div>
-<div class="cp-fingerprint-desc">{fp["rainfall"]["label"]} · {fmt(fp["rainfall"]["raw"], ".0f")} mm/year</div>
-</div>
-
-<div class="cp-fingerprint-metric">
-<div class="cp-fingerprint-label">Rainfall Variability</div>
-<div class="cp-fingerprint-score">{fingerprint_score_text(fp["variability"]["score"])}</div>
-<div class="cp-fingerprint-desc">{fp["variability"]["label"]} year-to-year variation</div>
-</div>
-
-<div class="cp-fingerprint-metric">
-<div class="cp-fingerprint-label">Warming Signal</div>
-<div class="cp-fingerprint-score">{fingerprint_score_text(fp["warming"]["score"])}</div>
-<div class="cp-fingerprint-desc">{fp["warming"]["label"]} · {warming_text}</div>
-</div>
-</div>
-
-<div class="cp-product-note">
-Fingerprint scores are descriptive 0–100 indices built from fixed climate anchors. They are designed to summarize climate character, not to rank safety, quality of life or climate risk.
-</div>
-</div>"""
-
-    st.markdown(
-        fingerprint_html,
-        unsafe_allow_html=True,
-    )
-
-    radar_categories = [
-        "Thermal Level",
-        "Hot Extremes",
-        "Rainfall",
-        "Rainfall Variability",
-        "Warming Signal",
-    ]
-
-    radar_values = [
-        fp["thermal"]["score"],
-        fp["hot_extremes"]["score"],
-        fp["rainfall"]["score"],
-        fp["variability"]["score"],
-        fp["warming"]["score"],
-    ]
-
-    radar_values = [
-        value
-        if value is not None
-        else 0
-        for value in radar_values
-    ]
-
-    radar_fig = go.Figure()
-
-    radar_fig.add_trace(
-        go.Scatterpolar(
-            r=(
-                radar_values
-                + [
-                    radar_values[0]
-                ]
-            ),
-            theta=(
-                radar_categories
-                + [
-                    radar_categories[0]
-                ]
-            ),
-            fill="toself",
-            name="Climate Fingerprint",
-            line=dict(
-                width=2,
-            ),
-            hovertemplate=(
-                "%{theta}: %{r:.0f}/100"
-                "<extra></extra>"
-            ),
-        )
-    )
-
-    radar_fig.update_layout(
-        height=320,
-        margin=dict(
-            l=35,
-            r=35,
-            t=20,
-            b=25,
-        ),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            radialaxis=dict(
-                visible=True,
-                range=[
-                    0,
-                    100,
-                ],
-                tickvals=[
-                    0,
-                    25,
-                    50,
-                    75,
-                    100,
-                ],
-                tickfont=dict(
-                    size=9,
-                    color="#668398",
-                ),
-                gridcolor="rgba(130,170,195,.12)",
-                linecolor="rgba(130,170,195,.12)",
-            ),
-            angularaxis=dict(
-                tickfont=dict(
-                    size=10,
-                    color="#a9becd",
-                ),
-                gridcolor="rgba(130,170,195,.10)",
-                linecolor="rgba(130,170,195,.10)",
-            ),
-        ),
-        font=dict(
-            color="#d7e5ee",
-        ),
-    )
-
-    with st.expander(
-        "View fingerprint radar",
-        expanded=False,
-    ):
-        st.plotly_chart(
-            radar_fig,
-            width="stretch",
-            config={
-                "displayModeBar": False,
-            },
-        )
-
-
-
-st.markdown('<div id="climate-trends"></div>', unsafe_allow_html=True)
-chart1, chart2, chart3 = st.columns(3, gap="medium")
-with chart1:
-    with st.container(border=True):
-        st.markdown('<div class="cp-section-heading">Average Temperature Trend</div>', unsafe_allow_html=True)
-        fig_temp = go.Figure()
-        fig_temp.add_trace(go.Scatter(
-            x=summary["year"], y=summary["avg_temperature_c"], mode="lines+markers", name="Annual mean",
-            line=dict(color="#42d5e6", width=2), marker=dict(color="#42d5e6", size=4),
-        ))
-        baseline = anomalies["baseline_temperature_c"].dropna() if "baseline_temperature_c" in anomalies.columns else pd.Series(dtype=float)
-        if not baseline.empty:
-            fig_temp.add_hline(y=float(baseline.iloc[-1]), line_dash="dash", line_color="#9aa9b5")
-        style_plotly(fig_temp, height=280, y_title="°C")
-        st.plotly_chart(fig_temp, width="stretch", config={"displayModeBar": False, "responsive": True})
-
-with chart2:
-    with st.container(border=True):
-        st.markdown('<div class="cp-section-heading">Extreme Heat Days</div>', unsafe_allow_html=True)
-        fig_heat = go.Figure()
-        fig_heat.add_trace(go.Bar(x=summary["year"], y=summary["hot_days_30c"], name="≥30°C", marker_color="#ff9f43"))
-        fig_heat.add_trace(go.Bar(x=summary["year"], y=summary["extreme_hot_days_35c"], name="≥35°C", marker_color="#ff5b5b"))
-        fig_heat.update_layout(barmode="overlay")
-        style_plotly(fig_heat, height=280, y_title="Days")
-        st.plotly_chart(fig_heat, width="stretch", config={"displayModeBar": False, "responsive": True})
-
-with chart3:
-    with st.container(border=True):
-        st.markdown('<div class="cp-section-heading">Total Precipitation</div>', unsafe_allow_html=True)
-        fig_rain = go.Figure()
-        fig_rain.add_trace(go.Scatter(
-            x=summary["year"], y=summary["annual_precipitation_mm"], mode="lines+markers", name="Annual precipitation",
-            line=dict(color="#4da8ff", width=2), marker=dict(color="#4da8ff", size=4),
-            fill="tozeroy", fillcolor="rgba(77,168,255,.10)",
-        ))
-        style_plotly(fig_rain, height=280, y_title="mm")
-        st.plotly_chart(fig_rain, width="stretch", config={"displayModeBar": False, "responsive": True})
-
-secondary1, secondary2 = st.columns([1.15, 1], gap="medium")
-with secondary1:
-    with st.container(border=True):
-        st.markdown('<div class="cp-section-heading">Temperature Anomaly</div>', unsafe_allow_html=True)
-        colors = ["#ff6666" if value >= 0 else "#3aa7ff" for value in anomalies["anomaly_c"]]
-        fig_anomaly = go.Figure(go.Bar(x=anomalies["year"], y=anomalies["anomaly_c"], marker_color=colors, name="Anomaly"))
-        fig_anomaly.add_hline(y=0, line_width=1, line_color="#8597a6")
-        style_plotly(fig_anomaly, height=255, y_title="°C")
-        fig_anomaly.update_layout(showlegend=False)
-        st.plotly_chart(fig_anomaly, width="stretch", config={"displayModeBar": False, "responsive": True})
-
-with secondary2:
-    with st.container(border=True):
-        st.markdown('<div class="cp-section-heading">Climate Snapshot</div>', unsafe_allow_html=True)
-        hottest_year_row = summary.loc[summary["avg_temperature_c"].idxmax()]
-        coldest_year_row = summary.loc[summary["avg_temperature_c"].idxmin()]
-        most_extreme_heat_row = summary.loc[summary["extreme_hot_days_35c"].idxmax()]
-        st.markdown(
-            f"""
-<div class="cp-mini-grid">
-<div class="cp-mini-card"><div class="cp-mini-label">Hottest year</div><div class="cp-mini-value">{int(hottest_year_row['year'])}</div><div class="cp-kpi-note">{hottest_year_row['avg_temperature_c']:.2f}°C mean</div></div>
-<div class="cp-mini-card"><div class="cp-mini-label">Coolest year</div><div class="cp-mini-value">{int(coldest_year_row['year'])}</div><div class="cp-kpi-note">{coldest_year_row['avg_temperature_c']:.2f}°C mean</div></div>
-<div class="cp-mini-card"><div class="cp-mini-label">Most ≥35°C days</div><div class="cp-mini-value">{int(most_extreme_heat_row['extreme_hot_days_35c'])} days</div><div class="cp-kpi-note">{int(most_extreme_heat_row['year'])}</div></div>
-<div class="cp-mini-card"><div class="cp-mini-label">Hottest daily maximum</div><div class="cp-mini-value">{summary['hottest_day_c'].max():.1f}°C</div><div class="cp-kpi-note">1990–2025 record</div></div>
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-if nav_view == "Home":
-    st.markdown('<div id="data-methods"></div>', unsafe_allow_html=True)
-    with st.expander("Technical Details & Data"):
-        st.markdown(
-            """
-    **Climate source:** ERA5 reanalysis accessed programmatically through Open-Meteo.
-
-    **Historical period:** 1990–2025.
-
-    **Climate reference period:** 1991–2020.
-
-    **Temperature anomaly:** annual mean temperature minus the city's 1991–2020 ERA5 mean.
-
-    **Warming trend:** least-squares regression slope calculated in PostgreSQL using annual mean temperatures and expressed in °C per decade.
-
-    **Extreme heat indicators:** number of days where daily maximum temperature is at least 30°C and 35°C.
-
-    ERA5 represents gridded reanalysis conditions around the selected coordinates rather than a single physical weather station.
-            """
-        )
-        tab1, tab2 = st.tabs(["Annual climate data", "Temperature anomalies"])
-        with tab1:
-            st.dataframe(summary, width="stretch", hide_index=True)
-        with tab2:
-            st.dataframe(anomalies, width="stretch", hide_index=True)
-
-
-st.markdown(
-    '<div class="cp-footer">ORBIDENSE AI • Python + PostgreSQL + Neon + MapTiler + CARTO + Open-Meteo + ERA5 + Streamlit</div>',
-   unsafe_allow_html=True,
-)
+st.stop()

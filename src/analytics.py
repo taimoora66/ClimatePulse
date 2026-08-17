@@ -16,7 +16,7 @@ from src.db import get_connection
 
 
 # =========================================================
-# ORBIDENSE AI FIRST-PARTY ANALYTICS
+# ORBIDENSE FIRST-PARTY ANALYTICS
 # =========================================================
 #
 # Design goals
@@ -83,7 +83,7 @@ def persistent_visitor_id_enabled() -> bool:
     """
     Backwards-compatible analytics API.
 
-    ORBIDENSE AI V2 intentionally uses session-scoped anonymous visitor IDs
+    ORBIDENSE V2 intentionally uses session-scoped anonymous visitor IDs
     and does not implement persistent browser fingerprinting. Older dashboard
     builds imported this function, so it remains available and always returns
     False. Keeping this compatibility shim prevents mixed-version deployments
@@ -177,7 +177,7 @@ def _referrer_domain(value: str | None) -> str | None:
 
 def _country_hint(headers: Any) -> str | None:
     # Hosting/CDN country hints are accepted only when already supplied by
-    # infrastructure. ORBIDENSE AI never geolocates or stores the raw IP.
+    # infrastructure. ORBIDENSE never geolocates or stores the raw IP.
     for name in (
         "cf-ipcountry",
         "cloudfront-viewer-country",
@@ -924,7 +924,7 @@ def render_analytics_heartbeat(page_name: str) -> None:
     try:
         heartbeat(page_name)
     except Exception as error:
-        print("ORBIDENSE AI analytics heartbeat error:", error)
+        print("ORBIDENSE analytics heartbeat error:", error)
 
 
 # =========================================================
@@ -1327,7 +1327,7 @@ def get_live_sessions(limit: int = 50) -> list[dict[str, Any]]:
 
 
 # =========================================================
-# ORBIDENSE AI V2 — DEVELOPER OBSERVABILITY
+# ORBIDENSE V2 — DEVELOPER OBSERVABILITY
 # =========================================================
 # These functions intentionally keep technical details out of the public UI.
 # Error messages are redacted before storage. No traceback is stored by default.
@@ -1400,7 +1400,7 @@ def record_error(
                 )
     except Exception as logging_error:
         # Observability must never break the public application.
-        print("ORBIDENSE AI observability logging failure:", logging_error)
+        print("ORBIDENSE observability logging failure:", logging_error)
 
 
 def record_performance(
@@ -1435,7 +1435,7 @@ def record_performance(
                     ),
                 )
     except Exception as logging_error:
-        print("ORBIDENSE AI performance logging failure:", logging_error)
+        print("ORBIDENSE performance logging failure:", logging_error)
 
 
 def record_ai_usage(
@@ -1480,7 +1480,7 @@ def record_ai_usage(
                     ),
                 )
     except Exception as logging_error:
-        print("ORBIDENSE AI AI-usage logging failure:", logging_error)
+        print("ORBIDENSE-usage logging failure:", logging_error)
 
 
 def record_data_quality(
@@ -1513,11 +1513,11 @@ def record_data_quality(
                     ),
                 )
     except Exception as logging_error:
-        print("ORBIDENSE AI data-quality logging failure:", logging_error)
+        print("ORBIDENSE data-quality logging failure:", logging_error)
 
 
 # =========================================================
-# ORBIDENSE AI V2 — ADVANCED DEVELOPER QUERIES
+# ORBIDENSE V2 — ADVANCED DEVELOPER QUERIES
 # =========================================================
 
 def get_journey_edges(days: int = 30, limit: int = 40) -> list[dict[str, Any]]:

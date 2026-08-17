@@ -92,7 +92,7 @@ def render_about_page() -> None:
         f"""
 <div class="cpab">
   <div class="cpab-top">
-    <h1>ORBIDENSE AI</h1>
+    <h1>ORBIDENSE</h1>
     <div class="cpab-status"><span class="cpab-dot"></span>All systems normal <span style="opacity:.55;">· Live Earth online</span></div>
   </div>
 
@@ -102,7 +102,7 @@ def render_about_page() -> None:
       <div class="cpab-main-title">Earth Intelligence. <span>Better Decisions.</span></div>
       <div class="cpab-sub">Earth data · environmental intelligence · climate risk · decision support</div>
       <div class="cpab-copy">
-        ORBIDENSE AI is an Earth-intelligence platform integrating current
+        ORBIDENSE is an Earth-intelligence platform integrating current
         environmental conditions, historical climate evidence, future climate
         projections and transparent risk indicators in one coherent, data-driven
         decision environment.
@@ -128,7 +128,7 @@ def render_about_page() -> None:
   <div class="cpab-second">
     <section class="cpab-card cpab-about">
       <div class="cpab-aboutcopy">
-        <div class="cpab-kicker">ABOUT ORBIDENSE AI</div>
+        <div class="cpab-kicker">ABOUT ORBIDENSE</div>
         <div class="cpab-section-title">Environmental change in one connected workspace</div>
         <div class="cpab-copy">{_safe(PROJECT_MOTIVATION)}</div>
       </div>
@@ -162,7 +162,7 @@ def render_about_page() -> None:
     </div>
   </section>
 
-  <div class="cpab-explore-title">EXPLORE ORBIDENSE AI</div>
+  <div class="cpab-explore-title">EXPLORE ORBIDENSE</div>
 
   <div class="cpab-explore">
     <section class="cpab-card cpab-explore-card"><div class="cpab-icon">☁</div><div><b>Live Conditions</b><p>Current weather, air quality and environmental conditions.</p></div></section>
@@ -214,7 +214,7 @@ model spread where supported by the underlying source.
 decision support, not as a replacement for primary scientific datasets or
 professional risk assessment.
 
-ORBIDENSE AI is an independent informational and exploratory project. It is not
+ORBIDENSE is an independent informational and exploratory project. It is not
 an official meteorological service.
             """
         )
