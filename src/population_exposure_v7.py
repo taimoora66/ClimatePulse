@@ -6,6 +6,7 @@ import math
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.orbidense_theme import get_theme_tokens
 
 DATA_PATH = Path("data/climate_intelligence/population_exposure.parquet")
 
@@ -43,42 +44,58 @@ def _load_exposure() -> pd.DataFrame:
 
 
 def _inject_css() -> None:
-    st.markdown("""
+    st.markdown(
+        '''
 <style>
-.exp-shell{border:1px solid rgba(121,181,207,.14);border-radius:18px;padding:16px 16px 10px;
-background:linear-gradient(145deg,rgba(8,27,42,.97),rgba(4,16,26,.98));box-shadow:0 18px 45px rgba(0,0,0,.18)}
-.exp-eyebrow{color:#55dff0;font-size:.68rem;font-weight:850;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.25rem}
-.exp-title{color:#f6fbff;font-size:1.45rem;font-weight:900;letter-spacing:-.025em}
-.exp-sub{color:#8fa7b8;font-size:.78rem;line-height:1.45;margin-top:.25rem}
-.exp-kpi{height:100%;border:1px solid rgba(121,181,207,.14);border-radius:15px;padding:13px 14px;
-background:linear-gradient(145deg,rgba(10,31,47,.96),rgba(6,20,31,.96))}
-.exp-kpi-label{color:#819aaa;text-transform:uppercase;font-size:.63rem;font-weight:850;letter-spacing:.08em}
-.exp-kpi-value{color:white;font-size:1.55rem;font-weight:900;line-height:1.05;margin-top:.3rem}
-.exp-kpi-note{color:#819aaa;font-size:.68rem;line-height:1.35;margin-top:.25rem}
-.exp-rail-row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;
-padding:8px 2px;border-bottom:1px solid rgba(121,181,207,.08)}
-.exp-rank{color:#6fdfea;font-size:.7rem;font-weight:900}
-.exp-country{color:#edf8fc;font-size:.76rem;font-weight:800}
-.exp-value{color:#9eb3c1;font-size:.72rem}
-.exp-note{border:1px solid rgba(121,181,207,.12);border-radius:12px;padding:10px 12px;
-background:rgba(3,13,21,.48);color:#8299a8;font-size:.7rem;line-height:1.5}
-.exp-pill{display:inline-flex;padding:5px 8px;border-radius:999px;margin-right:5px;border:1px solid rgba(47,225,242,.18);
-background:rgba(47,225,242,.07);color:#7ce9f4;font-size:.66rem;font-weight:800}
+.exp-shell{
+  border:1px solid var(--orb-border-soft);
+  background:radial-gradient(circle at 88% 10%,var(--orb-primary-soft),transparent 30%),
+             linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2));
+  border-radius:18px;padding:22px 24px;box-shadow:var(--orb-shadow);
+}
+.exp-eyebrow{color:var(--orb-primary);font-size:.68rem;font-weight:950;letter-spacing:.13em;text-transform:uppercase}
+.exp-title{color:var(--orb-text);font-size:clamp(1.55rem,2.3vw,2.25rem);line-height:1.08;font-weight:950;letter-spacing:-.035em;margin:.36rem 0 .40rem}
+.exp-sub{color:var(--orb-muted);font-size:clamp(.86rem,.82rem + .10vw,.96rem);line-height:1.58;max-width:1000px}
+.exp-kpi{height:100%;min-height:118px;border:1px solid var(--orb-border-soft);border-radius:15px;padding:14px 15px;background:linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2));box-shadow:var(--orb-shadow)}
+.exp-kpi-label{color:var(--orb-muted-2);font-size:.66rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.exp-kpi-value{color:var(--orb-text);font-size:clamp(1.35rem,1.10rem + .62vw,1.85rem);font-weight:950;line-height:1.10;margin:.35rem 0}
+.exp-kpi-note{color:var(--orb-muted);font-size:.74rem;line-height:1.45}
+.exp-rail-row{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--orb-border-soft)}
+.exp-rank{width:29px;height:29px;display:grid;place-items:center;border-radius:9px;background:var(--orb-primary-soft);color:var(--orb-primary);border:1px solid var(--orb-border);font-size:.67rem;font-weight:950}
+.exp-country{color:var(--orb-text);font-size:.80rem;font-weight:800;line-height:1.30}
+.exp-value{color:var(--orb-secondary);font-size:.80rem;font-weight:900;white-space:nowrap}
+.exp-panel{border:1px solid var(--orb-border-soft);border-radius:15px;padding:13px;background:linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2));box-shadow:var(--orb-shadow)}
+.exp-note{color:var(--orb-muted);font-size:.78rem;line-height:1.55}
+.exp-guard{margin-top:10px;padding:12px 14px;border-left:3px solid #F3A94A;border-radius:0 11px 11px 0;background:linear-gradient(90deg,rgba(243,169,74,.09),var(--orb-surface));color:var(--orb-muted);font-size:.80rem;line-height:1.55}
+.exp-guard b{color:var(--orb-text)}
+[data-testid="stSegmentedControl"] button{color:var(--orb-muted)!important;font-weight:800!important;border-color:var(--orb-border-soft)!important;background:var(--orb-surface)!important}
+[data-testid="stSegmentedControl"] button[aria-pressed="true"]{color:var(--orb-primary)!important;border-color:var(--orb-primary)!important;background:var(--orb-primary-soft)!important}
+@media(max-width:760px){.exp-shell{padding:18px 16px}.exp-title{font-size:1.65rem}.exp-kpi{min-height:102px}}
 </style>
-""", unsafe_allow_html=True)
+        ''',
+        unsafe_allow_html=True,
+    )
+
 
 
 def _layout(fig, height=390, ytitle=None, legend=True):
+    t = get_theme_tokens()
     fig.update_layout(
-        height=height, margin=dict(l=10,r=10,t=44,b=8),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(5,17,27,.60)",
-        font=dict(color="#cfe0e9",family="Inter, sans-serif"),
-        hoverlabel=dict(bgcolor="#0b1d2b"),
-        legend=dict(orientation="h",y=1.08,x=0), showlegend=legend,
+        template=t.get("plot_template", "plotly_dark"),
+        height=height,
+        margin=dict(l=24, r=18, t=54, b=28),
+        paper_bgcolor=t["chart_bg"],
+        plot_bgcolor=t["chart_bg"],
+        font=dict(color=t["text"], family="Inter, Arial, sans-serif", size=12),
+        colorway=t.get("colorway"),
+        hoverlabel=dict(bgcolor=t["surface"], bordercolor=t["border"], font=dict(color=t["text"], size=12)),
+        legend=dict(orientation="h", y=1.08, x=0, bgcolor="rgba(0,0,0,0)", font=dict(color=t["muted"], size=11)),
+        showlegend=legend,
     )
-    fig.update_xaxes(showgrid=False, zeroline=False, color="#7890a2")
-    fig.update_yaxes(gridcolor="rgba(121,181,207,.10)", zeroline=False, color="#7890a2", title=ytitle)
+    fig.update_xaxes(showgrid=False, zeroline=False, color=t["chart_axis"], linecolor=t["border_soft"], tickfont=dict(color=t["chart_axis"], size=11), title_font=dict(color=t["chart_axis"], size=12))
+    fig.update_yaxes(gridcolor=t["chart_grid"], zeroline=False, color=t["chart_axis"], linecolor=t["border_soft"], tickfont=dict(color=t["chart_axis"], size=11), title=ytitle, title_font=dict(color=t["chart_axis"], size=12))
     return fig
+
 
 
 def _human(v):
@@ -220,7 +237,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
                 showscale=False,marker_line_color="#ffffff",marker_line_width=2,hoverinfo="skip"
             ))
         fig.update_geos(projection_type="natural earth",showframe=False,showcoastlines=False,
-            bgcolor="rgba(0,0,0,0)",landcolor="#0b1d2b")
+            bgcolor="rgba(0,0,0,0)",landcolor=get_theme_tokens()["map_land"])
         fig.update_layout(title=f"{map_mode} · {HAZARD_LABELS[hazard]} ≥ {threshold:g} days/year · {period}")
         st.plotly_chart(_layout(fig,500,None,False),width="stretch",config={"displayModeBar":False})
 
@@ -329,7 +346,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
             hovertemplate="<b>%{text}</b><br>%{z:+.1f} pp<extra></extra>"
         ))
         fig.update_geos(projection_type="natural earth",showframe=False,showcoastlines=False,
-            bgcolor="rgba(0,0,0,0)",landcolor="#0b1d2b")
+            bgcolor="rgba(0,0,0,0)",landcolor=get_theme_tokens()["map_land"])
         fig.update_layout(title="Global exposure difference · SSP5-8.5 − SSP1-2.6")
         st.plotly_chart(_layout(fig,390,None,False),width="stretch",config={"displayModeBar":False})
 
@@ -345,7 +362,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
             file_name=f"orbidense_exposure_{scenario}_{period}_{statistic}_{hazard}_{int(threshold)}.csv",
             mime="text/csv",width="stretch")
     with b2:
-        if st.button("Explain this view with ORBIDENSE",width="stretch"):
+        if st.button("Explain this view with ORBIDENSE AI",width="stretch"):
             st.session_state["orbidense_ai_context_hint"]={
                 "section":"Population Exposure","country":country,"iso3":iso3,
                 "scenario":scenario,"period":period,"statistic":statistic,
@@ -354,7 +371,7 @@ def render_population_exposure_v7(*, iso3: str, country: str, scenario: str, per
                 "population_exposed":float(row["population_exposed"]),
                 "exposed_share_pct":float(row["exposed_share_pct"]),
             }
-            st.success("Exposure context prepared for ORBIDENSE.")
+            st.success("Exposure context prepared for ORBIDENSE AI.")
     with b3:
         st.markdown("""<div class="exp-note"><b style="color:#fff">Validated production layer</b><br>
 129,360 rows · 245 entities · 0 duplicate keys · 245/245 coverage</div>""",unsafe_allow_html=True)

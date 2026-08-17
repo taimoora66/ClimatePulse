@@ -1,115 +1,276 @@
 from __future__ import annotations
 
 from pathlib import Path
+import base64
+import html
+
 import streamlit as st
+
+try:
+    from src.profile import (
+        BUILDER_NAME,
+        BUILDER_HEADLINE,
+        BUILDER_BIO,
+        BUILDER_INTERESTS,
+        BUILDER_DEGREE,
+        BUILDER_UNIVERSITY,
+        PROFILE_PHOTO_PATH,
+        LINKEDIN_URL,
+        GITHUB_URL,
+    )
+except ImportError:
+    from src.profile import (
+        BUILDER_NAME,
+        BUILDER_HEADLINE,
+        BUILDER_BIO,
+        PROFILE_PHOTO_PATH,
+        LINKEDIN_URL,
+        GITHUB_URL,
+    )
+    BUILDER_INTERESTS = (
+        "Climate Data",
+        "Environmental Risk Analysis",
+        "AI for Climate & Environment",
+        "Probabilistic Decision Support",
+        "Scientific Data Engineering",
+    )
+    BUILDER_DEGREE = "MSc Environmental Change & Global Sustainability"
+    BUILDER_UNIVERSITY = "University of Milan"
+
+
+FUTURE_UPDATES = (
+    "City-Scale Climate Digital Twin",
+    "High-Resolution Downscaled Climate Projections",
+    "Satellite & Remote-Sensing Intelligence",
+    "Probabilistic Climate-Risk & Adaptation Decision Support",
+    "Infrastructure & Asset Exposure Analytics",
+    "Real-Time Environmental Alerts & Public API",
+)
+
+METHODOLOGY_ITEMS = (
+    (
+        "Climate projections",
+        "Future climate values are scenario-conditioned CMIP6 projections from the validated World Bank CCKP country layer. "
+        "P10, median and P90 are model-ensemble percentiles rather than forecast probabilities or confidence intervals.",
+    ),
+    (
+        "Climate-action evidence",
+        "Historical national and sector greenhouse-gas evidence is kept analytically separate from SSP projections. "
+        "Action indicators are interpreted from their own source years and accounting definitions.",
+    ),
+    (
+        "Exposure",
+        "Population exposure reports people located within modeled heat-hazard conditions. "
+        "ORBIDENSE does not label exposure alone as vulnerability or full climate risk.",
+    ),
+    (
+        "Comparison",
+        "Country comparisons use the same indicator, scenario, future period and statistic so that the displayed values share one definition and scale.",
+    ),
+)
+
+LIMITATIONS = (
+    "Country averages suppress important sub-national variability and should not be used as neighbourhood-scale estimates.",
+    "Model-ensemble spread does not represent every source of climate uncertainty.",
+    "Current weather at a point is not interchangeable with national historical climate or future climate projections.",
+    "Exposure does not by itself measure vulnerability, adaptive capacity, health impact or economic damage.",
+    "Policy, target and emissions datasets update on different schedules and must be interpreted with their source year and accounting basis.",
+    "ORBIDENSE is an analytical information platform, not an official warning service or a substitute for specialist climate-risk assessment.",
+)
+
+REFERENCES = (
+    ("World Bank Climate Change Knowledge Portal (CCKP) / CMIP6", "Future country climate projections"),
+    ("ECMWF ERA5 and CRU", "Historical / reanalysis climate context used by the wider project"),
+    ("Open-Meteo and configured operational providers", "Current environmental and weather context"),
+    ("EDGAR", "National and sector greenhouse-gas emissions"),
+    ("UNFCCC / Climate Watch", "Targets and nationally determined contribution data where installed"),
+    ("Climate Action Tracker", "Policy-assessment evidence where the relevant entity is assessed"),
+    ("SSP population / INFORM", "Exposure and broader risk-roadmap sources where supported by installed datasets"),
+)
+
+
+def _safe(value) -> str:
+    return html.escape(str(value or ""), quote=True)
 
 
 def _find_creator_photo() -> Path | None:
-    for path in [
-        Path('assets/creator.jpg'),
-        Path('assets/creator.jpeg'),
-        Path('assets/creator.png'),
-        Path('assets/taimoor.jpg'),
-        Path('assets/taimoor.jpeg'),
-        Path('assets/taimoor.png'),
-        Path('assets/profile.jpg'),
-        Path('assets/profile.png'),
-    ]:
+    for path in (
+        Path(PROFILE_PHOTO_PATH),
+        Path("assets/profile.jpg"),
+        Path("assets/profile.png"),
+        Path("assets/creator.jpg"),
+    ):
         if path.exists():
             return path
     return None
 
 
+def _image_uri(path: Path | None) -> str:
+    if path is None or not path.exists():
+        return ""
+    suffix = path.suffix.lower().lstrip(".") or "png"
+    mime = "jpeg" if suffix in {"jpg", "jpeg"} else suffix
+    return f"data:image/{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+
 def _css() -> None:
-    st.markdown('''
+    st.markdown(
+        """
 <style>
-.about-eyebrow{color:#5bdff0;font-size:.72rem;font-weight:850;letter-spacing:.15em;text-transform:uppercase;margin-bottom:.45rem}
-.about-title{color:#f7fbff;font-size:2.25rem;font-weight:900;line-height:1.02;letter-spacing:-.035em;margin-bottom:.55rem}
-.about-lead{color:#91a8b8;font-size:.98rem;line-height:1.6;max-width:930px}
-.about-card{height:100%;border:1px solid rgba(121,181,207,.16);border-radius:18px;padding:18px;background:linear-gradient(145deg,rgba(11,33,50,.96),rgba(5,18,29,.98));box-shadow:0 16px 38px rgba(0,0,0,.17)}
-.about-card h3{color:#f5fbff;font-size:1.05rem;margin:0 0 .45rem}.about-card p,.about-card li{color:#92a9b9;font-size:.82rem;line-height:1.55}
-.about-chip{display:inline-flex;margin:4px 5px 4px 0;padding:6px 9px;border:1px solid rgba(47,225,242,.2);border-radius:999px;color:#8debf5;background:rgba(47,225,242,.07);font-size:.7rem;font-weight:750}
-.about-section{color:#f4fbff;font-size:1.22rem;font-weight:900;margin:1.35rem 0 .7rem}
-.about-stat{border:1px solid rgba(121,181,207,.14);border-radius:15px;padding:14px 15px;background:rgba(8,24,38,.86)}
-.about-stat-label{color:#7f98aa;text-transform:uppercase;font-size:.65rem;font-weight:800;letter-spacing:.08em}.about-stat-value{color:#fff;font-size:1.42rem;font-weight:900;margin-top:.3rem}.about-stat-note{color:#7f98aa;font-size:.7rem;margin-top:.2rem}
-.about-photo-frame{border:1px solid rgba(47,225,242,.2);border-radius:20px;padding:8px;background:linear-gradient(145deg,rgba(13,42,58,.95),rgba(5,18,28,.97));box-shadow:0 18px 42px rgba(0,0,0,.22)}
-.about-quote{border-left:3px solid #42d8ec;padding:13px 15px;border-radius:0 12px 12px 0;background:rgba(47,225,242,.055);color:#b7cad5;line-height:1.6;font-size:.86rem}
+.orb-about{max-width:1500px;margin:0 auto;color:var(--orb-text)}
+.orb-about-hero,.orb-about-card,.orb-science-card{
+  border:1px solid var(--orb-border-soft);
+  background:linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2));
+  box-shadow:var(--orb-shadow);
+}
+.orb-about-hero{overflow:hidden;border-radius:20px;padding:clamp(24px,3.1vw,46px);
+background:radial-gradient(circle at 88% 18%,var(--orb-primary-soft),transparent 27%),
+linear-gradient(135deg,var(--orb-surface),var(--orb-surface-2))}
+.orb-about-eyebrow,.orb-about-label{color:var(--orb-primary);font-size:.72rem;font-weight:950;letter-spacing:.14em;text-transform:uppercase}
+.orb-about-title{margin:.45rem 0 .58rem;color:var(--orb-text);font-size:clamp(2.25rem,4vw,4.15rem);font-weight:950;line-height:.99;letter-spacing:-.05em}
+.orb-about-title span{color:var(--orb-secondary)}
+.orb-about-lead{max-width:900px;color:var(--orb-muted);font-size:clamp(.98rem,1.15vw,1.13rem);line-height:1.66}
+.orb-about-grid{display:grid;grid-template-columns:.92fr 1.45fr;gap:14px;margin-top:14px}
+.orb-about-card{border-radius:17px}
+.orb-about-portrait{padding:16px;display:flex;align-items:center;justify-content:center}
+.orb-about-portrait img{width:100%;max-width:310px;aspect-ratio:4/5;object-fit:cover;border-radius:15px;border:1px solid var(--orb-border)}
+.orb-about-profile{padding:clamp(20px,2.4vw,34px)}
+.orb-about-name{color:var(--orb-text);font-size:clamp(1.75rem,2.6vw,2.75rem);font-weight:950;letter-spacing:-.035em;margin-top:.28rem}
+.orb-about-degree{color:var(--orb-primary);font-size:1rem;font-weight:820;margin-top:.30rem}
+.orb-about-uni,.orb-about-bio{color:var(--orb-muted)}
+.orb-about-uni{font-size:.92rem;margin-top:.15rem}
+.orb-about-bio{font-size:.96rem;line-height:1.64;margin-top:1rem}
+.orb-about-divider{height:1px;background:var(--orb-border-soft);margin:1.1rem 0}
+.orb-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:.65rem}
+.orb-chip{border:1px solid var(--orb-border);border-radius:999px;padding:7px 10px;background:var(--orb-primary-soft);color:var(--orb-text);font-size:.78rem;font-weight:780}
+.orb-about-heading{margin:25px 2px 11px;color:var(--orb-text);font-size:1.22rem;font-weight:930;letter-spacing:-.02em}
+.orb-roadmap{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.orb-roadmap-item{min-height:88px;display:flex;align-items:center;gap:11px;border:1px solid var(--orb-border-soft);
+border-radius:14px;padding:13px 14px;background:linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2))}
+.orb-roadmap-no{width:35px;height:35px;flex:0 0 35px;display:grid;place-items:center;border-radius:10px;color:var(--orb-primary);
+border:1px solid var(--orb-border);background:var(--orb-primary-soft);font-size:.70rem;font-weight:950}
+.orb-roadmap-name{color:var(--orb-text);font-size:.89rem;font-weight:830;line-height:1.40}
+.orb-collab{display:grid;grid-template-columns:1.35fr .65fr;gap:14px;margin-top:10px;padding:clamp(18px,2.2vw,30px)}
+.orb-collab h3{margin:0 0 .45rem;color:var(--orb-text);font-size:1.38rem}
+.orb-collab p{margin:0;color:var(--orb-muted);font-size:.94rem;line-height:1.64}
+.orb-socials{display:flex;flex-direction:column;gap:8px;justify-content:center}
+.orb-social{display:flex;justify-content:center;align-items:center;min-height:47px;border-radius:11px;text-decoration:none!important;
+font-size:.86rem;font-weight:870;color:var(--orb-text)!important;background:var(--orb-primary-soft);border:1px solid var(--orb-border);transition:.16s ease}
+.orb-social:hover{transform:translateY(-1px);border-color:var(--orb-primary);background:var(--orb-surface-3)}
+.orb-science-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.orb-science-card{border-radius:14px;padding:16px}
+.orb-science-title{color:var(--orb-primary);font-size:.70rem;font-weight:950;letter-spacing:.10em;text-transform:uppercase}
+.orb-science-copy{color:var(--orb-muted);font-size:.90rem;line-height:1.62;margin-top:6px}
+.orb-limit-list{display:grid;gap:8px}
+.orb-limit{border-left:3px solid var(--orb-accent);padding:10px 12px;border-radius:0 10px 10px 0;
+background:var(--orb-surface);color:var(--orb-muted);font-size:.90rem;line-height:1.55}
+.orb-ref-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.orb-ref{border:1px solid var(--orb-border-soft);border-radius:12px;padding:12px 13px;background:var(--orb-surface)}
+.orb-ref b{color:var(--orb-text);font-size:.88rem}.orb-ref span{display:block;color:var(--orb-muted);font-size:.80rem;line-height:1.45;margin-top:3px}
+.orb-about-foot{color:var(--orb-muted-2);text-align:center;font-size:.77rem;padding:20px 0 4px}
+@media(max-width:900px){.orb-about-grid{grid-template-columns:1fr}.orb-roadmap{grid-template-columns:repeat(2,minmax(0,1fr))}
+.orb-collab{grid-template-columns:1fr}.orb-science-grid,.orb-ref-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.orb-roadmap{grid-template-columns:1fr}.orb-about-hero{padding:22px 18px}.orb-about-profile{padding:20px 17px}}
 </style>
-''', unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_professional_about() -> None:
     _css()
-    st.markdown('''
-<div class="about-eyebrow">ABOUT ORBIDENSE</div>
-<div class="about-title">Earth data. Climate intelligence. Better decisions.</div>
-<div class="about-lead">ORBIDENSE is an independent environmental and climate-intelligence project built to make complex Earth-system information easier to explore, compare and interpret without hiding scientific uncertainty or data provenance.</div>
-''', unsafe_allow_html=True)
 
-    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-    left, right = st.columns([0.78, 1.35], gap='large')
+    portrait_uri = _image_uri(_find_creator_photo())
+    portrait_html = (
+        f'<img src="{portrait_uri}" alt="{_safe(BUILDER_NAME)}">'
+        if portrait_uri
+        else '<div style="color:var(--orb-muted);padding:60px 15px;text-align:center">Creator portrait</div>'
+    )
 
-    with left:
-        photo = _find_creator_photo()
-        if photo:
-            st.markdown('<div class="about-photo-frame">', unsafe_allow_html=True)
-            st.image(str(photo), width='stretch')
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.markdown('''<div class="about-card"><h3>Creator portrait</h3><p>Add your portrait as <b>assets/creator.jpg</b> or <b>assets/creator.png</b>. The page detects it automatically.</p></div>''', unsafe_allow_html=True)
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-        st.markdown('''
-<div class="about-card">
-<div class="about-eyebrow">PROJECT CREATOR</div><h3>Taimoor Ahmad</h3>
-<p><b style="color:#d8edf4">MSc · Environmental Change & Global Sustainability</b><br>University of Milan</p>
-<p>Independent environmental-data builder focused on climate science, environmental risk, sustainability analytics and decision-oriented digital tools.</p>
+    interests = "".join(
+        f'<span class="orb-chip">{_safe(item)}</span>'
+        for item in BUILDER_INTERESTS
+    )
+    roadmap = "".join(
+        f'<div class="orb-roadmap-item"><div class="orb-roadmap-no">{i:02d}</div><div class="orb-roadmap-name">{_safe(name)}</div></div>'
+        for i, name in enumerate(FUTURE_UPDATES, 1)
+    )
+    methodology = "".join(
+        f'<div class="orb-science-card"><div class="orb-science-title">{_safe(title)}</div><div class="orb-science-copy">{_safe(copy)}</div></div>'
+        for title, copy in METHODOLOGY_ITEMS
+    )
+    limitations = "".join(
+        f'<div class="orb-limit">{_safe(item)}</div>'
+        for item in LIMITATIONS
+    )
+    references = "".join(
+        f'<div class="orb-ref"><b>{_safe(source)}</b><span>{_safe(role)}</span></div>'
+        for source, role in REFERENCES
+    )
+
+    linkedin = _safe(LINKEDIN_URL or "#")
+    github = _safe(GITHUB_URL or "https://github.com/taimoora66/ORBIDENSE-AI")
+
+    st.markdown(
+        f"""
+<div class="orb-about">
+  <section class="orb-about-hero">
+    <div class="orb-about-eyebrow">ABOUT ORBIDENSE</div>
+    <div class="orb-about-title">Earth intelligence.<br><span>Built to become decision infrastructure.</span></div>
+    <div class="orb-about-lead">
+      ORBIDENSE brings climate projections, population exposure, emissions evidence and transparent analytical
+      context into one coherent environment. It is designed to make complex Earth data easier to investigate
+      without hiding uncertainty, provenance or scientific limitations.
+    </div>
+  </section>
+
+  <section class="orb-about-grid">
+    <div class="orb-about-card orb-about-portrait">{portrait_html}</div>
+    <div class="orb-about-card orb-about-profile">
+      <div class="orb-about-label">CREATED BY</div>
+      <div class="orb-about-name">{_safe(BUILDER_NAME)}</div>
+      <div class="orb-about-degree">{_safe(BUILDER_DEGREE)}</div>
+      <div class="orb-about-uni">{_safe(BUILDER_UNIVERSITY)}</div>
+      <div class="orb-about-divider"></div>
+      <div class="orb-about-bio">{_safe(BUILDER_BIO)}</div>
+      <div class="orb-about-divider"></div>
+      <div class="orb-about-label">INTERESTS</div>
+      <div class="orb-chip-row">{interests}</div>
+    </div>
+  </section>
+
+  <div class="orb-about-heading">Future updates</div>
+  <section class="orb-roadmap">{roadmap}</section>
+
+  <div class="orb-about-heading">Collaboration, feedback & improvement</div>
+  <section class="orb-about-card orb-collab">
+    <div>
+      <h3>Open to building ORBIDENSE with others.</h3>
+      <p>
+        Research collaboration, scientific review, data partnerships, responsible engineering contributions,
+        interface feedback and improvement ideas are welcome—especially from people working across climate science,
+        environmental data, geospatial systems, risk analysis, statistics, software engineering and decision support.
+      </p>
+    </div>
+    <div class="orb-socials">
+      <a class="orb-social" href="{linkedin}" target="_blank" rel="noopener noreferrer">in&nbsp;&nbsp;LinkedIn ↗</a>
+      <a class="orb-social" href="{github}" target="_blank" rel="noopener noreferrer">◉&nbsp;&nbsp;GitHub ↗</a>
+    </div>
+  </section>
+
+  <div class="orb-about-heading">Science & methodology</div>
+  <section class="orb-science-grid">{methodology}</section>
+
+  <div class="orb-about-heading">Limitations</div>
+  <section class="orb-limit-list">{limitations}</section>
+
+  <div class="orb-about-heading">References & data provenance</div>
+  <section class="orb-ref-grid">{references}</section>
+
+  <div class="orb-about-foot">
+    ORBIDENSE · Earth intelligence for clearer environmental decisions.
+  </div>
 </div>
-''', unsafe_allow_html=True)
-
-    with right:
-        st.markdown('''
-<div class="about-card"><div class="about-eyebrow">WHY ORBIDENSE</div>
-<h3>Turning fragmented environmental data into usable intelligence</h3>
-<p>Climate information is often split across weather APIs, reanalysis archives, climate-model products, emissions databases, policy trackers and risk frameworks. ORBIDENSE brings these layers into one coherent experience while preserving the distinction between observed conditions, historical climate, future projections, exposure, vulnerability and policy action.</p>
-<div class="about-quote">The goal is not another dashboard full of disconnected numbers. The goal is a transparent Earth-intelligence environment where users can understand what is happening, what may happen, how places differ, and whether climate action is keeping pace.</div></div>
-''', unsafe_allow_html=True)
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-        st.markdown('''
-<div class="about-card"><div class="about-eyebrow">FOCUS AREAS</div>
-<span class="about-chip">Climate change</span><span class="about-chip">Global sustainability</span><span class="about-chip">Environmental risk</span><span class="about-chip">Climate projections</span><span class="about-chip">Climate extremes</span><span class="about-chip">Emissions & transition</span><span class="about-chip">Probabilistic modelling</span><span class="about-chip">Bayesian reasoning</span><span class="about-chip">Environmental data engineering</span><span class="about-chip">Scientific visualization</span><span class="about-chip">Decision support</span><span class="about-chip">Earth-data platforms</span>
-</div>
-''', unsafe_allow_html=True)
-
-    st.markdown('<div class="about-section">What the platform is built to answer</div>', unsafe_allow_html=True)
-    cols = st.columns(4, gap='small')
-    content = [
-        ('NOW','Live Earth','What is happening right now?'),
-        ('OUTLOOK','Future climate','How could conditions change?'),
-        ('ACTION','Transition','Are policies and targets aligned?'),
-        ('GLOBAL','Patterns','Where are hotspots and divergences?'),
-    ]
-    for col,(lab,val,note) in zip(cols,content):
-        with col:
-            st.markdown(f'<div class="about-stat"><div class="about-stat-label">{lab}</div><div class="about-stat-value">{val}</div><div class="about-stat-note">{note}</div></div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="about-section">Research & technical interests</div>', unsafe_allow_html=True)
-    a,b,c = st.columns(3, gap='small')
-    with a:
-        st.markdown('''<div class="about-card"><h3>Climate & environmental science</h3><ul><li>Observed and projected climate change</li><li>Extreme heat and precipitation</li><li>Exposure, vulnerability and climate risk</li><li>Climate mitigation and transition pathways</li><li>Environmental change and sustainability</li></ul></div>''', unsafe_allow_html=True)
-    with b:
-        st.markdown('''<div class="about-card"><h3>Quantitative modelling</h3><ul><li>Probabilistic environmental prediction</li><li>Bayesian statistics and graphical models</li><li>Uncertainty-aware analysis</li><li>Scenario comparison</li><li>Decision-oriented risk interpretation</li></ul></div>''', unsafe_allow_html=True)
-    with c:
-        st.markdown('''<div class="about-card"><h3>Data & product engineering</h3><ul><li>Environmental data pipelines</li><li>Geospatial and gridded climate data</li><li>Scientific web visualization</li><li>Database-backed environmental analytics</li><li>Human-readable climate intelligence</li></ul></div>''', unsafe_allow_html=True)
-
-    st.markdown('<div class="about-section">Science & transparency</div>', unsafe_allow_html=True)
-    tabs = st.tabs(['Methodology','Data Sources','Coverage','Limitations','References'])
-    with tabs[0]:
-        st.markdown('''- Current weather is not climate.\n- Historical/reanalysis climate is not a future projection.\n- A model projection is conditional on a scenario rather than a deterministic forecast.\n- Hazard is not equivalent to risk.\n- P10 / median / P90 represent ensemble percentiles, not formal confidence intervals.\n- Country averages hide subnational variability.''')
-    with tabs[1]:
-        st.markdown('''**Current / operational:** Open-Meteo and configured live providers.  \n**Historical climate:** ERA5 / CRU.  \n**Future climate:** World Bank Climate Change Knowledge Portal / CMIP6.  \n**Climate action roadmap:** EDGAR, UNFCCC / Climate Watch, Climate Action Tracker.  \n**Risk / exposure roadmap:** population-exposure layers and INFORM where appropriate.''')
-    with tabs[2]:
-        st.markdown('The validated climate-projection layer currently covers **245 countries and territories** across four SSP pathways, four future periods and P10/median/P90 ensemble statistics.')
-    with tabs[3]:
-        st.markdown('''- Country-level climate aggregates suppress local spatial differences.\n- Model ensemble spread does not represent every source of uncertainty.\n- Live conditions can be point-based rather than area-wide.\n- Climate-action datasets update at different intervals.\n- Composite risk metrics should not be created without explicit hazard, exposure and vulnerability methodology.''')
-    with tabs[4]:
-        st.markdown('ORBIDENSE keeps detailed references and processing notes in project documentation and dataset metadata so visual pages can remain readable while scientific provenance stays auditable.')
+        """,
+        unsafe_allow_html=True,
+    )

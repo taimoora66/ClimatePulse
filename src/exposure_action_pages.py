@@ -5,8 +5,7 @@ import math
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
-from src.population_exposure_v7 import render_population_exposure_v7
+from src.orbidense_theme import get_theme_tokens
 
 CYAN="#2FE1F2"; BLUE="#49A8FF"; GREEN="#59D88C"; YELLOW="#F4C64C"; ORANGE="#FF9C4A"; RED="#FF5D62"; PURPLE="#A77BFF"
 
@@ -22,13 +21,40 @@ def _read(paths):
 
 
 def _layout(fig,h=390,y=None,legend=True):
-    fig.update_layout(height=h,margin=dict(l=10,r=10,t=42,b=10),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(5,17,27,.62)',font=dict(color='#cfe0e9',family='Inter, sans-serif'),hoverlabel=dict(bgcolor='#0b1d2b'),legend=dict(orientation='h',y=1.08,x=0),showlegend=legend)
-    fig.update_xaxes(showgrid=False,zeroline=False,color='#7890a2'); fig.update_yaxes(gridcolor='rgba(121,181,207,.11)',zeroline=False,color='#7890a2',title=y)
+    t=get_theme_tokens()
+    fig.update_layout(
+        template=t.get("plot_template","plotly_dark"),
+        height=h,
+        margin=dict(l=24,r=18,t=54,b=28),
+        paper_bgcolor=t["chart_bg"],
+        plot_bgcolor=t["chart_bg"],
+        font=dict(color=t["text"],family="Inter, Arial, sans-serif",size=12),
+        colorway=t.get("colorway"),
+        hoverlabel=dict(bgcolor=t["surface"],bordercolor=t["border"],font=dict(color=t["text"],size=12)),
+        legend=dict(orientation="h",y=1.08,x=0,bgcolor="rgba(0,0,0,0)",font=dict(color=t["muted"],size=11)),
+        showlegend=legend,
+    )
+    fig.update_xaxes(showgrid=False,zeroline=False,color=t["chart_axis"],linecolor=t["border_soft"],tickfont=dict(color=t["chart_axis"],size=11))
+    fig.update_yaxes(gridcolor=t["chart_grid"],zeroline=False,color=t["chart_axis"],linecolor=t["border_soft"],tickfont=dict(color=t["chart_axis"],size=11),title=y,title_font=dict(color=t["chart_axis"],size=12))
     return fig
 
 
+
 def _card(label,value,note='',accent=CYAN):
-    st.markdown(f'''<div class="orb-card" style="border-top:2px solid {accent}"><small>{label}</small><div class="orb-big">{value}</div><div class="orb-note">{note}</div></div>''',unsafe_allow_html=True)
+    st.markdown(
+        f"""<div class="orb-card" style="
+          border-top:2px solid {accent};
+          background:linear-gradient(145deg,var(--orb-surface),var(--orb-surface-2));
+          border-color:var(--orb-border-soft);
+          box-shadow:var(--orb-shadow);
+        ">
+          <small style="color:var(--orb-muted-2)">{label}</small>
+          <div class="orb-big" style="color:var(--orb-text)">{value}</div>
+          <div class="orb-note" style="color:var(--orb-muted)">{note}</div>
+        </div>""",
+        unsafe_allow_html=True
+    )
+
 
 
 def _num(v):
@@ -41,21 +67,47 @@ def _num(v):
     return f'{v:.1f}'
 
 
-def render_population_exposure_tab(
-    *,
-    iso3: str,
-    country: str,
-    scenario: str,
-    period: str,
-    statistic: str,
-) -> None:
-    render_population_exposure_v7(
-        iso3=iso3,
-        country=country,
-        scenario=scenario,
-        period=period,
-        statistic=statistic,
-    )
+def render_population_exposure_tab(*,iso3,country,scenario,period,statistic):
+    d,p=_read([Path('data/climate_intelligence/population_exposure.parquet'),Path('data/climate_intelligence/population_exposure.csv')])
+    if d is None:
+        st.markdown('''<div class="orb-hero"><div class="orb-section-title">Population Exposure data is not built yet</div><div class="orb-sub">Run the supplied population-exposure builder. It overlays CCKP population and HD30/HD35 grids before country aggregation; ORBIDENSE does not multiply national population by a national mean hazard.</div></div>''',unsafe_allow_html=True)
+        st.code('python .\\scripts\\build_population_exposure.py --scenarios ssp245 --periods 2040-2059 --stats median --hazards hd30\npython .\\scripts\\validate_population_exposure.py',language='powershell')
+        return
+    for c in ['iso3','scenario','period','statistic','hazard']:
+        d[c]=d[c].astype(str)
+    d['iso3']=d.iso3.str.upper(); d['scenario']=d.scenario.str.lower(); d['statistic']=d.statistic.str.lower(); d['hazard']=d.hazard.str.lower()
+    for c in ['threshold_days','population_total','population_exposed','exposed_share_pct']:
+        d[c]=pd.to_numeric(d[c],errors='coerce')
+    hazard=st.radio('Exposure hazard',['hd30','hd35'],horizontal=True,format_func=lambda x:'Hot days >30°C' if x=='hd30' else 'Very hot days >35°C',key='exp_hazard')
+    ths=sorted(d.loc[d.hazard.eq(hazard),'threshold_days'].dropna().unique())
+    if not ths: st.info('No thresholds available.'); return
+    default=min(ths,key=lambda x:abs(x-(60 if hazard=='hd30' else 10)))
+    threshold=st.select_slider('Exposure threshold · annual hazard days',options=ths,value=default,key='exp_threshold')
+    q=d[(d.iso3.eq(iso3.upper()))&(d.scenario.eq(scenario.lower()))&(d.period.eq(period))&(d.statistic.eq(statistic.lower()))&(d.hazard.eq(hazard))&(d.threshold_days.eq(threshold))]
+    if q.empty: st.warning('No exposure record for this exact selection.'); return
+    r=q.iloc[0]
+    near=d[(d.iso3.eq(iso3.upper()))&(d.scenario.eq(scenario.lower()))&(d.period.eq('2020-2039'))&(d.statistic.eq(statistic.lower()))&(d.hazard.eq(hazard))&(d.threshold_days.eq(threshold))]
+    delta=None if near.empty else float(r.exposed_share_pct)-float(near.iloc[0].exposed_share_pct)
+    cols=st.columns(4,gap='small')
+    vals=[('Projected population',_num(r.population_total),f'{period} · scenario-aligned',CYAN),('People exposed',_num(r.population_exposed),f'{hazard.upper()} ≥ {threshold:g} days/yr',ORANGE),('Share exposed',f'{float(r.exposed_share_pct):.1f}%','of projected population',RED),('Change vs 2020–2039','—' if delta is None else f'{delta:+.1f} pp','percentage points',PURPLE)]
+    for col,(a,b,c,ac) in zip(cols,vals):
+        with col:_card(a,b,c,ac)
+    left,right=st.columns([1.45,.85],gap='medium')
+    with left:
+        curve=d[(d.iso3.eq(iso3.upper()))&(d.scenario.eq(scenario.lower()))&(d.period.eq(period))&(d.statistic.eq(statistic.lower()))&(d.hazard.eq(hazard))].sort_values('threshold_days')
+        fig=go.Figure(go.Scatter(x=curve.threshold_days,y=curve.exposed_share_pct,mode='lines+markers',line=dict(color=CYAN,width=3),fill='tozeroy',fillcolor='rgba(47,225,242,.09)',hovertemplate='≥ %{x:.0f} days/yr<br>%{y:.1f}% exposed<extra></extra>'))
+        fig.add_vline(x=threshold,line_dash='dot',line_color=ORANGE); fig.update_layout(title=f'Exposure curve · {country} · {period}')
+        st.plotly_chart(_layout(fig,390,'Population exposed (%)',False),width='stretch',config={'displayModeBar':False})
+    with right:
+        pp=d[(d.iso3.eq(iso3.upper()))&(d.scenario.eq(scenario.lower()))&(d.statistic.eq(statistic.lower()))&(d.hazard.eq(hazard))&(d.threshold_days.eq(threshold))].copy(); order={'2020-2039':0,'2040-2059':1,'2060-2079':2,'2080-2099':3}; pp['_o']=pp.period.map(order); pp=pp.sort_values('_o')
+        fig=go.Figure(go.Bar(x=pp.period,y=pp.exposed_share_pct,marker=dict(color=[BLUE,CYAN,ORANGE,RED][:len(pp)]),text=[f'{v:.1f}%' for v in pp.exposed_share_pct],textposition='outside')); fig.update_layout(title='Exposure through the century',showlegend=False)
+        st.plotly_chart(_layout(fig,390,'Exposed (%)',False),width='stretch',config={'displayModeBar':False})
+    world=d[(d.scenario.eq(scenario.lower()))&(d.period.eq(period))&(d.statistic.eq(statistic.lower()))&(d.hazard.eq(hazard))&(d.threshold_days.eq(threshold))]
+    fig=go.Figure(go.Choropleth(locations=world.iso3,z=world.exposed_share_pct,text=world.country,locationmode='ISO-3',colorscale='YlOrRd',zmin=0,zmax=100,marker_line_color='rgba(255,255,255,.12)',marker_line_width=.25,colorbar=dict(title='Exposed %',thickness=12),hovertemplate='<b>%{text}</b><br>%{z:.1f}% exposed<extra></extra>'))
+    fig.update_geos(projection_type='natural earth',showframe=False,showcoastlines=False,bgcolor='rgba(0,0,0,0)',landcolor='#0b1d2b'); fig.update_layout(title=f'Global exposure · {hazard.upper()} ≥ {threshold:g} days/year · {period}')
+    st.plotly_chart(_layout(fig,470,None,False),width='stretch',config={'displayModeBar':False})
+    st.caption(f'Source: World Bank CCKP pop-x0.25 + CCKP CMIP6 {hazard.upper()} grids. Grid overlay precedes country aggregation. Dataset: {p}')
+
 
 def render_climate_action_full(*,iso3,country):
     ec,pc=_read([Path('data/climate_intelligence/edgar_country_emissions.parquet'),Path('data/climate_intelligence/edgar_country_emissions.csv')])
