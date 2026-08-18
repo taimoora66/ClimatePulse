@@ -279,9 +279,29 @@ div[data-testid="stHorizontalBlock"]:has(.orb-nav-logo)>div{{
   .st-key-orbidense_zoom_controls{{top:132px!important}}
 }}
 
+
+
 /* Mobile: fixed, horizontally scrollable app bar rather than unreadably tiny buttons. */
 @media(max-width:760px){{
-  :root{{--orb-header-h:98px;--orb-content-top:114px}}
+  :root{{--orb-header-h:92px;--orb-content-top:100px}}
+
+
+  /* Fixed navigation must not reserve a second layout-height. */
+  [data-testid="stElementContainer"]:has(
+    > div[data-testid="stHorizontalBlock"]:has(.orb-nav-logo)
+  ){{
+    height:0!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+  }}
+
+  [data-testid="stMainBlockContainer"],
+  .block-container{{
+    padding-top:var(--orb-content-top)!important;
+  }}
+
 
   div[data-testid="stHorizontalBlock"]:has(.orb-nav-logo){{
     height:var(--orb-header-h)!important;
@@ -300,15 +320,15 @@ div[data-testid="stHorizontalBlock"]:has(.orb-nav-logo)>div{{
     min-width:max-content!important;
   }}
   .orb-nav-logo{{
-    width:166px!important;
-    min-width:166px!important;
-    height:82px!important;
-    min-height:82px!important;
+    width:106px!important;
+    min-width:106px!important;
+    height:76px!important;
+    min-height:76px!important;
   }}
   .orb-nav-logo img{{
-    width:164px!important;
-    max-width:164px!important;
-    max-height:80px!important;
+    width:104px!important;
+    max-width:104px!important;
+    max-height:74px!important;
   }}
   [class*="st-key-site_nav_"] button{{
     min-width:116px!important;
@@ -317,10 +337,7 @@ div[data-testid="stHorizontalBlock"]:has(.orb-nav-logo)>div{{
     font-size:.72rem!important;
   }}
   .st-key-orbidense_zoom_controls{{
-    top:105px!important;
-    right:9px!important;
-    width:145px!important;
-    min-width:145px!important;
+    display:none!important;
   }}
 }}
 </style>
