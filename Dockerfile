@@ -20,6 +20,7 @@ RUN python -m pip install --upgrade pip \
 COPY . .
 
 RUN python patch_streamlit_meta.py
+RUN python patch_analytics_cookie.py
 
 EXPOSE 8080
 
