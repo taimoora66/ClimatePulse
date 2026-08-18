@@ -29,13 +29,14 @@ from src.db import get_connection
 # * no names, email addresses, raw IP addresses, GPS coordinates,
 #   raw user-agent strings, advertising IDs, or message contents
 #
-# Visitor identifiers are session-scoped in this build. Cross-visit
-# fingerprinting is intentionally not implemented. This keeps the tracker
-# first-party and privacy-conscious while still supporting live audience,
-# traffic, acquisition and product-usage analytics.
+# V4 uses a first-party pseudonymous browser cookie when available.
+# It is random, contains no personal information, and is used only to avoid
+# counting reconnects/new Streamlit sessions as different visitors.
+# No cross-device identity or fingerprinting is performed.
 # =========================================================
 
 ACTIVE_WINDOW_MINUTES = 2
+VISITOR_COOKIE_NAME = "orbidense_vid"
 
 VISITOR_KEY = "cp_analytics_visitor_id"
 SESSION_KEY = "cp_analytics_session_id"
@@ -50,8 +51,26 @@ def _anonymous_id(prefix: str) -> str:
     return f"{prefix}_{digest[:32]}"
 
 
+def _cookie_visitor_id() -> str | None:
+    """Return ORBIDENSE's first-party anonymous visitor cookie when present."""
+    try:
+        cookies = getattr(getattr(st, "context", None), "cookies", {})
+        value = str(cookies.get(VISITOR_COOKIE_NAME, "") or "").strip()
+    except Exception:
+        value = ""
+    if re.fullmatch(r"visitor_[A-Za-z0-9_-]{16,96}", value):
+        return value
+    return None
+
+
 def get_visitor_id() -> str:
-    if VISITOR_KEY not in st.session_state:
+    # The cookie is generated client-side by patch_analytics_cookie.py before
+    # Streamlit opens its application session. If unavailable (local tooling,
+    # DNT/GPC, first unsupported request), fall back to a session-scoped ID.
+    cookie_id = _cookie_visitor_id()
+    if cookie_id:
+        st.session_state[VISITOR_KEY] = cookie_id
+    elif VISITOR_KEY not in st.session_state:
         st.session_state[VISITOR_KEY] = _anonymous_id("visitor")
     return str(st.session_state[VISITOR_KEY])
 
@@ -80,16 +99,8 @@ def track_local_sessions_enabled() -> bool:
 
 
 def persistent_visitor_id_enabled() -> bool:
-    """
-    Backwards-compatible analytics API.
-
-    ORBIDENSE V2 intentionally uses session-scoped anonymous visitor IDs
-    and does not implement persistent browser fingerprinting. Older dashboard
-    builds imported this function, so it remains available and always returns
-    False. Keeping this compatibility shim prevents mixed-version deployments
-    from crashing while preserving the privacy-conscious V37+ behaviour.
-    """
-    return False
+    """True only when the random first-party ORBIDENSE visitor cookie exists."""
+    return _cookie_visitor_id() is not None
 
 
 def _query_param(name: str) -> str | None:
@@ -287,7 +298,7 @@ def capture_streamlit_context() -> bool:
             "country_hint": _country_hint(headers),
             "do_not_track": False,
             "global_privacy_control": False,
-            "persistent_id": False,
+            "persistent_id": persistent_visitor_id_enabled(),
         }
 
         st.session_state[BROWSER_CONTEXT_KEY] = payload
@@ -1722,3 +1733,335 @@ def get_privacy_summary() -> dict[str, Any]:
         """
     )
     return {k: int(v or 0) for k, v in row.items()}
+
+
+# =========================================================
+# ORBIDENSE V4 — PRODUCT INTELLIGENCE QUERIES
+# =========================================================
+
+def _bounded_days(days: int) -> int:
+    return max(1, min(int(days), 3650))
+
+
+def get_v4_overview(days: int = 30) -> dict[str, Any]:
+    days = _bounded_days(days)
+    row = _fetchone(
+        """
+        WITH period_sessions AS (
+            SELECT * FROM analytics_sessions
+            WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        ), live_sessions AS (
+            SELECT * FROM analytics_sessions
+            WHERE last_seen >= NOW() - (%s * INTERVAL '1 minute')
+        ), period_visitors AS (
+            SELECT DISTINCT visitor_id FROM period_sessions
+        )
+        SELECT
+            (SELECT COUNT(*) FROM period_visitors) AS unique_visitors,
+            (SELECT COUNT(DISTINCT pv.visitor_id)
+             FROM period_visitors pv JOIN analytics_visitors v USING(visitor_id)
+             WHERE v.first_seen >= NOW() - (%s * INTERVAL '1 day')) AS new_visitors,
+            (SELECT COUNT(DISTINCT pv.visitor_id)
+             FROM period_visitors pv JOIN analytics_visitors v USING(visitor_id)
+             WHERE v.first_seen < NOW() - (%s * INTERVAL '1 day')) AS returning_visitors,
+            (SELECT COUNT(*) FROM period_sessions) AS sessions,
+            (SELECT COUNT(DISTINCT visitor_id) FROM live_sessions) AS active_visitors,
+            (SELECT COUNT(*) FROM live_sessions) AS active_sessions,
+            (SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (last_seen-started_at))/60.0),0)
+             FROM period_sessions) AS avg_session_minutes,
+            (SELECT COALESCE(AVG(pageviews::numeric),0) FROM period_sessions) AS pages_per_session,
+            (SELECT COUNT(*) FROM period_sessions
+             WHERE pageviews >= 2 OR events >= 1 OR last_seen-started_at >= INTERVAL '60 seconds') AS engaged_sessions,
+            (SELECT COALESCE(SUM(pageviews),0) FROM period_sessions) AS pageviews,
+            (SELECT COALESCE(SUM(events),0) FROM period_sessions) AS events;
+        """,
+        (days, ACTIVE_WINDOW_MINUTES, days, days),
+    )
+    result = dict(row or {})
+    sessions = int(result.get("sessions") or 0)
+    engaged = int(result.get("engaged_sessions") or 0)
+    result["engagement_pct"] = (100.0 * engaged / sessions) if sessions else 0.0
+    return result
+
+
+def get_v4_daily_visitors(days: int = 30) -> list[dict[str, Any]]:
+    days = _bounded_days(days)
+    return _fetchall(
+        """
+        SELECT DATE(started_at) AS day,
+               COUNT(DISTINCT visitor_id) AS visitors,
+               COUNT(*) AS sessions,
+               COALESCE(SUM(pageviews),0) AS pageviews
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY DATE(started_at)
+        ORDER BY day;
+        """, (days,)
+    )
+
+
+def get_v4_live_visitors(limit: int = 50) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit), 200))
+    return _fetchall(
+        """
+        WITH live AS (
+            SELECT *, ROW_NUMBER() OVER (
+                PARTITION BY visitor_id ORDER BY last_seen DESC, started_at DESC
+            ) AS rn
+            FROM analytics_sessions
+            WHERE last_seen >= NOW() - (%s * INTERVAL '1 minute')
+        ), counts AS (
+            SELECT visitor_id, COUNT(*) AS active_sessions
+            FROM live GROUP BY visitor_id
+        )
+        SELECT l.visitor_id, l.current_page, l.device_category, l.browser_family,
+               l.os_family, l.country_hint, l.language, l.last_seen,
+               l.started_at, c.active_sessions,
+               EXTRACT(EPOCH FROM (NOW()-l.last_seen))::int AS seconds_ago
+        FROM live l JOIN counts c USING(visitor_id)
+        WHERE l.rn = 1
+        ORDER BY l.last_seen DESC
+        LIMIT %s;
+        """, (ACTIVE_WINDOW_MINUTES, limit)
+    )
+
+
+def get_v4_device_visitors(days: int = 30) -> list[dict[str, Any]]:
+    days = _bounded_days(days)
+    return _fetchall(
+        """
+        SELECT COALESCE(device_category,'Unknown') AS label,
+               COUNT(DISTINCT visitor_id) AS visitors,
+               COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1 ORDER BY visitors DESC;
+        """, (days,)
+    )
+
+
+def get_v4_dimension_breakdown(column: str, days: int = 30, limit: int = 12) -> list[dict[str, Any]]:
+    allowed = {"browser_family", "os_family", "language", "timezone", "country_hint", "theme_type"}
+    if column not in allowed:
+        raise ValueError("Unsupported analytics dimension")
+    days = _bounded_days(days); limit = max(1, min(int(limit), 50))
+    return _fetchall(
+        f"""
+        SELECT COALESCE(NULLIF({column},''),'Unknown') AS label,
+               COUNT(DISTINCT visitor_id) AS visitors,
+               COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1 ORDER BY visitors DESC LIMIT %s;
+        """, (days, limit)
+    )
+
+
+def get_v4_viewport_breakdown(days: int = 30) -> list[dict[str, Any]]:
+    days = _bounded_days(days)
+    return _fetchall(
+        """
+        SELECT CASE
+                 WHEN viewport_width IS NULL THEN 'Unknown'
+                 WHEN viewport_width < 430 THEN '<430'
+                 WHEN viewport_width <= 768 THEN '430–768'
+                 WHEN viewport_width <= 1024 THEN '769–1024'
+                 WHEN viewport_width <= 1440 THEN '1025–1440'
+                 ELSE '>1440'
+               END AS label,
+               COUNT(DISTINCT visitor_id) AS visitors,
+               COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1 ORDER BY sessions DESC;
+        """, (days,)
+    )
+
+
+def get_v4_acquisition(days: int = 30, limit: int = 15) -> list[dict[str, Any]]:
+    days = _bounded_days(days); limit = max(1, min(int(limit), 50))
+    return _fetchall(
+        """
+        SELECT
+          CASE
+            WHEN COALESCE(utm_source,'') <> '' THEN COALESCE(utm_medium, utm_source, 'Campaign')
+            WHEN referrer_domain IS NULL OR referrer_domain = '' THEN 'Direct'
+            WHEN LOWER(referrer_domain) ~ '(google|bing|duckduckgo|yahoo|ecosia)' THEN 'Organic Search'
+            WHEN LOWER(referrer_domain) ~ '(linkedin|facebook|instagram|twitter|x.com|t.co|reddit|youtube)' THEN 'Social'
+            ELSE 'Referral'
+          END AS channel,
+          COUNT(DISTINCT visitor_id) AS visitors,
+          COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1 ORDER BY visitors DESC LIMIT %s;
+        """, (days, limit)
+    )
+
+
+def get_v4_landing_pages(days: int = 30, limit: int = 15) -> list[dict[str, Any]]:
+    days = _bounded_days(days); limit=max(1,min(int(limit),50))
+    return _fetchall(
+        """
+        SELECT COALESCE(entry_page,'Unknown') AS page,
+               COUNT(DISTINCT visitor_id) AS visitors,
+               COUNT(*) AS sessions
+        FROM analytics_sessions
+        WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1 ORDER BY sessions DESC LIMIT %s;
+        """, (days,limit)
+    )
+
+
+def get_v4_content(days: int = 30, limit: int = 20) -> list[dict[str, Any]]:
+    days = _bounded_days(days); limit=max(1,min(int(limit),100))
+    return _fetchall(
+        """
+        WITH ordered AS (
+          SELECT p.*,
+                 LEAD(viewed_at) OVER (PARTITION BY session_id ORDER BY viewed_at, pageview_id) AS next_at,
+                 ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY viewed_at, pageview_id) AS first_rn,
+                 ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY viewed_at DESC, pageview_id DESC) AS last_rn
+          FROM analytics_pageviews p
+          WHERE viewed_at >= NOW() - (%s * INTERVAL '1 day')
+        )
+        SELECT page_name,
+               COUNT(*) AS views,
+               COUNT(DISTINCT visitor_id) AS unique_visitors,
+               COUNT(*) FILTER (WHERE first_rn=1) AS entrances,
+               COUNT(*) FILTER (WHERE last_rn=1) AS exits,
+               ROUND(AVG(LEAST(EXTRACT(EPOCH FROM (next_at-viewed_at)),1800)) FILTER (WHERE next_at IS NOT NULL)::numeric,1) AS avg_dwell_seconds
+        FROM ordered
+        GROUP BY page_name
+        ORDER BY views DESC LIMIT %s;
+        """, (days,limit)
+    )
+
+
+def get_v4_feature_adoption(days: int = 30, limit: int = 20) -> list[dict[str, Any]]:
+    days = _bounded_days(days); limit=max(1,min(int(limit),100))
+    return _fetchall(
+        """
+        WITH total AS (
+          SELECT COUNT(DISTINCT visitor_id)::numeric AS visitors
+          FROM analytics_sessions WHERE started_at >= NOW() - (%s * INTERVAL '1 day')
+        )
+        SELECT e.event_name AS feature,
+               COUNT(*) AS events,
+               COUNT(DISTINCT e.visitor_id) AS visitors,
+               ROUND((100.0*COUNT(DISTINCT e.visitor_id)/NULLIF((SELECT visitors FROM total),0))::numeric,1) AS adoption_pct
+        FROM analytics_events e
+        WHERE e.event_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY e.event_name
+        ORDER BY visitors DESC, events DESC LIMIT %s;
+        """, (days,days,limit)
+    )
+
+
+def get_v4_feature_daily(days: int = 30, limit: int = 8) -> list[dict[str, Any]]:
+    days = _bounded_days(days); limit=max(1,min(int(limit),20))
+    return _fetchall(
+        """
+        WITH top AS (
+          SELECT event_name FROM analytics_events
+          WHERE event_at >= NOW() - (%s * INTERVAL '1 day')
+          GROUP BY event_name ORDER BY COUNT(DISTINCT visitor_id) DESC LIMIT %s
+        )
+        SELECT DATE(e.event_at) AS day, e.event_name AS feature,
+               COUNT(DISTINCT e.visitor_id) AS visitors, COUNT(*) AS events
+        FROM analytics_events e JOIN top t ON t.event_name=e.event_name
+        WHERE e.event_at >= NOW() - (%s * INTERVAL '1 day')
+        GROUP BY 1,2 ORDER BY 1,2;
+        """, (days,limit,days)
+    )
+
+
+def get_v4_retention(days: int = 30) -> list[dict[str, Any]]:
+    days = _bounded_days(days)
+    return _fetchall(
+        """
+        WITH cohorts AS (
+          SELECT visitor_id, DATE(first_seen) AS cohort_day
+          FROM analytics_visitors
+          WHERE first_seen >= NOW() - (%s * INTERVAL '1 day')
+        ), activity AS (
+          SELECT DISTINCT visitor_id, DATE(started_at) AS activity_day
+          FROM analytics_sessions
+        )
+        SELECT cohort_day,
+               COUNT(*) AS cohort_visitors,
+               ROUND(100.0*COUNT(*) FILTER (WHERE EXISTS(
+                 SELECT 1 FROM activity a WHERE a.visitor_id=c.visitor_id AND a.activity_day >= c.cohort_day+1 AND a.activity_day < c.cohort_day+2
+               ))/NULLIF(COUNT(*),0),1) AS d1_pct,
+               ROUND(100.0*COUNT(*) FILTER (WHERE EXISTS(
+                 SELECT 1 FROM activity a WHERE a.visitor_id=c.visitor_id AND a.activity_day >= c.cohort_day+7 AND a.activity_day < c.cohort_day+8
+               ))/NULLIF(COUNT(*),0),1) AS d7_pct,
+               ROUND(100.0*COUNT(*) FILTER (WHERE EXISTS(
+                 SELECT 1 FROM activity a WHERE a.visitor_id=c.visitor_id AND a.activity_day >= c.cohort_day+30 AND a.activity_day < c.cohort_day+31
+               ))/NULLIF(COUNT(*),0),1) AS d30_pct
+        FROM cohorts c GROUP BY cohort_day ORDER BY cohort_day DESC;
+        """, (days,)
+    )
+
+
+def get_v4_performance_overview(days: int = 7) -> dict[str, Any]:
+    days = _bounded_days(days)
+    return _fetchone(
+        """
+        SELECT COUNT(*) AS samples,
+               ROUND(COALESCE(AVG(duration_ms),0)::numeric,1) AS avg_ms,
+               ROUND(COALESCE(PERCENTILE_CONT(.50) WITHIN GROUP (ORDER BY duration_ms),0)::numeric,1) AS p50_ms,
+               ROUND(COALESCE(PERCENTILE_CONT(.95) WITHIN GROUP (ORDER BY duration_ms),0)::numeric,1) AS p95_ms,
+               ROUND(COALESCE(PERCENTILE_CONT(.99) WITHIN GROUP (ORDER BY duration_ms),0)::numeric,1) AS p99_ms,
+               ROUND((100.0*AVG(CASE WHEN success THEN 1 ELSE 0 END))::numeric,2) AS success_pct
+        FROM analytics_performance
+        WHERE recorded_at >= NOW() - (%s * INTERVAL '1 day');
+        """, (days,)
+    )
+
+
+def get_v4_reliability_overview(days: int = 7) -> dict[str, Any]:
+    days = _bounded_days(days)
+    perf = _fetchone(
+        """SELECT COUNT(*) AS requests,
+                  COUNT(*) FILTER (WHERE NOT success) AS failed
+           FROM analytics_performance
+           WHERE recorded_at >= NOW()-(%s*INTERVAL '1 day');""", (days,)
+    )
+    errors = _fetchone(
+        """SELECT COUNT(*) AS errors,
+                  COUNT(DISTINCT error_hash) AS groups
+           FROM analytics_errors
+           WHERE recorded_at >= NOW()-(%s*INTERVAL '1 day');""", (days,)
+    )
+    requests=int((perf or {}).get('requests') or 0); failed=int((perf or {}).get('failed') or 0)
+    return {"requests":requests,"failed_requests":failed,
+            "error_rate_pct":(100.0*failed/requests if requests else 0.0),
+            "errors":int((errors or {}).get('errors') or 0),
+            "error_groups":int((errors or {}).get('groups') or 0)}
+
+
+def get_v4_api_sources(days: int = 7, limit: int = 30) -> list[dict[str, Any]]:
+    days=_bounded_days(days); limit=max(1,min(int(limit),100))
+    return _fetchall(
+        """
+        SELECT CASE
+                 WHEN operation LIKE 'maptiler%%' THEN 'MapTiler'
+                 WHEN operation LIKE 'open_meteo%%' THEN 'Open-Meteo'
+                 WHEN operation LIKE 'era5%%' THEN 'ERA5'
+                 WHEN operation LIKE 'edgar%%' THEN 'EDGAR'
+                 WHEN operation LIKE 'cckp%%' THEN 'CCKP'
+                 WHEN operation LIKE 'ai_assistant%%' OR operation LIKE 'huggingface%%' THEN 'Hugging Face'
+                 WHEN operation LIKE 'weather_cache%%' THEN 'Weather Cache'
+                 WHEN operation LIKE 'home_environment%%' THEN 'Home Environment'
+                 ELSE split_part(operation,'.',1)
+               END AS source,
+               COUNT(*) AS requests,
+               ROUND((100.0*AVG(CASE WHEN success THEN 1 ELSE 0 END))::numeric,1) AS success_pct,
+               ROUND(AVG(duration_ms)::numeric,1) AS avg_ms,
+               ROUND(PERCENTILE_CONT(.95) WITHIN GROUP (ORDER BY duration_ms)::numeric,1) AS p95_ms
+        FROM analytics_performance
+        WHERE recorded_at >= NOW()-(%s*INTERVAL '1 day')
+        GROUP BY 1 ORDER BY requests DESC LIMIT %s;
+        """, (days,limit)
+    )

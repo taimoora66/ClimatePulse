@@ -10,8 +10,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
-        nginx \
-        gettext-base \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -23,9 +21,6 @@ COPY . .
 
 RUN python patch_streamlit_meta.py
 
-RUN sed -i 's/\r$//' /app/start.sh /app/nginx.conf.template \
-    && chmod +x /app/start.sh
-
 EXPOSE 8080
 
-CMD ["sh", "/app/start.sh"]
+CMD ["sh", "-c", "streamlit run app.py --server.address=0.0.0.0 --server.port=${PORT:-8080} --server.headless=true --browser.gatherUsageStats=false"]
