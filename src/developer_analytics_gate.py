@@ -26,7 +26,8 @@ DEV_IDLE_TIMEOUT_SECONDS = 60 * 60
 DEV_MAX_SESSION_SECONDS = 6 * 60 * 60
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_SECONDS = 5 * 60
-
+OWNER_TRIGGER_PARAM_SECRET = "OWNER_TRIGGER_PARAM"
+OWNER_TRIGGER_VALUE_SECRET = "OWNER_TRIGGER_VALUE"
 
 def _load_project_env() -> None:
     if not ENV_PATH.exists():
@@ -157,30 +158,46 @@ def developer_unlocked_at() -> str | None:
 
 
 def process_developer_gate() -> None:
-    """Secure owner access at /?owner=1. No secret is placed in the URL."""
+    """Secure private developer entry. No authentication secret is stored in the URL source code."""
+
     _remove_query_param("cp_gate")
     _remove_query_param("cp_debug")
 
-    if developer_mode_active():
-        _remove_query_param("owner")
+    # Read the private trigger configuration from environment/secrets.
+    owner_trigger_param = _secret(OWNER_TRIGGER_PARAM_SECRET)
+    owner_trigger_value = _secret(OWNER_TRIGGER_VALUE_SECRET)
+
+    # If private trigger configuration is missing, developer entry stays disabled.
+    if not owner_trigger_param or not owner_trigger_value:
         return
 
-    if _query_value("owner") != "1":
+    # Existing authenticated developer session does not need the URL trigger again.
+    if developer_mode_active():
+        _remove_query_param(owner_trigger_param)
+        return
+
+    # Only show the owner gate when the private trigger matches.
+    if _query_value(owner_trigger_param) != owner_trigger_value:
         return
 
     expected = _secret("ANALYTICS_DEV_KEY")
+
     _, center, _ = st.columns([1.05, 1.55, 1.05])
+
     with center:
         st.markdown("### ORBIDENSE Owner Access")
+
         st.caption(
             "Private developer access for this browser session. "
             "The developer key never appears in the URL."
         )
+
         if not expected:
             st.error("ANALYTICS_DEV_KEY is not configured.")
             st.stop()
 
         locked, remaining = _locked(DEV_LOCK_UNTIL_KEY)
+
         if locked:
             st.error(
                 f"Too many failed attempts. Try again in about "
@@ -188,33 +205,69 @@ def process_developer_gate() -> None:
             )
             st.stop()
 
-        with st.form("orbidense_owner_unlock_form", clear_on_submit=True, border=True):
-            entered = st.text_input("Developer key", type="password", autocomplete="off")
+        with st.form(
+            "orbidense_owner_unlock_form",
+            clear_on_submit=True,
+            border=True,
+        ):
+            entered = st.text_input(
+                "Developer key",
+                type="password",
+                autocomplete="off",
+            )
+
             left, right = st.columns(2)
+
             with left:
                 unlock = st.form_submit_button(
-                    "Unlock Developer Mode", type="primary", width="stretch"
+                    "Unlock Developer Mode",
+                    type="primary",
+                    width="stretch",
                 )
+
             with right:
-                cancel = st.form_submit_button("Cancel", width="stretch")
+                cancel = st.form_submit_button(
+                    "Cancel",
+                    width="stretch",
+                )
 
         if cancel:
-            _remove_query_param("owner")
+            _remove_query_param(owner_trigger_param)
             st.rerun()
 
         if unlock:
             candidate = str(entered or "").strip()
+
             if hmac.compare_digest(candidate, expected):
-                _clear_failures(DEV_FAIL_COUNT_KEY, DEV_LOCK_UNTIL_KEY)
+                _clear_failures(
+                    DEV_FAIL_COUNT_KEY,
+                    DEV_LOCK_UNTIL_KEY,
+                )
+
                 now = datetime.now(timezone.utc).isoformat()
+
                 st.session_state[DEV_SESSION_KEY] = True
                 st.session_state[DEV_UNLOCKED_AT_KEY] = now
                 st.session_state[DEV_LAST_ACTIVITY_KEY] = _now()
-                st.session_state.pop(ANALYTICS_OPEN_KEY, None)
-                st.session_state.pop(ANALYTICS_AUTH_KEY, None)
-                _remove_query_param("owner")
+
+                st.session_state.pop(
+                    ANALYTICS_OPEN_KEY,
+                    None,
+                )
+
+                st.session_state.pop(
+                    ANALYTICS_AUTH_KEY,
+                    None,
+                )
+
+                _remove_query_param(owner_trigger_param)
                 st.rerun()
-            _record_failure(DEV_FAIL_COUNT_KEY, DEV_LOCK_UNTIL_KEY)
+
+            _record_failure(
+                DEV_FAIL_COUNT_KEY,
+                DEV_LOCK_UNTIL_KEY,
+            )
+
             st.error("Developer key is incorrect.")
 
     st.stop()
