@@ -19,6 +19,8 @@ RUN python -m pip install --upgrade pip \
 
 COPY . .
 
+RUN python patch_streamlit_meta.py
+
 EXPOSE 8080
 
 CMD ["sh", "-c", "streamlit run app.py --server.address=0.0.0.0 --server.port=${PORT:-8080} --server.headless=true --browser.gatherUsageStats=false"]
