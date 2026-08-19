@@ -1,496 +1,856 @@
+# ORBIDENSE
 
-<img width="1920" height="1080" alt="climatepulse-home" src="https://github.com/user-attachments/assets/5241cb03-021f-46dd-a686-094b85e0e162" />
-<img width="1920" height="1080" alt="climate trends" src="https://github.com/user-attachments/assets/7315a3c2-4f5b-43f5-a8b6-874b4f24bf67" />
-<img width="1920" height="1080" alt="climatepulse-Country Comparison" src="https://github.com/user-attachments/assets/a6a706cc-85a3-42d1-9e15-09060708b2e8" />
+### Earth Intelligence for Climate and Environmental Exploration
 
+ORBIDENSE is an independent environmental and climate intelligence platform that brings together environmental conditions, historical climate information, climate projections, population exposure, greenhouse-gas emissions, climate-action information, and geographic exploration within a single interactive application.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b57346ff-77a2-4a80-9e82-b03908798ad6" />
 
+The project combines environmental data engineering, geospatial analysis, climate-data processing, database-backed services, interactive visualization, and cloud deployment.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/293cc752-75b9-4a54-965e-20931f4552fb" />
 
-
-
-
-# 🌍 ClimatePulse
-
-### Global Climate Intelligence
-
-**ClimatePulse** is an interactive climate and environmental intelligence platform designed to bring together current environmental conditions, historical climate observations, climate trends, future climate projections, spatial exploration and AI-assisted interpretation in one accessible application.
-
-The project aims to make complex climate information easier to explore and understand across locations, countries and time periods.
-
-### 🚀 Live Application
-
-**Open ClimatePulse:**
-
-https://climatepulse-global.streamlit.app
+**Live platform:** https://orbidense.com
 
 ---
 
-## 🌎 About ClimatePulse
+## Overview
 
-Climate information is often distributed across different datasets, portals, scientific products and modelling systems.
+Environmental and climate information is distributed across many datasets, APIs, institutional portals, geographic systems, and modelling frameworks.
 
-ClimatePulse brings multiple layers of environmental information into a single interactive interface.
+ORBIDENSE provides a common interface for exploring selected environmental and climate information while retaining distinctions between different forms of evidence.
 
-The platform allows users to explore:
+The current platform includes:
 
-- current weather and environmental conditions;
-- historical climate behaviour;
-- long-term climate trends;
-- future climate-model projections;
-- country and location comparisons;
-- global warming patterns;
-- climate-health indicators;
-- compound environmental risks;
-- interactive geographic visualisations;
-- climate timelines;
-- AI-assisted explanations and interpretation.
-
-ClimatePulse is designed as an **exploratory climate-intelligence platform**, rather than simply a weather dashboard.
-
----
-
-## ✨ Main Features
-
-### 🌐 Live Earth Intelligence
-
-Explore a global interactive climate globe showing current environmental conditions across countries and locations.
-
-Current visual layers can include indicators such as:
-
-- temperature;
-- apparent temperature;
-- recent temperature change;
-- precipitation;
-- wind;
-- cloud cover.
-
-The globe can automatically focus on the currently selected location or country.
-
----
-
-### 📍 Current Location
-
-ClimatePulse can use browser geolocation, with user permission, to identify the user's approximate location.
-
-The detected location can then be used to retrieve relevant:
-
-- live weather;
-- local environmental conditions;
+- geographic and location-based environmental exploration;
+- live environmental conditions;
 - historical climate context;
-- climate trends.
+- CMIP6-based climate projections;
+- population exposure;
+- greenhouse-gas emissions;
+- national climate targets and action information;
+- country-level climate intelligence;
+- comparative and global environmental views;
+- source and methodology information.
 
-Location access occurs only after user interaction with the location control.
-
----
-
-## 📊 Climate Dashboard
-
-The dashboard provides a more detailed environmental profile for the selected location.
-
-Depending on data availability, this can include:
-
-- temperature;
-- precipitation;
-- humidity;
-- wind;
-- apparent temperature;
-- air-quality information;
-- climatic normals;
-- recent environmental conditions;
-- historical climate indicators.
+ORBIDENSE separates current environmental observations, historical climate information, future climate-model projections, emissions data, and climate-policy information rather than presenting them as equivalent measures.
 
 ---
 
-## 🗺️ Map Explorer
+## Platform
 
-The Map Explorer provides spatial exploration of environmental information.
+The application is organized around several connected areas:
 
-It is designed to help users investigate climate and environmental patterns geographically rather than only through charts and tables.
+- **Home**
+- **Climate Outlook**
+- **Population Exposure**
+- **Climate Action**
+- **Compare**
+- **Global**
+- **About**
+
+Each section uses a shared geographic and environmental context while addressing a different part of the climate-information system.
 
 ---
 
-## 🕰️ Climate Timeline
+## Home and Earth Exploration
 
-ClimatePulse provides a long-term climate timeline extending from historical observations toward future climate projections.
+The Home interface provides the main geographic entry point into ORBIDENSE.
 
-The objective is to connect:
+Users can search for locations and connect geographic information with environmental conditions through the interactive Earth interface.
+
+The implemented workflow includes:
 
 ```text
-Historical climate
-        ↓
-Observed change
-        ↓
-Present conditions
-        ↓
-Future climate projections
+Location Search
+      ↓
+Geocoding
+      ↓
+Geographic Resolution
+      ↓
+Environmental Data Retrieval
+      ↓
+Processing
+      ↓
+Interactive Visualization
 ```
 
-This allows climate change to be explored as a continuous temporal process rather than as disconnected datasets.
+The application contains dedicated modules for geographic search, location handling, environmental retrieval, and interactive Earth visualization.
 
 ---
 
-## 📈 Climate Trends
+## Environmental Conditions
 
-ClimatePulse analyses longer-term changes in environmental variables.
+ORBIDENSE integrates selected environmental information into a location-oriented interface.
 
-Climate trend views may include:
-
-- long-term temperature evolution;
-- temperature anomalies;
-- warming rates;
-- precipitation change;
-- climate variability;
-- historical records;
-- model-based future trajectories.
-
----
-
-## 🔮 Future Climate Projections
-
-Future climate information is based on climate-model projections where available.
-
-ClimatePulse is designed to support the interpretation of climate scenarios from datasets such as **CMIP6**.
-
-Future climate values should be interpreted as **model projections**, not deterministic weather forecasts.
-
-The platform therefore distinguishes between:
-
-- current weather observations;
-- historical climate datasets;
-- reanalysis;
-- long-term trends;
-- future climate projections.
-
----
-
-## 🌍 Compare Places
-
-Users can compare climate characteristics between different places or countries.
-
-Potential comparison dimensions include:
-
-- historical temperature;
-- temperature trends;
-- precipitation;
-- recent climate conditions;
-- projected future change;
-- environmental risk indicators.
-
-Where a value represents a geographic proxy rather than a national spatial average, ClimatePulse aims to label this clearly.
-
----
-
-## 🏆 Global Rankings
-
-Global Rankings provide a comparative view of climate indicators across countries.
-
-Examples may include:
-
-- warming trends;
-- current temperature;
-- environmental conditions;
-- climate-change indicators.
-
-Rankings should be interpreted according to the methodology and spatial scope associated with each variable.
-
----
-
-## 🛂 Climate Passport
-
-Climate Passport provides a compact environmental and climate profile for a selected place.
-
-The objective is to give users a quick overview of:
-
-- current conditions;
-- historical climate;
-- long-term change;
-- future climate context;
-- environmental indicators.
-
----
-
-## ❤️ Climate & Health Context
-
-ClimatePulse also explores environmental conditions that may have implications for human health.
-
-Examples can include:
-
-- thermal stress;
-- high apparent temperature;
-- tropical nights;
-- heat exposure;
-- air pollution;
-- compound heat and air-quality conditions.
-
-These indicators are intended for environmental interpretation and **do not provide medical diagnosis or personalised medical advice**.
-
----
-
-## ⚠️ Compound Climate Risk
-
-Environmental hazards often occur together.
-
-ClimatePulse is designed to explore combinations such as:
-
-- heat × humidity;
-- heat × air pollution;
-- heat × warm nights;
-- heat × drought;
-- intense rainfall × antecedent wetness;
-- drought × heatwave conditions.
-
-The objective is to avoid reducing complex environmental risks to a single arbitrary score where scientifically meaningful relationships can instead be shown directly.
-
----
-
-## 🤖 ClimatePulse AI
-
-ClimatePulse includes a persistent AI assistant.
-
-The assistant can help users:
-
-- understand ClimatePulse;
-- explain the purpose of individual pages;
-- interpret climate indicators;
-- understand environmental terminology;
-- ask questions about the selected location;
-- learn about climate science;
-- ask general science, programming, data-analysis and educational questions.
-
-ClimatePulse AI is intended to improve accessibility and interpretation of environmental information.
-
-AI-generated responses should not be treated as substitutes for authoritative scientific, medical, legal, emergency or meteorological information.
-
----
-
-# 🧠 Data Sources
-
-ClimatePulse integrates or is designed around several established environmental and climate data sources.
-
-## Open-Meteo
-
-Used for selected live meteorological and environmental information.
-
-Typical variables may include:
+Depending on source and geographic availability, the platform processes information related to:
 
 - temperature;
 - precipitation;
-- cloud cover;
-- wind;
-- apparent temperature;
-- current conditions.
+- atmospheric conditions;
+- weather;
+- air-quality context;
+- geographic characteristics;
+- environmental indicators.
+
+Source-specific API responses are processed before presentation so that external service structures do not directly determine the application interface.
 
 ---
 
-## ERA5
+## Climate Outlook
 
-ERA5 is a global atmospheric reanalysis dataset produced by the European Centre for Medium-Range Weather Forecasts.
+Climate Outlook connects historical climate information with future climate projections.
 
-Within ClimatePulse, ERA5 can support historical climate analysis and contextualisation.
+The implemented climate-intelligence system includes:
+
+- historical temperature information;
+- historical precipitation information;
+- climate anomalies;
+- future climate periods;
+- CMIP6 scenarios;
+- projected temperature change;
+- projected precipitation change;
+- hot-day indicators;
+- climate-model ensemble information where available.
+
+Climate projections are presented as model-derived information under defined scenarios and periods rather than as deterministic weather forecasts.
 
 ---
+
+## Climate Projection Data
+
+ORBIDENSE contains a processed country-level climate projection pipeline based on World Bank Climate Change Knowledge Portal data.
+
+The climate-intelligence data layer contains processed projection datasets including:
+
+```text
+cckp_country_projections.parquet
+cckp_country_projections_smoke.csv
+cckp_country_projections_smoke.parquet
+cckp_country_projections_smoke_v2.csv
+cckp_country_projections_smoke_v2.parquet
+cckp_pr_repair.csv
+cckp_pr_repair.parquet
+```
+
+Projection information is structured by climate variable, scenario, future period, statistic, and geography.
+
+Where ensemble percentiles are available, they are interpreted as climate-model ensemble spread rather than probabilities of future weather events.
+
+---
+
+## Country Climate Intelligence
+
+ORBIDENSE combines several types of country-level information within a common climate-intelligence framework.
+
+Depending on source coverage, country views can incorporate:
+
+- historical climate;
+- climate projections;
+- population information;
+- greenhouse-gas emissions;
+- climate targets;
+- climate-action information;
+- geographic context.
+
+This allows physical climate information to be examined alongside emissions and policy-related information without collapsing those dimensions into a single indicator.
+
+---
+
+## Population Exposure
+
+The platform includes a dedicated population-exposure layer.
+
+The repository contains processed exposure information including:
+
+```text
+population_exposure.parquet
+```
+
+and corresponding application logic for presenting population information alongside environmental and climate context.
+
+The architecture keeps environmental hazard information and population exposure conceptually separate.
+
+This distinction provides a foundation for analysing how environmental conditions intersect with human populations without treating population alone as a complete measure of vulnerability or risk.
+
+---
+
+## Climate Action
+
+Climate Action connects physical climate information with emissions, targets, and transition-related information.
+
+Implemented country-level integrations include:
+
+- structured Nationally Determined Contribution information;
+- official NDC provenance;
+- greenhouse-gas emissions;
+- Climate Action Tracker ratings for covered countries;
+- national and sector emissions information where available.
+
+The platform maintains distinctions between:
+
+```text
+Physical Climate
+       ≠
+Greenhouse-Gas Emissions
+       ≠
+Climate Targets
+       ≠
+Policy Implementation
+       ≠
+Independent Climate Assessment
+```
+
+These components are therefore presented as related but distinct dimensions of climate information.
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/b6e59ae4-50ac-4ec0-9b52-6bebae6a5fe4" />
+
+---
+
+## National Climate Targets
+
+Structured national climate-target information is incorporated through Climate Watch / World Resources Institute data where available.
+
+Official NDC submission provenance is associated with the UNFCCC NDC Registry.
+
+Processed target datasets include:
+
+```text
+climatewatch_targets.csv
+climatewatch_targets.parquet
+```
+
+Where structured information is unavailable for a geography, the system retains an unavailable or missing state rather than substituting information from another geography.
+
+---
+
+## Climate Action Tracker
+
+ORBIDENSE incorporates a curated Climate Action Tracker rating snapshot for countries covered by CAT.
+
+The climate-intelligence data directory contains:
+
+```text
+cat_ratings_2026_07.csv
+```
+
+Coverage follows the countries assessed by Climate Action Tracker and is not treated as universal country coverage.
+
+---
+
+## Emissions Intelligence
+
+Country and sector greenhouse-gas information is incorporated through processed emissions datasets.
+
+The current data layer includes:
+
+```text
+edgar_country_emissions.parquet
+edgar_sector_emissions.parquet
+```
+
+EDGAR / Joint Research Centre data provides country- and sector-level emissions structure used by the climate-intelligence system.
+
+Large emissions datasets are processed or synchronized outside the normal interactive page request rather than downloaded whenever a user opens a page.
+
+---
+
+## Compare
+
+ORBIDENSE provides comparative environmental and climate views for examining geographic differences.
+
+Comparison tools place individual indicators in a broader context rather than presenting each location independently.
+
+Comparisons remain dependent on the geographic resolution, temporal period, units, and coverage of the underlying datasets.
+
+---
+
+## Global Exploration
+
+The Global section provides broader geographic exploration of available environmental and climate indicators.
+
+It supports examination of patterns across multiple locations while preserving the geographic meaning of the underlying data.
+
+Country-level values, city-level information, and coordinate-based measurements are not automatically treated as equivalent geographic observations.
+
+---
+
+## City Climate Intelligence
+
+The repository contains a framework for city-level climate intelligence using available point-based climate and city-reporting datasets.
+
+### Physical Climate
+
+Open-Meteo Climate / CMIP6 HighResMIP information is used for selected place-level climate projections.
+
+Coordinate-based climate information is treated as a point estimate rather than labelled as a spatial average across an administrative city boundary.
+
+### CDP City Information
+
+The project contains preprocessing and integration logic for public CDP city data.
+
+Depending on reporting coverage, available information may include:
+
+- city emissions;
+- climate targets;
+- reported target progress;
+- reported climate risks;
+- climate-policy information.
+
+CDP information is used only for cities represented in the underlying dataset.
+
+Missing reporting remains missing rather than being inferred from nearby or similar cities.
+
+---
+
+## Sector Transition Intelligence
+
+ORBIDENSE also contains a framework for examining sector-level emissions and transition context.
+
+Implemented components include:
+
+- EDGAR/JRC sector-emissions structures;
+- Climate Action Tracker sector benchmark adapters;
+- benchmark synchronization tooling;
+- sector-gap calculations where compared values use compatible definitions and units.
+
+Comparisons are not calculated when current values and benchmark values are not meaningfully comparable.
+
+---
+
+# Data Architecture
+
+A substantial part of ORBIDENSE concerns the integration of environmental datasets that differ in structure and methodology.
+
+Sources can vary by:
+
+- geographic identifiers;
+- coordinate systems;
+- spatial resolution;
+- temporal resolution;
+- units;
+- update frequency;
+- variable definitions;
+- missing-data conventions;
+- API structure;
+- institutional methodology.
+
+The application therefore separates acquisition from processing and presentation.
+
+```text
+External Data Sources
+         ↓
+Data Acquisition
+         ↓
+Validation
+         ↓
+Normalization
+         ↓
+Transformation
+         ↓
+Processed Data / Database
+         ↓
+Service Layer
+         ↓
+Application Logic
+         ↓
+Visualization
+```
+
+This architecture allows individual data providers to be maintained separately from the user interface.
+
+---
+
+## Database Layer
+
+ORBIDENSE uses persistent database infrastructure alongside processed local datasets and external APIs.
+
+The database architecture supports storage and retrieval of information used by the application.
+
+```text
+External Source
+      ↓
+Acquisition
+      ↓
+Processing
+      ↓
+Persistent Storage
+      ↓
+Application Query
+      ↓
+Environmental Intelligence
+      ↓
+Visualization
+```
+
+This separates external data acquisition from normal application interaction and provides infrastructure for historical and analytical workflows.
+
+---
+
+## Geographic Search
+
+Geographic search connects user location queries with environmental information.
+
+The workflow includes:
+
+```text
+User Query
+    ↓
+Geocoding
+    ↓
+Location Resolution
+    ↓
+Coordinates / Geographic Context
+    ↓
+Environmental Services
+    ↓
+ORBIDENSE
+```
+
+Dedicated geographic modules handle location search and normalization before environmental information is retrieved.
+
+---
+
+# Data Sources
+
+ORBIDENSE integrates or contains adapters for several established environmental and climate information providers.
+
+## World Bank Climate Change Knowledge Portal
+
+Used within the climate-intelligence system for historical national climate information and processed CMIP6 country projections.
 
 ## CRU
 
-Climate Research Unit datasets can provide long-term historical climate information.
+Used within the historical climate-data workflow where applicable.
 
-These datasets are useful for studying longer climatic time periods beyond modern operational weather observations.
+## Open-Meteo
 
----
+Used for selected environmental and climate services, including location-oriented environmental information and selected CMIP6/HighResMIP climate data.
 
-## CMIP6
+## Climate Watch / World Resources Institute
 
-CMIP6 is the sixth phase of the Coupled Model Intercomparison Project.
+Used for structured national climate-target information and related climate-policy data.
 
-ClimatePulse uses or is designed to use CMIP6 climate-model output for future climate projections and scenario-based analysis.
+## UNFCCC NDC Registry
 
----
+Used as an official provenance reference for Nationally Determined Contribution submissions.
 
-## OpenStreetMap / CARTO / MapTiler
+## Climate Action Tracker
 
-Geospatial basemaps and mapping infrastructure may use services such as:
+Used for country rating snapshots and selected sector-transition benchmark information.
+
+Coverage is limited to the countries and indicators represented by Climate Action Tracker.
+
+## EDGAR / Joint Research Centre
+
+Used for processed country- and sector-level greenhouse-gas emissions information.
+
+## CDP Open Data
+
+Used within the city climate-intelligence preprocessing pipeline for cities represented in the public dataset.
+
+CDP city information is treated as reported city information.
+
+## Geographic and Mapping Services
+
+The project includes geographic and mapping components associated with services such as:
 
 - OpenStreetMap;
 - CARTO;
-- MapTiler.
+- MapTiler;
+- geocoding services.
 
-Availability can depend on configuration and API access.
-
----
-
-# 🗄️ Data Architecture
-
-ClimatePulse uses a combination of:
-
-- external environmental APIs;
-- historical climate datasets;
-- climate-model data;
-- cached data;
-- local processing;
-- database-backed information.
-
-The broader architecture includes technologies such as:
-
-- Python;
-- PostgreSQL;
-- Neon;
-- Streamlit;
-- Plotly.
+Availability of individual layers depends on the relevant service and configuration.
 
 ---
 
-# 🛠️ Technology Stack
+# Scientific Interpretation
 
-## Application
+ORBIDENSE includes several explicit interpretation rules for environmental and climate information.
 
-- **Python**
-- **Streamlit**
+## Weather and Climate
 
-## Data Processing
+Individual weather conditions are not treated as evidence of long-term climate change.
+
+Historical climate information and current environmental conditions are presented as different forms of information.
+
+## Observations and Projections
+
+Observed or historical information is kept conceptually separate from future climate-model projections.
+
+Future model output is associated with its scenario and projection period.
+
+## Point and Area Measurements
+
+A climate value associated with one coordinate is not automatically presented as an administrative-area average.
+
+## Ensemble Information
+
+Climate-model ensemble spread is not described as a probability forecast for future weather.
+
+## Missing Data
+
+Missing provider coverage remains unavailable rather than being replaced with values from another geography.
+
+## Geographic Coverage
+
+Information from sources with limited geographic coverage is shown only where corresponding source data exists.
+
+## Climate Dimensions
+
+Physical climate, emissions, exposure, targets, policy information, and external ratings remain separate analytical dimensions.
+
+---
+
+# Application Architecture
+
+ORBIDENSE uses a modular Python application structure.
+
+At a simplified level:
+
+```text
+                         ORBIDENSE
+                             │
+                      Application Router
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+        Home           Climate Views      Global / Compare
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             │
+                       Service Layer
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+        APIs            Local Data          Database
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             │
+                     External Sources
+```
+
+Application routing, environmental data services, climate processing, geographic functionality, and visualization are maintained in separate modules.
+
+---
+
+# Repository Structure
+
+A simplified view of the current repository:
+
+```text
+ORBIDENSE-AI/
+│
+├── app.py
+│
+├── src/
+│   │
+│   ├── api/
+│   ├── climate_intelligence/
+│   ├── queries/
+│   ├── services/
+│   │
+│   ├── climate_projection_store.py
+│   ├── exposure_action_pages.py
+│   ├── home_page.py
+│   ├── home_v2.py
+│   ├── intelligence_pages.py
+│   ├── live_globe.py
+│   ├── location_widget.py
+│   ├── map_explorer.py
+│   ├── population_exposure_v7.py
+│   ├── orbidense_router.py
+│   ├── orbidense_shell.py
+│   ├── orbidense_theme.py
+│   ├── db.py
+│   └── ...
+│
+├── data/
+│   └── climate_intelligence/
+│
+├── database/
+├── scripts/
+├── tests/
+│
+├── seo/
+│   ├── about.html
+│   ├── research.html
+│   ├── methodology.html
+│   ├── data.html
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   └── site.css
+│
+├── Dockerfile
+├── nginx.conf
+├── start.sh
+├── requirements.txt
+└── README.md
+```
+
+---
+
+# Technology Stack
+
+### Application
+
+- Python
+- Streamlit
+
+### Data Processing
 
 - pandas
 - NumPy
-- requests
-- scientific Python libraries
+- Python-based data transformation
+- API-based acquisition workflows
 
-## Visualisation
+### Visualization
 
 - Plotly
-- Streamlit visual components
-- geospatial visualisation tools
+- Streamlit visualization components
+- geographic and environmental visualization
 
-## Database
+### Database
 
 - PostgreSQL
-- Neon
+- database-backed application services
 
-## Data Sources / Environmental Services
+### Data Formats
 
-- Open-Meteo
-- ERA5
-- CRU
-- CMIP6
-- OpenStreetMap
-- CARTO
-- MapTiler
+- Parquet
+- CSV
+- structured API responses
+- processed environmental datasets
 
-## AI
+### Infrastructure
 
-ClimatePulse includes an AI-assistant architecture using an external inference provider where configured.
+- Docker
+- Google Cloud Build
+- Google Cloud Run
+- Nginx
+- custom domain deployment
 
-API keys and credentials are stored through secure environment variables or Streamlit Secrets and are not intended to be committed to the public repository.
+### Development
+
+- Git
+- GitHub
+- Python virtual environments
+- modular Python architecture
+- validation and backtesting scripts
 
 ---
 
-# 📁 Project Structure
+# Production Architecture
 
-A simplified representation of the project structure is:
+The public ORBIDENSE application is containerized and deployed through Google Cloud infrastructure.
 
 ```text
-ClimatePulse/
-│
-├── app.py
-├── requirements.txt
-├── README.md
-│
-├── assets/
-│
-├── src/
-│   ├── home_page.py
-│   ├── live_globe.py
-│   ├── location_widget.py
-│   ├── ai_assistant.py
-│   ├── profile.py
-│   ├── ui_v27.py
-│   │
-│   ├── api/
-│   │   ├── country_live_field.py
-│   │   ├── global_field.py
-│   │   ├── home_environment.py
-│   │   └── point_history.py
-│   │
-│   └── services/
-│       └── context_engine.py
-│
-└── ...
+Source Repository
+       ↓
+Google Cloud Build
+       ↓
+Container Image
+       ↓
+Cloud Run Revision
+       ↓
+Nginx Gateway
+       ↓
+Streamlit Application
+       ↓
+orbidense.com
 ```
 
-The precise structure may evolve as ClimatePulse continues to develop.
+The Streamlit application runs internally behind the gateway.
+
+During container startup, the application health endpoint is checked before the gateway begins normal request handling.
 
 ---
 
-# ▶️ Running ClimatePulse Locally
+## Revision-Based Deployment
 
-## 1. Clone the repository
+Cloud Run revisions are used to test application releases independently before production traffic is moved.
 
-```bash
-git clone https://github.com/taimoora66/ClimatePulse.git
+The deployment workflow follows:
+
+```text
+Production Revision
+        │
+        ├──────── continues serving traffic
+        │
+        ▼
+New Revision
+        │
+        ▼
+Zero-Traffic Deployment
+        │
+        ▼
+Direct Revision Testing
+        │
+        ▼
+Health and Application Checks
+        │
+        ▼
+Production Traffic Migration
 ```
 
-Move into the project directory:
+This provides a controlled workflow for validating changes before they become the active production revision.
 
-```bash
-cd ClimatePulse
+---
+
+# Search and Crawlable Information Layer
+
+ORBIDENSE includes a static information layer alongside the interactive application.
+
+The repository contains:
+
+```text
+seo/
+├── about.html
+├── research.html
+├── methodology.html
+├── data.html
+├── robots.txt
+├── sitemap.xml
+└── site.css
+```
+
+Public information routes include:
+
+```text
+/about
+/research
+/methodology
+/data
+```
+
+The deployment also serves:
+
+```text
+/robots.txt
+/sitemap.xml
+```
+
+The homepage HTML contains ORBIDENSE-specific title and descriptive fallback content independently of the fully rendered Streamlit interface.
+
+The production homepage title is:
+
+```html
+<title>ORBIDENSE | Climate Risk, Earth Intelligence & Environmental Data</title>
 ```
 
 ---
 
-## 2. Create a virtual environment
+# Validation and Backtesting
 
-Windows:
+The repository contains testing and validation workflows for application and climate-intelligence components.
+
+Basic source validation can be performed with:
+
+```bash
+python -m py_compile app.py
+python -m compileall -q src scripts tests
+```
+
+Climate-intelligence validation includes:
+
+```bash
+python scripts/backtest_climate_intelligence.py
+```
+
+The validation workflow distinguishes between deterministic calculation checks and external data/integration availability.
+
+A failed external provider request is treated as an integration or coverage issue rather than replaced with an invented result.
+
+Recorded climate-intelligence validation output is also maintained in:
+
+```text
+backtest_report.json
+```
+
+---
+
+# Tests
+
+The repository contains a dedicated test suite covering parts of the application and data system.
+
+Testing has been used for components including:
+
+- geographic search;
+- geocoding;
+- city handling;
+- environmental retrieval;
+- historical information;
+- database interaction;
+- climate-intelligence functionality.
+
+External-source and dataset validation is additionally handled through dedicated scripts where appropriate.
+
+---
+
+# Data Refresh and Caching
+
+Environmental datasets have different publication and update schedules.
+
+ORBIDENSE therefore uses source-specific data handling rather than applying one refresh interval to every dataset.
+
+The climate-intelligence architecture distinguishes between:
+
+- live environmental information;
+- historical climate datasets;
+- climate projections;
+- NDC information;
+- CAT assessments;
+- EDGAR emissions releases;
+- CDP city reporting.
+
+Large or slowly changing datasets are processed or synchronized outside normal interactive requests where appropriate.
+
+---
+
+# Product Monitoring
+
+ORBIDENSE includes an internal application-usage monitoring layer used during development to understand application interaction and technical usage patterns.
+
+This functionality supports evaluation of platform behaviour and interface development but is separate from the environmental and climate-intelligence methodology.
+
+---
+
+# Local Development
+
+## Clone
+
+```bash
+git clone https://github.com/taimoora66/ORBIDENSE-AI.git
+cd ORBIDENSE-AI
+```
+
+## Create a Virtual Environment
+
+### Windows
 
 ```powershell
 python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-Activate it:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
+### macOS / Linux
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
----
-
-## 3. Install dependencies
+## Install Dependencies
 
 ```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
----
-
-## 4. Configure optional secrets
-
-Some features may require external API credentials.
-
-Do **not** commit secrets to GitHub.
-
-For local development, configure environment variables or an appropriate local secrets file.
-
-For example:
-
-```text
-HF_TOKEN=your_token
-HF_MODEL=your_model
-```
-
-Other map or database services may require their own credentials.
-
----
-
-## 5. Start ClimatePulse
+## Run
 
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
-The local application will normally become available at:
+The local application normally becomes available at:
 
 ```text
 http://localhost:8501
@@ -498,225 +858,131 @@ http://localhost:8501
 
 ---
 
-# ☁️ Deployment
+# Development Validation
 
-ClimatePulse is deployed using **Streamlit Community Cloud**.
+Before committing application changes:
 
-Live application:
-
-https://climatepulse-global.streamlit.app
-
-Streamlit Community Cloud connects directly with GitHub repositories and can redeploy the application when changes are pushed to the configured branch. Public Streamlit applications can then be shared through their `streamlit.app` URL.
-
----
-
-# 🔐 Security & Secrets
-
-Private credentials should never be stored directly in the public source code.
-
-Examples include:
-
-- API keys;
-- database credentials;
-- Hugging Face tokens;
-- map-service tokens;
-- private connection strings.
-
-These should be stored using:
-
-- environment variables;
-- `.env` files excluded by `.gitignore`;
-- Streamlit Community Cloud Secrets.
-
----
-
-# 🔬 Scientific Interpretation
-
-ClimatePulse combines datasets that represent different components of the climate system.
-
-These should not be interpreted as interchangeable.
-
-### Weather
-
-Weather describes short-term atmospheric conditions.
-
-Examples:
-
-- today's temperature;
-- current rainfall;
-- current wind speed.
-
-### Climate
-
-Climate describes longer-term statistical characteristics of atmospheric conditions.
-
-### Reanalysis
-
-Reanalysis combines historical observations with numerical modelling to reconstruct past atmospheric conditions.
-
-### Climate Projections
-
-Climate-model projections represent possible future climate conditions under particular assumptions and scenarios.
-
-They are not weather forecasts.
-
-ClimatePulse aims to maintain this distinction throughout the application.
-
----
-<img width="1920" height="1080" alt="climate projections" src="https://github.com/user-attachments/assets/7c4e771a-c98c-4ac6-ae83-8a2361574a4f" />
-<img width="1920" height="1080" alt="climatepulse-globe" src="https://github.com/user-attachments/assets/9d3a7685-e5c1-4bc1-806d-945de62b0ca5" />
-# ⚠️ Limitations
-
-ClimatePulse is an evolving research and educational application.
-
-Important limitations include:
-
-- external APIs may occasionally be unavailable;
-- geographic coverage differs between datasets;
-- time coverage differs between datasets;
-- spatial resolution differs between datasets;
-- model projections contain uncertainty;
-- representative geographic points should not automatically be interpreted as national spatial averages;
-- historical datasets and live weather APIs may use different methodologies;
-- environmental indicators do not constitute emergency warnings;
-- AI responses may contain errors and should be independently verified for high-stakes decisions.
-
----
-
-# 🚨 Disclaimer
-
-ClimatePulse is provided for:
-
-- climate-data exploration;
-- education;
-- research;
-- environmental communication;
-- analytical experimentation.
-
-It is **not** an official meteorological warning system.
-
-For severe weather warnings, emergencies or operational decisions, users should consult the relevant national meteorological and civil-protection authorities.
-
-Climate-health information is informational only and should not replace professional medical guidance.
-
----
-
-# 🎓 Project Creator
-
-## Taimoor Ahmad
-
-MSc student in:
-
-**Environmental Change & Global Sustainability**
-
-**University of Milan**
-
-ClimatePulse was developed as an independent environmental and climate-data project combining interests in:
-
-- climate change;
-- environmental science;
-- climate modelling;
-- data analysis;
-- geospatial visualisation;
-- scientific communication;
-- interactive environmental intelligence.
-
----
-
-# 🌱 Project Vision
-
-The long-term goal of ClimatePulse is to develop an accessible interface connecting:
-
-```text
-Weather
-   +
-Historical Climate
-   +
-Climate Trends
-   +
-Future Projections
-   +
-Environmental Risk
-   +
-Geospatial Intelligence
-   +
-AI-assisted Interpretation
+```bash
+python -m compileall -q app.py src
 ```
 
-into one coherent climate-intelligence environment.
+Git whitespace and formatting problems can be checked with:
 
-The broader objective is to help transform complex environmental datasets into information that is easier to explore, compare and understand.
+```bash
+git diff --check
+```
 
----
+Climate-intelligence validation can additionally be run with:
 
-# 🚧 Development Status
-
-ClimatePulse is under active development.
-
-Current development areas include:
-
-- improved spatial climate analysis;
-- stronger climate-model integration;
-- better uncertainty communication;
-- improved country-level climate indicators;
-- expanded climate-health analysis;
-- compound climate-risk interpretation;
-- enhanced AI-assisted environmental explanation;
-- improved user interaction and visualisation.
-
----
-
-# 🤝 Contributions
-
-Suggestions, scientific feedback and technical improvements are welcome.
-
-If you identify:
-
-- a methodological issue;
-- a data-quality problem;
-- a software bug;
-- a visualisation issue;
-- a useful environmental dataset;
-
-please open an issue in this repository.
-
----
-
-# 📚 Citation
-
-If ClimatePulse is used in academic or research work, please cite the repository and specify the date/version accessed.
-
-A formal citation format and DOI may be added in a future release.
-
-Suggested temporary citation:
-
-```text
-Ahmad, T. ClimatePulse: Global Climate Intelligence.
-GitHub repository and interactive Streamlit application.
-https://github.com/taimoora66/ClimatePulse
+```bash
+python scripts/backtest_climate_intelligence.py
 ```
 
 ---
 
-# 🔗 Links
+# Data Availability and Limitations
 
-### Live application
+Environmental datasets have different geographic, temporal, and methodological coverage.
 
-https://climatepulse-global.streamlit.app
+Current limitations include:
 
-### Source code
+- some providers do not cover every country;
+- CDP information is limited to cities represented in its public dataset;
+- CAT assessments are limited to countries and sectors covered by CAT;
+- climate datasets differ in spatial and temporal resolution;
+- point climate projections are not equivalent to administrative-area averages;
+- climate-model projections depend on scenario and model assumptions;
+- environmental APIs may occasionally be unavailable;
+- emissions, exposure, physical climate, climate targets, and policy indicators represent different dimensions of climate information.
 
-https://github.com/taimoora66/ClimatePulse
-
----
-
-## ⭐ Support the Project
-
-If you find ClimatePulse useful or interesting, consider starring the repository.
-
-A GitHub star helps make the project easier for others to discover.
-<img width="1920" height="1080" alt="climate passport" src="https://github.com/user-attachments/assets/28516f00-25a0-42bf-814b-956b1e4ef1e6" />
+These distinctions are retained in the application and supporting methodology.
 
 ---
 
-**ClimatePulse — Global Climate Intelligence**
+# Documentation
+
+Additional implementation and data information is maintained in repository documentation including:
+
+```text
+CLIMATE_INTELLIGENCE_V4_NOTES.md
+CLIMATE_INTELLIGENCE_DATA_AVAILABILITY.md
+```
+
+These documents describe climate-intelligence integrations, data availability, source coverage, synchronization workflows, interpretation rules, and validation behaviour.
+
+---
+
+# Project Development
+
+ORBIDENSE has developed through multiple iterations covering:
+
+- environmental data acquisition;
+- geographic search and location resolution;
+- database integration;
+- interactive Earth exploration;
+- historical climate information;
+- climate projections;
+- population exposure;
+- country climate intelligence;
+- greenhouse-gas emissions;
+- climate-action information;
+- comparative environmental views;
+- city climate-data integration;
+- sector-transition data;
+- data synchronization;
+- validation and backtesting;
+- application routing and interface development;
+- containerized deployment;
+- Cloud Run revision testing;
+- production gateway configuration;
+- crawlable information pages and sitemap infrastructure.
+
+The repository retains parts of earlier development iterations where they remain referenced or useful during continued consolidation.
+
+---
+
+# Methodological Scope
+
+ORBIDENSE is an environmental information and analytical software project.
+
+Outputs depend on the characteristics and limitations of the underlying datasets.
+
+The application does not treat:
+
+- correlation as causation;
+- model projections as observations;
+- current weather as long-term climate evidence;
+- point measurements as area averages;
+- missing values as zero;
+- model ensemble spread as forecast probability;
+- self-reported climate information as independently verified measurement.
+
+Interpretation should therefore consider the original data source, methodology, geographic resolution, temporal period, and uncertainty associated with each indicator.
+
+---
+
+# Current Status
+
+ORBIDENSE is under active development.
+
+The current deployed platform combines the environmental-data, climate-intelligence, geographic, database, visualization, and deployment components described above.
+
+Further work continues through additional data validation, research development, interface refinement, and expansion of environmental analysis.
+
+---
+
+## Author
+
+**Taimoor Ahmad**  
+Environmental Change and Global Sustainability  
+University of Milan
+
+---
+
+## Links
+
+**Live Platform**  
+https://orbidense.com
+
+**GitHub Repository**  
+https://github.com/taimoora66/ORBIDENSE-AI
