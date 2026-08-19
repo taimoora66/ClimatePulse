@@ -21,6 +21,7 @@ RUN python -m pip install --upgrade pip \
 COPY . .
 
 RUN python patch_streamlit_meta.py
+RUN python patch_streamlit_seo_fallback.py
 RUN python patch_analytics_cookie.py
 
 # Normalize Windows/BOM line endings before Linux execution.
